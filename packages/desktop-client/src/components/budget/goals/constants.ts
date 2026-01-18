@@ -4,6 +4,7 @@ import type {
   LimitTemplate,
   PercentageTemplate,
   PeriodicTemplate,
+  RefillTemplate,
   ScheduleTemplate,
 } from 'loot-core/types/models/templates';
 
@@ -24,7 +25,7 @@ export type ReducerState =
       displayType: 'limit';
     }
   | {
-      template: LimitTemplate;
+      template: RefillTemplate;
       displayType: 'refill';
     }
   | {

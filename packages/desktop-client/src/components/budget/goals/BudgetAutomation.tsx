@@ -3,6 +3,7 @@ import { useMemo, useReducer, useRef, useState } from 'react';
 import { SpaceBetween } from '@actual-app/components/space-between';
 import type { CSSProperties } from '@actual-app/components/styles';
 
+import { dayFromDate, firstDayOfMonth } from 'loot-core/shared/months';
 import type {
   CategoryGroupEntity,
   ScheduleEntity,
@@ -11,7 +12,7 @@ import type { Template } from 'loot-core/types/models/templates';
 
 import { BudgetAutomationEditor } from './BudgetAutomationEditor';
 import { BudgetAutomationReadOnly } from './BudgetAutomationReadOnly';
-import { type DisplayTemplateType } from './constants';
+import type { DisplayTemplateType } from './constants';
 import { DEFAULT_PRIORITY, getInitialState, templateReducer } from './reducer';
 
 import { useEffectAfterMount } from '@desktop-client/hooks/useEffectAfterMount';
@@ -38,6 +39,7 @@ const DEFAULT_TEMPLATE: Template = {
     period: 'month',
     amount: 1,
   },
+  starting: dayFromDate(firstDayOfMonth(new Date())),
   priority: DEFAULT_PRIORITY,
 };
 
@@ -49,7 +51,6 @@ export const BudgetAutomation = ({
   readOnlyStyle,
   style,
   template,
-  displayType,
   inline = false,
   hasLimitAutomation,
   onAddLimitAutomation,
@@ -57,7 +58,7 @@ export const BudgetAutomation = ({
   const [isEditing, setIsEditing] = useState(false);
 
   const [state, dispatch] = useReducer(templateReducer, null, () =>
-    getInitialState(template ?? DEFAULT_TEMPLATE, displayType),
+    getInitialState(template ?? DEFAULT_TEMPLATE),
   );
 
   const onSaveRef = useRef(onSave);

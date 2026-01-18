@@ -6,10 +6,7 @@ import type { DisplayTemplateType, ReducerState } from './constants';
 
 export const DEFAULT_PRIORITY = 1;
 
-export const getInitialState = (
-  template: Template | null,
-  displayTypeOverride?: DisplayTemplateType,
-): ReducerState => {
+export const getInitialState = (template: Template | null): ReducerState => {
   if (!template) {
     throw new Error('Template cannot be null');
   }
@@ -53,8 +50,7 @@ export const getInitialState = (
     case 'limit':
       return {
         template,
-        displayType:
-          displayTypeOverride ?? (template.refill ? 'refill' : 'limit'),
+        displayType: 'limit',
       };
     case 'refill':
       return {
@@ -83,13 +79,7 @@ const changeType = (
   switch (visualType) {
     case 'limit':
       if (prevState.template.type === 'limit') {
-        return {
-          displayType: visualType,
-          template: {
-            ...prevState.template,
-            refill: false,
-          },
-        };
+        return prevState;
       }
       return {
         displayType: visualType,
@@ -99,30 +89,19 @@ const changeType = (
           amount: 500,
           period: 'monthly',
           hold: false,
-          refill: false,
           priority: null,
         },
       };
     case 'refill':
-      if (prevState.template.type === 'limit') {
-        return {
-          displayType: visualType,
-          template: {
-            ...prevState.template,
-            refill: true,
-          },
-        };
+      if (prevState.template.type === 'refill') {
+        return prevState;
       }
       return {
         displayType: visualType,
         template: {
           directive: 'template',
-          type: 'limit',
-          amount: 500,
-          period: 'monthly',
-          hold: false,
-          refill: true,
-          priority: null,
+          type: 'refill',
+          priority: DEFAULT_PRIORITY,
         },
       };
     case 'percentage':
@@ -242,7 +221,7 @@ function mapTemplateTypesForUpdate(
     const mergedTemplate = Object.assign({}, state.template, template);
     return {
       ...state,
-      ...getInitialState(mergedTemplate, state.displayType),
+      ...getInitialState(mergedTemplate),
     };
   }
 
