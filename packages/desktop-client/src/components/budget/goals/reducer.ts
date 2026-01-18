@@ -1,3 +1,4 @@
+import { firstDayOfMonth } from 'loot-core/shared/months';
 import type { Template } from 'loot-core/types/models/templates';
 
 import type { Action } from './actions';
@@ -5,7 +6,10 @@ import type { DisplayTemplateType, ReducerState } from './constants';
 
 export const DEFAULT_PRIORITY = 1;
 
-export const getInitialState = (template: Template | null): ReducerState => {
+export const getInitialState = (
+  template: Template | null,
+  displayTypeOverride?: DisplayTemplateType,
+): ReducerState => {
   if (!template) {
     throw new Error('Template cannot be null');
   }
@@ -13,8 +17,18 @@ export const getInitialState = (template: Template | null): ReducerState => {
   switch (type) {
     case 'simple':
       return {
-        template,
-        displayType: 'simple',
+        template: {
+          type: 'periodic',
+          amount: template.monthly ?? 0,
+          period: {
+            period: 'month',
+            amount: 1,
+          },
+          starting: firstDayOfMonth(new Date()),
+          priority: template.priority,
+          directive: template.directive,
+        },
+        displayType: 'week',
       };
     case 'percentage':
       return {
@@ -37,9 +51,16 @@ export const getInitialState = (template: Template | null): ReducerState => {
     case 'remainder':
       throw new Error('Remainder is not yet supported');
     case 'limit':
-      throw new Error('Limit is not yet supported');
+      return {
+        template,
+        displayType:
+          displayTypeOverride ?? (template.refill ? 'refill' : 'limit'),
+      };
     case 'refill':
-      throw new Error('Refill is not yet supported');
+      return {
+        template,
+        displayType: 'refill',
+      };
     case 'average':
     case 'copy':
       return {
@@ -60,17 +81,48 @@ const changeType = (
   visualType: DisplayTemplateType,
 ): ReducerState => {
   switch (visualType) {
-    case 'simple':
-      if (prevState.template.type === 'simple') {
-        return prevState;
+    case 'limit':
+      if (prevState.template.type === 'limit') {
+        return {
+          displayType: visualType,
+          template: {
+            ...prevState.template,
+            refill: false,
+          },
+        };
       }
       return {
         displayType: visualType,
         template: {
           directive: 'template',
-          type: 'simple',
-          monthly: 5,
-          priority: DEFAULT_PRIORITY,
+          type: 'limit',
+          amount: 500,
+          period: 'monthly',
+          hold: false,
+          refill: false,
+          priority: null,
+        },
+      };
+    case 'refill':
+      if (prevState.template.type === 'limit') {
+        return {
+          displayType: visualType,
+          template: {
+            ...prevState.template,
+            refill: true,
+          },
+        };
+      }
+      return {
+        displayType: visualType,
+        template: {
+          directive: 'template',
+          type: 'limit',
+          amount: 500,
+          period: 'monthly',
+          hold: false,
+          refill: true,
+          priority: null,
         },
       };
     case 'percentage':
@@ -187,13 +239,10 @@ function mapTemplateTypesForUpdate(
   }
 
   if (state.template.type === template.type) {
-    const { type: _1, directive: _2, ...rest } = template;
+    const mergedTemplate = Object.assign({}, state.template, template);
     return {
       ...state,
-      ...getInitialState({
-        ...state.template,
-        ...rest,
-      }),
+      ...getInitialState(mergedTemplate, state.displayType),
     };
   }
 
@@ -207,7 +256,8 @@ export const templateReducer = (
   state: ReducerState,
   action: Action,
 ): ReducerState => {
-  switch (action.type) {
+  const type = action.type;
+  switch (type) {
     case 'set-type':
       return {
         ...state,
@@ -221,6 +271,7 @@ export const templateReducer = (
     case 'update-template':
       return mapTemplateTypesForUpdate(state, action.payload);
     default:
-      return state;
+      // Make sure we're not missing any cases
+      throw new Error(`Unknown display type: ${type satisfies never}`);
   }
 };
