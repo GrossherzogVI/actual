@@ -80,7 +80,7 @@ function CustomReportListCardsInner({
   const { menuItems: copyMenuItems, handleMenuSelect: handleCopyMenuSelect } =
     useDashboardWidgetCopyMenu(onCopy);
 
-  const { data: payees } = usePayees();
+  const { data: payees = [] } = usePayees();
   const accounts = useAccounts();
   const { data: categories = { list: [], grouped: [] } } = useCategories();
 
