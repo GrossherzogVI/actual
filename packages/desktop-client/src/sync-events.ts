@@ -14,7 +14,7 @@ import { pushModal } from './modals/modalsSlice';
 import { addNotification } from './notifications/notificationsSlice';
 import type { Notification } from './notifications/notificationsSlice';
 import { payeeQueries } from './payees';
-import { loadPrefs } from './prefs/prefsSlice';
+import { prefQueries } from './prefs';
 import type { AppStore } from './redux/store';
 import { signOut } from './users/usersSlice';
 
@@ -37,8 +37,8 @@ export function listenForSyncEvent(store: AppStore, queryClient: QueryClient) {
 
   let attemptedSyncRepair = false;
 
-  const unlistenSuccess = listen('sync-event', event => {
-    const prefs = store.getState().prefs.local;
+  const unlistenSuccess = listen('sync-event', async event => {
+    const prefs = await queryClient.ensureQueryData(prefQueries.listMetadata());
     if (!prefs || !prefs.id) {
       // Do nothing if no budget is loaded
       return;
@@ -62,7 +62,9 @@ export function listenForSyncEvent(store: AppStore, queryClient: QueryClient) {
       const tables = event.tables;
 
       if (tables.includes('prefs')) {
-        store.dispatch(loadPrefs());
+        queryClient.invalidateQueries({
+          queryKey: prefQueries.lists(),
+        });
       }
 
       if (
@@ -220,7 +222,9 @@ export function listenForSyncEvent(store: AppStore, queryClient: QueryClient) {
               action: async () => {
                 await store.dispatch(uploadBudget({}));
                 store.dispatch(sync());
-                store.dispatch(loadPrefs());
+                queryClient.invalidateQueries({
+                  queryKey: prefQueries.lists(),
+                });
               },
             },
           };

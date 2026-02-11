@@ -6,7 +6,7 @@ import { Navigate, Route, Routes, useHref, useLocation } from 'react-router';
 import { useResponsive } from '@actual-app/components/hooks/useResponsive';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
-import { useQuery } from '@tanstack/react-query';
+import { usePrefetchQuery, useQuery } from '@tanstack/react-query';
 
 import * as undo from 'loot-core/platform/client/undo';
 
@@ -38,7 +38,9 @@ import { useMetaThemeColor } from '@desktop-client/hooks/useMetaThemeColor';
 import { useNavigate } from '@desktop-client/hooks/useNavigate';
 import { ScrollProvider } from '@desktop-client/hooks/useScrollListener';
 import { addNotification } from '@desktop-client/notifications/notificationsSlice';
+import { prefQueries } from '@desktop-client/prefs';
 import { useDispatch, useSelector } from '@desktop-client/redux';
+import { CustomThemeStyle } from '@desktop-client/style';
 
 function NarrowNotSupported({
   redirectTo = '/budget',
@@ -193,11 +195,15 @@ export function FinancesApp() {
 
   const scrollableRef = useRef<HTMLDivElement>(null);
 
+  // Prefetch preferences
+  usePrefetchQuery(prefQueries.list());
+
   return (
     <View style={{ height: '100%' }}>
       <RouterBehaviors />
       <GlobalKeys />
       <CommandBar />
+      <CustomThemeStyle />
       <View
         style={{
           flexDirection: 'row',

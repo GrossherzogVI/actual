@@ -38,10 +38,9 @@ import { SpreadsheetProvider } from '@desktop-client/hooks/useSpreadsheet';
 import { setI18NextLanguage } from '@desktop-client/i18n';
 import { addNotification } from '@desktop-client/notifications/notificationsSlice';
 import { installPolyfills } from '@desktop-client/polyfills';
-import { loadGlobalPrefs } from '@desktop-client/prefs/prefsSlice';
+import { prefQueries } from '@desktop-client/prefs';
 import { useDispatch, useSelector, useStore } from '@desktop-client/redux';
 import {
-  CustomThemeStyle,
   hasHiddenScrollbars,
   ThemeStyle,
   useTheme,
@@ -60,6 +59,8 @@ function AppInner() {
   useEffect(() => {
     setI18NextLanguage(null);
   }, []);
+
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const maybeUpdate = async <T,>(cb?: () => T): Promise<T | void> => {
@@ -91,7 +92,10 @@ function AppInner() {
           loadingText: t('Loading global preferences...'),
         }),
       );
-      await dispatch(loadGlobalPrefs());
+      queryClient.invalidateQueries({
+        queryKey: prefQueries.listGlobal().queryKey,
+        refetchType: 'none',
+      });
 
       // Open the last opened budget, if any
       dispatch(
@@ -239,7 +243,6 @@ export function App() {
                       <AppInner />
                     </ErrorBoundary>
                     <ThemeStyle />
-                    <CustomThemeStyle />
                     <ErrorBoundary FallbackComponent={FatalError}>
                       <Modals />
                     </ErrorBoundary>
