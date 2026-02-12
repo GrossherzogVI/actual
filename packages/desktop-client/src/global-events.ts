@@ -16,7 +16,6 @@ import {
 import { reloadPayees } from './payees/payeesSlice';
 import { loadPrefs } from './prefs/prefsSlice';
 import type { AppStore } from './redux/store';
-import { scheduleQueries } from './schedules';
 import * as syncEvents from './sync-events';
 
 export function handleGlobalEvents(store: AppStore, queryClient: QueryClient) {
@@ -78,14 +77,6 @@ export function handleGlobalEvents(store: AppStore, queryClient: QueryClient) {
       promises.push(
         queryClient.invalidateQueries({
           queryKey: accountQueries.lists(),
-        }),
-      );
-    }
-
-    if (tables.includes('schedules')) {
-      promises.push(
-        queryClient.invalidateQueries({
-          queryKey: scheduleQueries.all(),
         }),
       );
     }
