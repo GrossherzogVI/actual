@@ -117,7 +117,7 @@ export function openDatabase(pathOrBuffer: string | Buffer) {
 }
 
 export function closeDatabase(db: SQL.Database) {
-  db.close();
+  return db.close();
 }
 
 export async function exportDatabase(db: SQL.Database) {
