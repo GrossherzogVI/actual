@@ -154,6 +154,10 @@ describe('MobilePayeesPage', () => {
   });
 
   it('handles empty payee list', () => {
+    // Set empty payee list in the cache
+    queryClient.setQueryData(payeeQueries.list().queryKey, []);
+    queryClient.setQueryData(payeeQueries.ruleCounts().queryKey, new Map());
+
     renderPayeesPage();
 
     // Page should render even with no payees
