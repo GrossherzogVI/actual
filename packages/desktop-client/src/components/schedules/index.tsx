@@ -81,11 +81,14 @@ export function Schedules() {
     [],
   );
 
-  const { isPending: isSchedulesLoading, data: schedules = [] } = useSchedules({
+  const { isLoading: isSchedulesLoading, data: schedules = [] } = useSchedules({
     query: q('schedules').select('*'),
   });
 
-  const { data: { statusLookup = {} } = {} } = useScheduleStatus({ schedules });
+  const {
+    isLoading: isScheduleStatusLoading,
+    data: { statusLookup = {} } = {},
+  } = useScheduleStatus({ schedules });
 
   return (
     <Page header={t('Schedules')}>
@@ -112,7 +115,7 @@ export function Schedules() {
       </View>
 
       <SchedulesTable
-        isLoading={isSchedulesLoading}
+        isLoading={isSchedulesLoading || isScheduleStatusLoading}
         schedules={schedules}
         filter={filter}
         statusLookup={statusLookup}

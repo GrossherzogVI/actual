@@ -35,7 +35,7 @@ export function useScheduleStatus({
     if (event.type === 'applied') {
       const tables = event.tables;
       if (tables.includes('schedules') || tables.includes('transactions')) {
-        queryResult.refetch();
+        void queryResult.refetch();
       }
     }
   });

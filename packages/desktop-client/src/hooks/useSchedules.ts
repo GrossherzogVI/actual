@@ -24,7 +24,7 @@ export function useSchedules({
     if (event.type === 'applied') {
       const tables = event.tables;
       if (tables.includes('schedules') || tables.includes('rules')) {
-        queryResult.refetch();
+        void queryResult.refetch();
       }
     }
   });

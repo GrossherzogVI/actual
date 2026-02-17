@@ -41,12 +41,17 @@ export function usePreviewTransactions({
     TransactionEntity[]
   >([]);
   const {
-    isPending: isSchedulesLoading,
+    isLoading: isSchedulesLoading,
     error: scheduleQueryError,
     data: schedules = [],
   } = useCachedSchedules();
-  const { data: { statusLookup = {} } = {} } = useScheduleStatus({ schedules });
-  const [isLoading, setIsLoading] = useState(isSchedulesLoading);
+  const {
+    isLoading: isScheduleStatusLoading,
+    data: { statusLookup = {} } = {},
+  } = useScheduleStatus({ schedules });
+  const [isLoading, setIsLoading] = useState(
+    isSchedulesLoading || isScheduleStatusLoading,
+  );
   const [error, setError] = useState<Error | undefined>(undefined);
   const [runningBalances, setRunningBalances] = useState<
     Map<TransactionEntity['id'], IntegerAmount>
@@ -61,7 +66,7 @@ export function usePreviewTransactions({
   optionsRef.current = options;
 
   const scheduleTransactions = useMemo(() => {
-    if (isSchedulesLoading) {
+    if (isSchedulesLoading || isScheduleStatusLoading) {
       return [];
     }
 
@@ -71,7 +76,14 @@ export function usePreviewTransactions({
       upcomingLength,
       filter,
     );
-  }, [filter, isSchedulesLoading, schedules, statusLookup, upcomingLength]);
+  }, [
+    filter,
+    isSchedulesLoading,
+    isScheduleStatusLoading,
+    schedules,
+    statusLookup,
+    upcomingLength,
+  ]);
 
   useEffect(() => {
     let isUnmounted = false;
@@ -144,7 +156,7 @@ export function usePreviewTransactions({
   return {
     previewTransactions,
     runningBalances,
-    isLoading: isLoading || isSchedulesLoading,
+    isLoading: isLoading || isSchedulesLoading || isScheduleStatusLoading,
     ...(returnError && { error: returnError }),
   };
 }

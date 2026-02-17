@@ -39,10 +39,13 @@ export function MobileSchedulesPage() {
   const format = useFormat();
   const dateFormat = useDateFormat() || 'MM/dd/yyyy';
 
-  const { isPending: isSchedulesLoading, data: schedules = [] } = useSchedules({
+  const { isLoading: isSchedulesLoading, data: schedules = [] } = useSchedules({
     query: q('schedules').select('*'),
   });
-  const { data: { statusLookup = {} } = {} } = useScheduleStatus({ schedules });
+  const {
+    isLoading: isScheduleStatusLoading,
+    data: { statusLookup = {} } = {},
+  } = useScheduleStatus({ schedules });
 
   const payees = usePayees();
   const accounts = useAccounts();
@@ -156,7 +159,7 @@ export function MobileSchedulesPage() {
       </View>
       <SchedulesList
         schedules={filteredSchedules}
-        isLoading={isSchedulesLoading}
+        isLoading={isSchedulesLoading || isScheduleStatusLoading}
         statusLookup={statusLookup}
         onSchedulePress={handleSchedulePress}
         onScheduleDelete={handleScheduleDelete}

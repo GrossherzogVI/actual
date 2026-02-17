@@ -367,11 +367,11 @@ function ScheduleDescription({ id }) {
   const { isNarrowWidth } = useResponsive();
   const dateFormat = useDateFormat() || 'MM/dd/yyyy';
   const format = useFormat();
-  const { data: schedule, isPending: isSchedulesLoading } = useSchedule(id);
+  const { data: schedule, isLoading: isSchedulesLoading } = useSchedule(id);
 
   const {
     data: { statusLookup = {} } = {},
-    isPending: isScheduleStatusLoading,
+    isLoading: isScheduleStatusLoading,
   } = useScheduleStatus({ schedules: [schedule] });
 
   if (isSchedulesLoading || isScheduleStatusLoading) {

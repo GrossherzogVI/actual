@@ -41,11 +41,12 @@ export function ScheduleLink({
 
   const dispatch = useDispatch();
   const [filter, setFilter] = useState(accountName || '');
-  const { isPending: isSchedulesLoading, data: schedules = [] } = useSchedules({
+  const { isLoading: isSchedulesLoading, data: schedules = [] } = useSchedules({
     query: q('schedules').filter({ completed: false }).select('*'),
   });
 
   const {
+    isLoading: isScheduleStatusLoading,
     data: { statusLookup = {} },
   } = useScheduleStatus({ schedules });
 
@@ -143,7 +144,7 @@ export function ScheduleLink({
             }}
           >
             <SchedulesTable
-              isLoading={isSchedulesLoading}
+              isLoading={isSchedulesLoading || isScheduleStatusLoading}
               allowCompleted={false}
               filter={filter}
               minimal
