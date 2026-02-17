@@ -1,7 +1,6 @@
 import { queryOptions } from '@tanstack/react-query';
 
-import { sendCatch } from 'loot-core/platform/client/fetch';
-import type { send } from 'loot-core/platform/client/fetch';
+import { send } from 'loot-core/platform/client/connection';
 import { parseNumberFormat, setNumberFormat } from 'loot-core/shared/util';
 import type {
   GlobalPrefs,
@@ -11,14 +10,6 @@ import type {
 } from 'loot-core/types/prefs';
 
 import { setI18NextLanguage } from '@desktop-client/i18n';
-
-const sendThrow: typeof send = async (name, args) => {
-  const { error, data } = await sendCatch(name, args);
-  if (error) {
-    throw error;
-  }
-  return data;
-};
 
 export type AllPrefs = {
   local: MetadataPrefs;
@@ -71,7 +62,7 @@ export const prefQueries = {
     queryOptions<MetadataPrefs>({
       queryKey: [...prefQueries.lists(), 'metadata'],
       queryFn: async () => {
-        return await sendThrow('load-prefs');
+        return await send('load-prefs');
       },
       placeholderData: {},
       // Manually invalidated when local preferences change
@@ -81,7 +72,7 @@ export const prefQueries = {
     queryOptions({
       queryKey: [...prefQueries.lists(), 'global'],
       queryFn: async () => {
-        return await sendThrow('load-global-prefs');
+        return await send('load-global-prefs');
       },
       placeholderData: {},
       // Manually invalidated when global preferences change
@@ -91,7 +82,7 @@ export const prefQueries = {
     queryOptions({
       queryKey: [...prefQueries.lists(), 'synced'],
       queryFn: async () => {
-        return await sendThrow('preferences/get');
+        return await send('preferences/get');
       },
       placeholderData: {},
       // Manually invalidated when synced preferences change

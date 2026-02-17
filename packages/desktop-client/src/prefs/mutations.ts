@@ -4,9 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { QueryClient, QueryKey } from '@tanstack/react-query';
 import { v4 as uuidv4 } from 'uuid';
 
-import { sendCatch } from 'loot-core/platform/client/fetch';
-import type { send } from 'loot-core/platform/client/fetch';
-import { logger } from 'loot-core/platform/server/log';
+import { send } from 'loot-core/platform/client/connection';
 import type {
   GlobalPrefs,
   MetadataPrefs,
@@ -18,14 +16,6 @@ import { prefQueries } from './queries';
 import { addNotification } from '@desktop-client/notifications/notificationsSlice';
 import { useDispatch } from '@desktop-client/redux';
 import type { AppDispatch } from '@desktop-client/redux/store';
-
-const sendThrow: typeof send = async (name, args) => {
-  const { error, data } = await sendCatch(name, args);
-  if (error) {
-    throw error;
-  }
-  return data;
-};
 
 const invalidateQueries = (queryClient: QueryClient, queryKey?: QueryKey) => {
   queryClient.invalidateQueries({
@@ -73,7 +63,7 @@ export function useSaveMetadataPrefsMutation() {
       }
 
       if (hasChanges) {
-        await sendThrow('save-prefs', prefsToSave);
+        await send('save-prefs', prefsToSave);
       }
 
       return prefsToSave;
@@ -102,7 +92,7 @@ export function useSaveMetadataPrefsMutation() {
       }
     },
     onError: error => {
-      logger.error('Error saving metadata preferences:', error);
+      console.error('Error saving metadata preferences:', error);
       dispatchErrorNotification(
         dispatch,
         t(
@@ -138,7 +128,7 @@ export function useSaveGlobalPrefsMutation() {
       }
 
       if (hasChanges) {
-        await sendThrow('save-global-prefs', prefsToSave);
+        await send('save-global-prefs', prefsToSave);
       }
 
       return prefsToSave;
@@ -163,7 +153,7 @@ export function useSaveGlobalPrefsMutation() {
       }
     },
     onError: error => {
-      logger.error('Error saving global preferences:', error);
+      console.error('Error saving global preferences:', error);
       dispatchErrorNotification(
         dispatch,
         t(
@@ -199,7 +189,7 @@ export function useSaveSyncedPrefsMutation() {
       if (hasChanges) {
         await Promise.all(
           Object.entries(prefsToSave).map(([syncedPrefName, value]) =>
-            sendThrow('preferences/save', {
+            send('preferences/save', {
               id: syncedPrefName as keyof SyncedPrefs,
               value,
             }),
@@ -229,7 +219,7 @@ export function useSaveSyncedPrefsMutation() {
       }
     },
     onError: error => {
-      logger.error('Error saving synced preferences:', error);
+      console.error('Error saving synced preferences:', error);
       dispatchErrorNotification(
         dispatch,
         t(
@@ -251,7 +241,7 @@ export function useSaveSyncedPrefsMutation() {
 
 //   return useMutation({
 //     mutationFn: async (serverPrefs: SaveServerPrefsPayload) => {
-//       const result = await sendThrow('save-server-prefs', {
+//       const result = await send('save-server-prefs', {
 //         prefs: serverPrefs,
 //       });
 //       if (result && 'error' in result) {
@@ -260,7 +250,7 @@ export function useSaveSyncedPrefsMutation() {
 //     },
 //     onSuccess: () => invalidateQueries(queryClient, prefQueries.listServer().queryKey),
 //     onError: error => {
-//       logger.error('Error saving server preferences:', error);
+//       console.error('Error saving server preferences:', error);
 //       dispatchErrorNotification(
 //         dispatch,
 //         t(
