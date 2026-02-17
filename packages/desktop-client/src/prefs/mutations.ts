@@ -237,10 +237,7 @@ export function useSaveSyncedPrefsMutation() {
 //   });
 // }
 
-function diff<T extends object>(
-  incoming: T,
-  existing?: T | null,
-): Partial<T> {
+function diff<T extends object>(incoming: T, existing?: T | null): Partial<T> {
   const changed: Partial<T> = {};
   for (const [key, value] of Object.entries(incoming) as Array<
     [keyof T, T[keyof T]]
