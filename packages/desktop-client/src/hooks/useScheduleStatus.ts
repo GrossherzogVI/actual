@@ -3,7 +3,7 @@ import { useEffect, useEffectEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { UseQueryResult } from '@tanstack/react-query';
 
-import { listen } from 'loot-core/platform/client/fetch';
+import { listen } from 'loot-core/platform/client/connection';
 import type { ScheduleEntity } from 'loot-core/types/models';
 import type { ServerEvents } from 'loot-core/types/server-events';
 
