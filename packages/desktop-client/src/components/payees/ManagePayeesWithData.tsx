@@ -115,7 +115,7 @@ export function ManagePayeesWithData({
         await send('payees-batch-change', changes);
         queryClient.setQueryData(
           payeeQueries.listOrphaned().queryKey,
-          existing => applyChanges(changes, existing || []),
+          existing => applyChanges(changes, existing ?? []),
         );
       }}
       onMerge={async ([targetId, ...mergeIds]) => {
@@ -138,7 +138,7 @@ export function ManagePayeesWithData({
         // Refetch rule counts after merging
         await refetchRuleCounts();
 
-        refetchPayees();
+        void refetchPayees();
         queryClient.setQueryData(
           payeeQueries.listOrphaned().queryKey,
           filteredOrphans,

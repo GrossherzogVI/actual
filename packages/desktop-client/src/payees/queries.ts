@@ -50,7 +50,7 @@ export const payeeQueries = {
       queryKey: [...payeeQueries.lists(), 'ruleCounts'],
       queryFn: async () => {
         const counts = await send('payees-get-rule-counts');
-        return new Map(Object.entries(counts));
+        return new Map(Object.entries(counts ?? {}));
       },
       placeholderData: new Map(),
     }),
@@ -67,7 +67,7 @@ export const getActivePayees = memoizeOne(
           return account != null && !account.closed;
         }
         return true;
-      }) as PayeeEntity[],
+      }),
     );
   },
 );
