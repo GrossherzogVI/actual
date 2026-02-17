@@ -17,12 +17,6 @@ import { addNotification } from '@desktop-client/notifications/notificationsSlic
 import { useDispatch } from '@desktop-client/redux';
 import type { AppDispatch } from '@desktop-client/redux/store';
 
-const invalidateQueries = (queryClient: QueryClient, queryKey?: QueryKey) => {
-  queryClient.invalidateQueries({
-    queryKey: queryKey ?? prefQueries.lists(),
-  });
-};
-
 function dispatchErrorNotification(
   dispatch: AppDispatch,
   message: string,
@@ -53,16 +47,9 @@ export function useSaveMetadataPrefsMutation() {
         prefQueries.listMetadata(),
       );
 
-      const prefsToSave: MetadataPrefs = {};
-      let hasChanges = false;
-      for (const [key, value] of Object.entries(metadataPrefs)) {
-        if (!existing || existing[key] !== value) {
-          prefsToSave[key] = value;
-          hasChanges = true;
-        }
-      }
+      const prefsToSave = diff(metadataPrefs, existing);
 
-      if (hasChanges) {
+      if (Object.keys(prefsToSave).length > 0) {
         await send('save-prefs', prefsToSave);
       }
 
@@ -118,16 +105,9 @@ export function useSaveGlobalPrefsMutation() {
         prefQueries.listGlobal(),
       );
 
-      const prefsToSave: GlobalPrefs = {};
-      let hasChanges = false;
-      for (const [key, value] of Object.entries(globalPrefs)) {
-        if (!existing || existing[key] !== value) {
-          prefsToSave[key] = value;
-          hasChanges = true;
-        }
-      }
+      const prefsToSave = diff(globalPrefs, existing);
 
-      if (hasChanges) {
+      if (Object.keys(prefsToSave).length > 0) {
         await send('save-global-prefs', prefsToSave);
       }
 
@@ -174,19 +154,14 @@ export function useSaveSyncedPrefsMutation() {
   const { t } = useTranslation();
 
   return useMutation({
-    mutationFn: async (syncedPrefs: SaveSyncedPrefsPayload, { client }) => {
-      const existing = await client.ensureQueryData(prefQueries.listSynced());
+    mutationFn: async (syncedPrefs: SaveSyncedPrefsPayload) => {
+      const existing = await queryClient.ensureQueryData(
+        prefQueries.listSynced(),
+      );
 
-      const prefsToSave: SyncedPrefs = {};
-      let hasChanges = false;
-      for (const [key, value] of Object.entries(syncedPrefs)) {
-        if (!existing || existing[key] !== value) {
-          prefsToSave[key] = value;
-          hasChanges = true;
-        }
-      }
+      const prefsToSave = diff(syncedPrefs, existing);
 
-      if (hasChanges) {
+      if (Object.keys(prefsToSave).length > 0) {
         await Promise.all(
           Object.entries(prefsToSave).map(([syncedPrefName, value]) =>
             send('preferences/save', {
@@ -262,3 +237,18 @@ export function useSaveSyncedPrefsMutation() {
 //     },
 //   });
 // }
+
+function diff<T extends object>(
+  incoming: T,
+  existing?: T | null,
+): Partial<T> {
+  const changed: Partial<T> = {};
+  for (const [key, value] of Object.entries(incoming) as Array<
+    [keyof T, T[keyof T]]
+  >) {
+    if (!existing || existing[key] !== value) {
+      (changed as Record<keyof T, T[keyof T]>)[key] = value;
+    }
+  }
+  return changed;
+}
