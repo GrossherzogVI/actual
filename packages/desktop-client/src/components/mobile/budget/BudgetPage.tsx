@@ -26,7 +26,6 @@ import { styles } from '@actual-app/components/styles';
 import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
-import { useQuery } from '@tanstack/react-query';
 
 import { send } from 'loot-core/platform/client/connection';
 import * as monthUtils from 'loot-core/shared/months';
@@ -35,7 +34,6 @@ import type { TransObjectLiteral } from 'loot-core/types/util';
 
 import { BudgetTable, PILL_STYLE } from './BudgetTable';
 
-import { accountQueries } from '@desktop-client/accounts';
 import { sync } from '@desktop-client/app/appSlice';
 import {
   useBudgetActions,
@@ -105,18 +103,6 @@ export function BudgetPage() {
   const createCategoryGroup = useCreateCategoryGroupMutation();
   const saveCategoryGroup = useSaveCategoryGroupMutation();
   const deleteCategoryGroup = useDeleteCategoryGroupMutation();
-
-  const { data: accounts, isSuccess: isAccountsLoaded } = useQuery(
-    accountQueries.list(),
-  );
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (isAccountsLoaded && accounts.length === 0) {
-      // New file, no accounts exists
-      navigate('/accounts');
-    }
-  }, [isAccountsLoaded, accounts, navigate]);
 
   useEffect(() => {
     async function init() {
@@ -534,7 +520,7 @@ export function BudgetPage() {
     onToggleHiddenCategories,
   ]);
 
-  if (!categoryGroups || !initialized || !isAccountsLoaded) {
+  if (!categoryGroups || !initialized) {
     return (
       <View
         style={{
