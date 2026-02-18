@@ -47,8 +47,8 @@ export function MobileSchedulesPage() {
     data: { statusLookup = {} } = {},
   } = useScheduleStatus({ schedules });
 
-  const payees = usePayees();
-  const accounts = useAccounts();
+  const { data: payees = [] } = usePayees();
+  const { data: accounts = [] } = useAccounts();
 
   const filterIncludes = (str: string | null | undefined) =>
     str
