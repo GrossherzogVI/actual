@@ -5,14 +5,12 @@ export class MobilePayeesPage {
   readonly searchBox: Locator;
   readonly payeesList: Locator;
   readonly emptyMessage: Locator;
-  readonly loadingIndicator: Locator;
 
   constructor(page: Page) {
     this.page = page;
     this.searchBox = page.getByPlaceholder('Filter payees…');
     this.payeesList = page.getByRole('grid', { name: 'Payees' });
     this.emptyMessage = page.getByText('No payees found.');
-    this.loadingIndicator = page.getByTestId('animated-loading');
   }
 
   async waitFor(options?: {
@@ -64,12 +62,5 @@ export class MobilePayeesPage {
   async getPayeeCount() {
     const payees = this.getAllPayees();
     return await payees.count();
-  }
-
-  /**
-   * Wait for loading to complete
-   */
-  async waitForLoadingToComplete(timeout: number = 10000) {
-    await this.loadingIndicator.waitFor({ state: 'hidden', timeout });
   }
 }

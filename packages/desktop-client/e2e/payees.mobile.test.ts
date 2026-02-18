@@ -34,8 +34,6 @@ test.describe('Mobile Payees', () => {
   });
 
   test('checks the page visuals', async () => {
-    await payeesPage.waitForLoadingToComplete();
-
     // Check that the header is present
     await expect(page.getByRole('heading', { name: 'Payees' })).toBeVisible();
 
@@ -63,8 +61,6 @@ test.describe('Mobile Payees', () => {
   });
 
   test('clicking on a payee opens payee edit page', async () => {
-    await payeesPage.waitForLoadingToComplete();
-
     const payeeCount = await payeesPage.getPayeeCount();
     expect(payeeCount).toBeGreaterThan(0);
 
@@ -99,8 +95,6 @@ test.describe('Mobile Payees', () => {
   });
 
   test('search functionality works correctly', async () => {
-    await payeesPage.waitForLoadingToComplete();
-
     // Test searching for a specific payee
     await payeesPage.searchFor('Fast Internet');
 

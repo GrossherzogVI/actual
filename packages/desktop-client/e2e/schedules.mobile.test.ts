@@ -34,8 +34,6 @@ test.describe('Mobile Schedules', () => {
   });
 
   test('checks the page visuals', async () => {
-    await schedulesPage.waitForLoadingToComplete();
-
     // Check that the header is present
     await expect(
       page.getByRole('heading', { name: 'Schedules' }),
@@ -66,8 +64,6 @@ test.describe('Mobile Schedules', () => {
   });
 
   test('clicking on a schedule opens edit form', async () => {
-    await schedulesPage.waitForLoadingToComplete();
-
     // Wait for at least one schedule to be present
     await expect(async () => {
       const scheduleCount = await schedulesPage.getScheduleCount();
@@ -89,8 +85,6 @@ test.describe('Mobile Schedules', () => {
   });
 
   test('searches and filters schedules', async () => {
-    await schedulesPage.waitForLoadingToComplete();
-
     // Wait for schedules to load
     await expect(async () => {
       const scheduleCount = await schedulesPage.getScheduleCount();
@@ -118,8 +112,6 @@ test.describe('Mobile Schedules', () => {
   });
 
   test('displays schedule details correctly in list', async () => {
-    await schedulesPage.waitForLoadingToComplete();
-
     // Wait for schedules to load
     await expect(async () => {
       const scheduleCount = await schedulesPage.getScheduleCount();

@@ -6,7 +6,6 @@ export class MobileSchedulesPage {
   readonly addButton: Locator;
   readonly schedulesList: Locator;
   readonly emptyMessage: Locator;
-  readonly loadingIndicator: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -16,7 +15,6 @@ export class MobileSchedulesPage {
     this.emptyMessage = page.getByText(
       'No schedules found. Create your first schedule to get started!',
     );
-    this.loadingIndicator = page.getByTestId('animated-loading');
   }
 
   async waitFor(options?: {
@@ -75,12 +73,5 @@ export class MobileSchedulesPage {
   async getScheduleCount() {
     const schedules = this.getAllSchedules();
     return await schedules.count();
-  }
-
-  /**
-   * Wait for loading to complete
-   */
-  async waitForLoadingToComplete(timeout: number = 10000) {
-    await this.loadingIndicator.waitFor({ state: 'hidden', timeout });
   }
 }
