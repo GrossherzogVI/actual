@@ -12,6 +12,12 @@
     "rootDir": "..",
     "plugins": [{ "name": "typescript-strict-plugin", "paths": ["."] }]
   },
-  "include": ["*.ts", "../../packages/loot-core/typings/window.ts"],
-  "exclude": ["node_modules", "build", "e2e", "**/*.test.ts", "**/*.spec.ts"]
+  "include": [".", "../../packages/loot-core/typings/window.ts"],
+  "exclude": [
+    "**/node_modules/*",
+    "build/**/*",
+    "e2e/**/*",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ]
 }
