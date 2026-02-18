@@ -1,8 +1,15 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "noEmit": true,
-    "strict": true
+    // Using ES2021 because that's the newest version where
+    // the latest Node 16.x release supports all of the features
+    "target": "ES2021",
+    "module": "CommonJS",
+    "moduleResolution": "node10",
+    "noEmit": false,
+    "declaration": true,
+    "strict": true,
+    "outDir": "dist"
   },
   "include": ["*.ts", "src/**/*.ts"],
   "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
