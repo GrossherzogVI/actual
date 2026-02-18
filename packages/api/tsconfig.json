@@ -15,6 +15,6 @@
     },
     "plugins": [{ "name": "typescript-strict-plugin", "paths": ["."] }]
   },
-  "include": ["*.ts", "**/*.ts", "../../packages/loot-core/typings/pegjs.ts"],
-  "exclude": ["node_modules", "dist", "@types", "**/*.test.ts"]
+  "include": [".", "../../packages/loot-core/typings/pegjs.ts"],
+  "exclude": ["**/node_modules/*", "dist", "@types", "*.test.ts"]
 }
