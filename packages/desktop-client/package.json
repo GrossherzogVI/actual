@@ -15,7 +15,8 @@
     "test": "vitest --run",
     "e2e": "npx playwright test --browser=chromium",
     "vrt": "cross-env VRT=true npx playwright test --browser=chromium",
-    "playwright": "playwright"
+    "playwright": "playwright",
+    "typecheck": "tsc --noEmit && tsc-strict"
   },
   "devDependencies": {
     "@actual-app/components": "workspace:*",

@@ -17,7 +17,8 @@
     "build:default-db": "cp default-db.sqlite dist/",
     "build": "yarn run clean && yarn run build:app && yarn run build:node && yarn run build:migrations && yarn run build:default-db",
     "test": "yarn run clean && yarn run build:app && yarn run build:crdt && vitest --run",
-    "clean": "rm -rf dist @types"
+    "clean": "rm -rf dist @types",
+    "typecheck": "tsc --noEmit && tsc-strict"
   },
   "dependencies": {
     "@actual-app/crdt": "workspace:^",

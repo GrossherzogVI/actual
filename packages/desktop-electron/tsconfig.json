@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "plugins": [{ "name": "typescript-strict-plugin", "path": ["."] }]
+  },
+  "include": ["*.ts", "../../packages/loot-core/typings/window.ts"],
+  "exclude": ["node_modules", "build", "e2e", "**/*.test.ts", "**/*.spec.ts"]
+}
