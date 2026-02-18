@@ -22,7 +22,7 @@ export function ScheduleValue({ value }: ScheduleValueProps) {
   const { t } = useTranslation();
   const payees = usePayees();
   const byId = getPayeesById(payees);
-  const { data: schedules = [], isPending: isSchedulesLoading } = useSchedules({
+  const { data: schedules = [], isLoading: isSchedulesLoading } = useSchedules({
     query: q('schedules').select('*'),
   });
 

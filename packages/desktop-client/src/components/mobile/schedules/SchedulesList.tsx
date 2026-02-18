@@ -46,7 +46,7 @@ export function SchedulesList({
     : schedules;
   const showCompletedLabel = t('Show completed schedules');
 
-  if (isLoading && listItems.length === 0) {
+  if (isLoading) {
     return (
       <View
         style={{
@@ -57,31 +57,6 @@ export function SchedulesList({
         }}
       >
         <AnimatedLoading style={{ width: 25, height: 25 }} />
-      </View>
-    );
-  }
-
-  if (listItems.length === 0) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          alignItems: 'center',
-          justifyContent: 'center',
-          paddingHorizontal: 20,
-        }}
-      >
-        <Text
-          style={{
-            fontSize: 16,
-            color: theme.pageTextSubdued,
-            textAlign: 'center',
-            paddingLeft: 10,
-            paddingRight: 10,
-          }}
-        >
-          {t('No schedules found. Create your first schedule to get started!')}
-        </Text>
       </View>
     );
   }
@@ -102,6 +77,30 @@ export function SchedulesList({
           style={{
             paddingBottom: MOBILE_NAV_HEIGHT,
           }}
+          renderEmptyState={() => (
+            <View
+              style={{
+                flex: 1,
+                alignItems: 'center',
+                justifyContent: 'center',
+                paddingHorizontal: 20,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 16,
+                  color: theme.pageTextSubdued,
+                  textAlign: 'center',
+                  paddingLeft: 10,
+                  paddingRight: 10,
+                }}
+              >
+                {t(
+                  'No schedules found. Create your first schedule to get started!',
+                )}
+              </Text>
+            </View>
+          )}
         >
           {item =>
             !('completed' in item) ? (
