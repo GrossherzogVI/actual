@@ -12,6 +12,8 @@ import type {
   CategoryGroupEntity,
 } from 'loot-core/types/models';
 
+import { LoadingIndicator } from '@desktop-client/components/reports/LoadingIndicator';
+
 import { AutoSizingBudgetTable } from './DynamicBudgetTable';
 import * as envelopeBudget from './envelope/EnvelopeBudgetComponents';
 import { EnvelopeBudgetProvider } from './envelope/EnvelopeBudgetContext';
@@ -175,7 +177,7 @@ export function Budget() {
   };
 
   if (!initialized || !categoryGroups) {
-    return null;
+    return <LoadingIndicator />;
   }
 
   let table;

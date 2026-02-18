@@ -93,41 +93,4 @@ export const prefQueries = {
       ...prefQueries.list(),
       select: data => data.server,
     }),
-  // details: () => [...prefQueries.all(), 'details'],
-  // detailMetadata: (prefName: keyof MetadataPrefs) =>
-  //   queryOptions({
-  //     queryKey: [...prefQueries.details(), 'metadata', prefName],
-  //     queryFn: async ({ client }) => {
-  //       const allMetadataPrefs = await client.ensureQueryData(
-  //         prefQueries.listMetadata(),
-  //       );
-  //       return allMetadataPrefs?.[prefName];
-  //     },
-  //     enabled: !!prefName,
-  //     staleTime: Infinity,
-  //   }),
-  // detailGlobal: (prefName: keyof GlobalPrefs) =>
-  //   queryOptions({
-  //     queryKey: [...prefQueries.details(), 'global', prefName],
-  //     queryFn: async ({ client }) => {
-  //       const allGlobalPrefs = await client.ensureQueryData(
-  //         prefQueries.listGlobal(),
-  //       );
-  //       return allGlobalPrefs?.[prefName] ?? null;
-  //     },
-  //     enabled: !!prefName,
-  //     staleTime: Infinity,
-  //   }),
-  // detailSynced: (prefName: keyof SyncedPrefs) =>
-  //   queryOptions({
-  //     queryKey: [...prefQueries.details(), 'synced', prefName],
-  //     queryFn: async ({ client }) => {
-  //       const allSyncedPrefs = await client.ensureQueryData(
-  //         prefQueries.listSynced(),
-  //       );
-  //       return allSyncedPrefs?.[prefName] ?? null;
-  //     },
-  //     enabled: !!prefName,
-  //     staleTime: Infinity,
-  //   }),
 };
