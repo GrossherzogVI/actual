@@ -27,6 +27,7 @@ test.describe('Mobile Schedules', () => {
 
     // Navigate to schedules page and wait for it to load
     schedulesPage = await navigation.goToSchedulesPage();
+    await schedulesPage.waitFor();
   });
 
   test.afterEach(async () => {
