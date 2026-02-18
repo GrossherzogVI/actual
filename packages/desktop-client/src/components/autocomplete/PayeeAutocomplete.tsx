@@ -354,7 +354,7 @@ export function PayeeAutocomplete({
   }
   const createPayeeMutation = useCreatePayeeMutation();
 
-  const cachedAccounts = useAccounts();
+  const { data: cachedAccounts = [] } = useAccounts();
   if (!accounts) {
     accounts = cachedAccounts;
   }

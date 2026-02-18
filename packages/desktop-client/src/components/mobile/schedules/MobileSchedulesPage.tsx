@@ -46,7 +46,7 @@ export function MobileSchedulesPage() {
   } = useSchedules({ query: schedulesQuery });
 
   const { data: payees = [] } = usePayees();
-  const accounts = useAccounts();
+  const { data: accounts = [] } = useAccounts();
 
   const filterIncludes = (str: string | null | undefined) =>
     str

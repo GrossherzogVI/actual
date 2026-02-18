@@ -135,7 +135,7 @@ export function ManageRules({
   });
   const { data: { list: categories } = { list: [] } } = useCategories();
   const { data: payees } = usePayees();
-  const accounts = useAccounts();
+  const { data: accounts = [] } = useAccounts();
   const filterData = useMemo(
     () => ({
       payees,

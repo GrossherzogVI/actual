@@ -503,7 +503,7 @@ export function useSyncAccountsMutation() {
   const dispatch = useDispatch();
   const { t } = useTranslation();
 
-  const accounts = useAccounts();
+  const { data: accounts = [] } = useAccounts();
   const store = useStore();
 
   return useMutation({
