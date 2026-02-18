@@ -11,7 +11,7 @@
     "types": ["vite/client"],
     "outDir": "dist",
     "rootDir": "src",
-    "plugins": [{ "name": "typescript-strict-plugin", "path": ["."] }]
+    "plugins": [{ "name": "typescript-strict-plugin", "paths": ["."] }]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules"]

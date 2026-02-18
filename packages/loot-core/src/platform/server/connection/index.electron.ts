@@ -1,4 +1,5 @@
 // @ts-strict-ignore
+/// <reference path="../../../../typings/process-worker.d.ts" />
 import { APIError } from '../../../server/errors';
 import { isMutating, runHandler } from '../../../server/mutators';
 import { captureException } from '../../exceptions';
