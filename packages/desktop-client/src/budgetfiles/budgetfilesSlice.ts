@@ -93,7 +93,6 @@ export const loadBudget = createAppAsyncThunk(
       await dispatch(closeModal());
       extra.queryClient.invalidateQueries({
         queryKey: prefQueries.lists(),
-        refetchType: 'none',
       });
     }
 
