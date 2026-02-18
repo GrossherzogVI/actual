@@ -12,8 +12,6 @@ import type {
   CategoryGroupEntity,
 } from 'loot-core/types/models';
 
-import { LoadingIndicator } from '@desktop-client/components/reports/LoadingIndicator';
-
 import { AutoSizingBudgetTable } from './DynamicBudgetTable';
 import * as envelopeBudget from './envelope/EnvelopeBudgetComponents';
 import { EnvelopeBudgetProvider } from './envelope/EnvelopeBudgetContext';
@@ -30,6 +28,7 @@ import {
   useSaveCategoryGroupMutation,
   useSaveCategoryMutation,
 } from '@desktop-client/budget';
+import { LoadingIndicator } from '@desktop-client/components/reports/LoadingIndicator';
 import { useCategories } from '@desktop-client/hooks/useCategories';
 import { useGlobalPref } from '@desktop-client/hooks/useGlobalPref';
 import { useLocalPref } from '@desktop-client/hooks/useLocalPref';
