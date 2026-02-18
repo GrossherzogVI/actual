@@ -41,6 +41,7 @@ import { addNotification } from '@desktop-client/notifications/notificationsSlic
 import { prefQueries } from '@desktop-client/prefs';
 import { useDispatch, useSelector } from '@desktop-client/redux';
 import { CustomThemeStyle } from '@desktop-client/style';
+import { useAccounts } from '@desktop-client/hooks/useAccounts';
 
 function NarrowNotSupported({
   redirectTo = '/budget',
@@ -93,10 +94,7 @@ export function FinancesApp() {
   const dispatch = useDispatch();
   const { t } = useTranslation();
 
-  // TODO: Replace with `useAccounts` hook once it's updated to return the useQuery results.
-  const { data: accounts, isFetching: isAccountsFetching } = useQuery(
-    accountQueries.list(),
-  );
+  const { data: accounts, isFetching: isAccountsFetching } = useAccounts();
 
   const versionInfo = useSelector(state => state.app.versionInfo);
   const [notifyWhenUpdateIsAvailable] = useGlobalPref(
