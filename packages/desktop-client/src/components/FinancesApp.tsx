@@ -32,6 +32,7 @@ import { accountQueries } from '@desktop-client/accounts';
 import { getLatestAppVersion, sync } from '@desktop-client/app/appSlice';
 import { ProtectedRoute } from '@desktop-client/auth/ProtectedRoute';
 import { Permissions } from '@desktop-client/auth/types';
+import { useAccounts } from '@desktop-client/hooks/useAccounts';
 import { useGlobalPref } from '@desktop-client/hooks/useGlobalPref';
 import { useLocalPref } from '@desktop-client/hooks/useLocalPref';
 import { useMetaThemeColor } from '@desktop-client/hooks/useMetaThemeColor';
@@ -41,7 +42,6 @@ import { addNotification } from '@desktop-client/notifications/notificationsSlic
 import { prefQueries } from '@desktop-client/prefs';
 import { useDispatch, useSelector } from '@desktop-client/redux';
 import { CustomThemeStyle } from '@desktop-client/style';
-import { useAccounts } from '@desktop-client/hooks/useAccounts';
 
 function NarrowNotSupported({
   redirectTo = '/budget',
