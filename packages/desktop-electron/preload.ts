@@ -1,6 +1,8 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { IpcRenderer } from 'electron';
 
+import type { Theme } from 'loot-core/types/prefs';
+
 import type {
   GetBootstrapDataPayload,
   OpenFileDialogPayload,
@@ -85,7 +87,7 @@ contextBridge.exposeInMainWorld('Actual', {
     return null;
   },
 
-  setTheme: (theme: string) => {
+  setTheme: async (theme: Theme) => {
     ipcRenderer.send('set-theme', theme);
   },
 

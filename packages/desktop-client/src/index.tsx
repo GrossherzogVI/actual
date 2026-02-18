@@ -13,6 +13,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { send } from 'loot-core/platform/client/connection';
 import { q } from 'loot-core/shared/query';
+import type { Theme } from 'loot-core/types/prefs';
 
 import * as accountsSlice from './accounts/accountsSlice';
 import * as appSlice from './app/appSlice';
@@ -22,6 +23,7 @@ import { App } from './components/App';
 import { ServerProvider } from './components/ServerContext';
 import * as modalsSlice from './modals/modalsSlice';
 import * as notificationsSlice from './notifications/notificationsSlice';
+import { prefQueries } from './prefs';
 import * as prefsSlice from './prefs/prefsSlice';
 import { aqlQuery } from './queries/aqlQuery';
 import { configureAppStore } from './redux/store';
@@ -68,6 +70,16 @@ function inputFocused(e: KeyboardEvent) {
   );
 }
 
+async function setTheme(theme: Theme) {
+  // TODO: Tests and `toMatchThemeScreenshots` needs to be updated
+  // to change the theme via UI navigation instead of going through
+  // this method because this feels a bit hacky.
+  await send('save-global-prefs', { theme });
+  void queryClient.invalidateQueries({
+    queryKey: prefQueries.listGlobal().queryKey,
+  });
+}
+
 // Expose this to the main process to menu items can access it
 window.__actionsForMenu = {
   ...boundActions,
@@ -75,6 +87,7 @@ window.__actionsForMenu = {
   redo,
   appFocused,
   uploadFile,
+  setTheme,
 };
 
 // Expose send for fun!
@@ -108,6 +121,7 @@ declare global {
       redo: typeof redo;
       appFocused: typeof appFocused;
       uploadFile: typeof uploadFile;
+      setTheme: typeof setTheme;
     };
 
     $send: typeof send;

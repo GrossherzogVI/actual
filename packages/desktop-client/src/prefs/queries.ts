@@ -69,7 +69,7 @@ export const prefQueries = {
       staleTime: Infinity,
     }),
   listGlobal: () =>
-    queryOptions({
+    queryOptions<GlobalPrefs>({
       queryKey: [...prefQueries.lists(), 'global'],
       queryFn: async () => {
         return await send('load-global-prefs');
@@ -79,7 +79,7 @@ export const prefQueries = {
       staleTime: Infinity,
     }),
   listSynced: () =>
-    queryOptions({
+    queryOptions<SyncedPrefs>({
       queryKey: [...prefQueries.lists(), 'synced'],
       queryFn: async () => {
         return await send('preferences/get');

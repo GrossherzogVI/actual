@@ -219,8 +219,8 @@ global.Actual = {
     return worker;
   },
 
-  setTheme: theme => {
-    window.__actionsForMenu.saveGlobalPrefs({ prefs: { theme } });
+  setTheme: async theme => {
+    await window.__actionsForMenu.setTheme(theme);
   },
 
   moveBudgetDirectory: () => {

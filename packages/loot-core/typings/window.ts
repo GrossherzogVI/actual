@@ -1,5 +1,7 @@
 import type EventEmitter from 'events';
 
+import type { Theme } from 'loot-core/types/prefs';
+
 export type IpcClient = {
   on: EventEmitter['on'];
   emit: (name: string, data: unknown) => void;
@@ -34,7 +36,7 @@ type Actual = {
   applyAppUpdate: () => Promise<void>;
   ipcConnect: (callback: (client: IpcClient) => void) => void;
   getServerSocket: () => Promise<Worker | null>;
-  setTheme: (theme: string) => void;
+  setTheme: (theme: Theme) => Promise<void>;
   logToTerminal: (...args: unknown[]) => void;
   onEventFromMain: (
     event: string,

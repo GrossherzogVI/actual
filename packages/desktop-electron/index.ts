@@ -25,7 +25,7 @@ import type {
 import { copy, exists, mkdir, remove } from 'fs-extra';
 import promiseRetry from 'promise-retry';
 
-import type { GlobalPrefsJson } from '../loot-core/src/types/prefs';
+import type { GlobalPrefsJson, Theme } from '../loot-core/src/types/prefs';
 
 import { getMenu } from './menu';
 import {
@@ -621,11 +621,10 @@ ipcMain.on('message', (_event, msg) => {
   serverProcess.postMessage(msg.args);
 });
 
-ipcMain.on('set-theme', (_event, theme: string) => {
-  const obj = { theme };
+ipcMain.on('set-theme', async (_event, theme: Theme) => {
   if (clientWin) {
-    clientWin.webContents.executeJavaScript(
-      `window.__actionsForMenu && window.__actionsForMenu.saveGlobalPrefs({ prefs: ${JSON.stringify(obj)} })`,
+    await clientWin.webContents.executeJavaScript(
+      `window.__actionsForMenu && window.__actionsForMenu.setTheme('${theme}')`,
     );
   }
 });
