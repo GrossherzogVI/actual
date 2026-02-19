@@ -13,7 +13,7 @@ import {
 import { pushModal } from './modals/modalsSlice';
 import { addNotification } from './notifications/notificationsSlice';
 import type { Notification } from './notifications/notificationsSlice';
-import { reloadPayees } from './payees/payeesSlice';
+import { payeeQueries } from './payees';
 import { loadPrefs } from './prefs/prefsSlice';
 import type { AppStore } from './redux/store';
 import { signOut } from './users/usersSlice';
@@ -81,7 +81,9 @@ export function listenForSyncEvent(store: AppStore, queryClient: QueryClient) {
         tables.includes('payees') ||
         tables.includes('payee_mapping')
       ) {
-        void store.dispatch(reloadPayees());
+        void queryClient.invalidateQueries({
+          queryKey: payeeQueries.lists(),
+        });
       }
 
       if (tables.includes('accounts')) {

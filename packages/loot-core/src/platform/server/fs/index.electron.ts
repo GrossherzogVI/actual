@@ -6,7 +6,7 @@ import promiseRetry from 'promise-retry';
 
 import { logger } from '../log';
 
-import type * as T from './index';
+import type * as T from '.';
 
 export { getDocumentDir, getBudgetDir, _setDocumentDir } from './shared';
 
@@ -23,37 +23,28 @@ switch (path.basename(__filename)) {
     break;
 }
 
-export const init: typeof T.init = async () => {
+export const init = async () => {
   // Nothing to do
 };
 
-export const getDataDir: typeof T.getDataDir = () => {
+export const getDataDir = () => {
   if (!process.env.ACTUAL_DATA_DIR) {
     throw new Error('ACTUAL_DATA_DIR env variable is required');
   }
   return process.env.ACTUAL_DATA_DIR;
 };
 
-export const bundledDatabasePath: typeof T.bundledDatabasePath = path.join(
-  rootPath,
-  'default-db.sqlite',
-);
+export const bundledDatabasePath = path.join(rootPath, 'default-db.sqlite');
 
-export const migrationsPath: typeof T.migrationsPath = path.join(
-  rootPath,
-  'migrations',
-);
+export const migrationsPath = path.join(rootPath, 'migrations');
 
-export const demoBudgetPath: typeof T.demoBudgetPath = path.join(
-  rootPath,
-  'demo-budget',
-);
+export const demoBudgetPath = path.join(rootPath, 'demo-budget');
 
-export const join: typeof T.join = path.join;
+export const join = path.join;
 
-export const basename: typeof T.basename = filepath => path.basename(filepath);
+export const basename = filepath => path.basename(filepath);
 
-export const listDir: typeof T.listDir = filepath =>
+export const listDir: T.ListDir = filepath =>
   new Promise((resolve, reject) => {
     fs.readdir(filepath, (err, files) => {
       if (err) {
@@ -64,14 +55,14 @@ export const listDir: typeof T.listDir = filepath =>
     });
   });
 
-export const exists: typeof T.exists = filepath =>
+export const exists = filepath =>
   new Promise(resolve => {
     fs.access(filepath, fs.constants.F_OK, err => {
       return resolve(!err);
     });
   });
 
-export const mkdir: typeof T.mkdir = filepath =>
+export const mkdir = filepath =>
   new Promise((resolve, reject) => {
     fs.mkdir(filepath, err => {
       if (err) {
@@ -82,7 +73,7 @@ export const mkdir: typeof T.mkdir = filepath =>
     });
   });
 
-export const size: typeof T.size = filepath =>
+export const size = filepath =>
   new Promise((resolve, reject) => {
     fs.stat(filepath, (err, stats) => {
       if (err) {
@@ -93,7 +84,7 @@ export const size: typeof T.size = filepath =>
     });
   });
 
-export const copyFile: typeof T.copyFile = (frompath, topath) => {
+export const copyFile: T.CopyFile = (frompath, topath) => {
   return new Promise<boolean>((resolve, reject) => {
     const readStream = fs.createReadStream(frompath);
     const writeStream = fs.createWriteStream(topath);
@@ -106,7 +97,7 @@ export const copyFile: typeof T.copyFile = (frompath, topath) => {
   });
 };
 
-export const readFile: typeof T.readFile = (
+export const readFile: T.ReadFile = (
   filepath: string,
   encoding: 'utf8' | 'binary' | null = 'utf8',
 ) => {
@@ -128,11 +119,12 @@ export const readFile: typeof T.readFile = (
   });
 };
 
-export const writeFile: typeof T.writeFile = async (filepath, contents) => {
+export const writeFile: T.WriteFile = async (filepath, contents) => {
   try {
     await promiseRetry(
       (retry, attempt) => {
         return new Promise((resolve, reject) => {
+          // @ts-expect-error contents type needs refining
           fs.writeFile(filepath, contents, 'utf8', err => {
             if (err) {
               logger.error(
@@ -165,7 +157,7 @@ export const writeFile: typeof T.writeFile = async (filepath, contents) => {
   }
 };
 
-export const removeFile: typeof T.removeFile = filepath => {
+export const removeFile = filepath => {
   return new Promise(function (resolve, reject) {
     fs.unlink(filepath, err => {
       return err ? reject(err) : resolve(undefined);
@@ -173,7 +165,7 @@ export const removeFile: typeof T.removeFile = filepath => {
   });
 };
 
-export const removeDir: typeof T.removeDir = dirpath => {
+export const removeDir = dirpath => {
   return new Promise(function (resolve, reject) {
     fs.rmdir(dirpath, err => {
       return err ? reject(err) : resolve(undefined);
@@ -181,23 +173,22 @@ export const removeDir: typeof T.removeDir = dirpath => {
   });
 };
 
-export const removeDirRecursively: typeof T.removeDirRecursively =
-  async dirpath => {
-    if (await exists(dirpath)) {
-      for (const file of await listDir(dirpath)) {
-        const fullpath = join(dirpath, file);
-        if (fs.statSync(fullpath).isDirectory()) {
-          await removeDirRecursively(fullpath);
-        } else {
-          await removeFile(fullpath);
-        }
+export const removeDirRecursively = async dirpath => {
+  if (await exists(dirpath)) {
+    for (const file of await listDir(dirpath)) {
+      const fullpath = join(dirpath, file);
+      if (fs.statSync(fullpath).isDirectory()) {
+        await removeDirRecursively(fullpath);
+      } else {
+        await removeFile(fullpath);
       }
-
-      await removeDir(dirpath);
     }
-  };
 
-export const getModifiedTime: typeof T.getModifiedTime = filepath => {
+    await removeDir(dirpath);
+  }
+};
+
+export const getModifiedTime = filepath => {
   return new Promise(function (resolve, reject) {
     fs.stat(filepath, (err, stats) => {
       if (err) {

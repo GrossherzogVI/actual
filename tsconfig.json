@@ -57,7 +57,8 @@
     "packages/api/@types",
     "**/test-results/*",
     "**/playwright-report/*",
-    "**/service-worker/*"
+    "**/service-worker/*",
+    "packages/docs/**/*"
   ],
   "ts-node": {
     "compilerOptions": {
