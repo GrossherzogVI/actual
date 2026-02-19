@@ -261,7 +261,7 @@ async function populateDefaultFilesystem() {
   );
 }
 
-export const populateFileHeirarchy = async function () {
+const populateFileHierarchy = async function () {
   const { store } = idb.getStore(await idb.getDatabase(), 'files');
   const req = store.getAllKeys();
   const paths: string[] = await new Promise((resolve, reject) => {
@@ -310,7 +310,7 @@ export const init = async function () {
     await populateDefaultFilesystem();
   }
 
-  await populateFileHeirarchy();
+  await populateFileHierarchy();
 };
 
 export const basename = function (filepath) {
