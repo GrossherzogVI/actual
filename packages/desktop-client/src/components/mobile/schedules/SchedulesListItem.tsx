@@ -54,8 +54,9 @@ export function SchedulesListItem({
       value={schedule}
       textValue={schedule.name || t('Unnamed schedule')}
       style={composeRenderProps(style, propStyle => ({
-        height: ROW_HEIGHT,
+        minHeight: ROW_HEIGHT,
         width: '100%',
+        borderBottom: `1px solid ${theme.tableBorder}`,
         ...propStyle,
       }))}
       actions={
@@ -64,7 +65,7 @@ export function SchedulesListItem({
           onPress={onDelete}
           style={{
             color: theme.errorText,
-            height: ROW_HEIGHT,
+            minHeight: ROW_HEIGHT,
             width: '100%',
           }}
         >

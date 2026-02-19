@@ -48,6 +48,7 @@ export function PayeesListItem({
       style={composeRenderProps(style, propStyle => ({
         height: ROW_HEIGHT,
         width: '100%',
+        borderBottom: `1px solid ${theme.tableBorder}`,
         ...propStyle,
       }))}
       actions={
