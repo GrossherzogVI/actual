@@ -72,9 +72,7 @@ export function SchedulesList({
           aria-label={t('Schedules')}
           aria-busy={isLoading || undefined}
           items={listItems}
-          dependencies={[
-            statusLookup
-          ]}
+          dependencies={[statusLookup]}
           style={{
             paddingBottom: MOBILE_NAV_HEIGHT,
           }}
