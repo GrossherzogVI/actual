@@ -125,7 +125,7 @@ export function ScheduleLink({
                 style={{ marginLeft: 15, padding: '4px 10px' }}
                 onPress={() => {
                   close();
-                  onCreate();
+                  void onCreate();
                 }}
               >
                 <SvgAdd style={{ width: '20', padding: '3' }} />
@@ -149,7 +149,7 @@ export function ScheduleLink({
               filter={filter}
               minimal
               onSelect={schedule => {
-                onSelect(schedule);
+                void onSelect(schedule);
                 close();
               }}
               schedules={schedules}
