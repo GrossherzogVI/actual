@@ -1,4 +1,5 @@
 import React from 'react';
+import { composeRenderProps } from 'react-aria-components';
 import type { GridListItemProps } from 'react-aria-components';
 import { Trans, useTranslation } from 'react-i18next';
 
@@ -20,6 +21,8 @@ import { StatusBadge } from '@desktop-client/components/schedules/StatusBadge';
 import { DisplayId } from '@desktop-client/components/util/DisplayId';
 import { useDateFormat } from '@desktop-client/hooks/useDateFormat';
 import { useFormat } from '@desktop-client/hooks/useFormat';
+
+export const ROW_HEIGHT = 110;
 
 type SchedulesListItemProps = {
   onDelete: () => void;
@@ -50,13 +53,18 @@ export function SchedulesListItem({
       id={schedule.id}
       value={schedule}
       textValue={schedule.name || t('Unnamed schedule')}
-      style={{ ...styles.mobileListItem, padding: '8px 16px', ...style }}
+      style={composeRenderProps(style, propStyle => ({
+        height: ROW_HEIGHT,
+        width: '100%',
+        ...propStyle,
+      }))}
       actions={
         <Button
           variant="bare"
           onPress={onDelete}
           style={{
             color: theme.errorText,
+            height: ROW_HEIGHT,
             width: '100%',
           }}
         >

@@ -9,7 +9,7 @@ import { View } from '@actual-app/components/view';
 import type { ScheduleStatusLookup } from 'loot-core/shared/schedules';
 import type { ScheduleEntity } from 'loot-core/types/models';
 
-import { SchedulesListItem } from './SchedulesListItem';
+import { ROW_HEIGHT, SchedulesListItem } from './SchedulesListItem';
 
 import { ActionableGridListItem } from '@desktop-client/components/mobile/ActionableGridListItem';
 import { MOBILE_NAV_HEIGHT } from '@desktop-client/components/mobile/MobileNavTabs';
@@ -44,7 +44,6 @@ export function SchedulesList({
   const listItems: readonly SchedulesListEntry[] = shouldShowCompletedItem
     ? [...schedules, { id: 'show-completed' }]
     : schedules;
-  const showCompletedLabel = t('Show completed schedules');
 
   if (isLoading) {
     return (
@@ -66,48 +65,51 @@ export function SchedulesList({
       <Virtualizer
         layout={ListLayout}
         layoutOptions={{
-          estimatedRowHeight: 140,
-          padding: 0,
+          estimatedRowHeight: ROW_HEIGHT,
         }}
       >
         <GridList
           aria-label={t('Schedules')}
           aria-busy={isLoading || undefined}
           items={listItems}
+          dependencies={[
+            statusLookup
+          ]}
           style={{
             paddingBottom: MOBILE_NAV_HEIGHT,
           }}
-          renderEmptyState={() => (
-            <View
-              style={{
-                flex: 1,
-                alignItems: 'center',
-                justifyContent: 'center',
-                paddingHorizontal: 20,
-              }}
-            >
-              <Text
+          renderEmptyState={() =>
+            !isLoading && (
+              <View
                 style={{
-                  fontSize: 16,
-                  color: theme.pageTextSubdued,
-                  textAlign: 'center',
-                  paddingLeft: 10,
-                  paddingRight: 10,
+                  flex: 1,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: theme.mobilePageBackground,
                 }}
               >
-                {t(
-                  'No schedules found. Create your first schedule to get started!',
-                )}
-              </Text>
-            </View>
-          )}
+                <Text
+                  style={{
+                    fontSize: 15,
+                    color: theme.pageTextSubdued,
+                    textAlign: 'center',
+                  }}
+                >
+                  <Trans>
+                    No schedules found. Create your first schedule to get
+                    started!
+                  </Trans>
+                </Text>
+              </View>
+            )
+          }
         >
           {item =>
             !('completed' in item) ? (
               <ActionableGridListItem
                 id="show-completed"
                 value={item}
-                textValue={showCompletedLabel}
+                textValue={t('Show completed schedules')}
                 onAction={onShowCompleted}
               >
                 <View style={{ width: '100%', alignItems: 'center' }}>
