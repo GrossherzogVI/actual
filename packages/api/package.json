@@ -18,7 +18,7 @@
     "build": "yarn run clean && yarn run build:app && yarn run build:node && yarn run build:migrations && yarn run build:default-db",
     "test": "yarn run clean && yarn run build:app && yarn run build:crdt && vitest --run",
     "clean": "rm -rf dist @types",
-    "typecheck": "tsc --noEmit && tsc-strict"
+    "typecheck": "yarn build && tsc --noEmit && tsc-strict"
   },
   "dependencies": {
     "@actual-app/crdt": "workspace:^",
@@ -30,6 +30,7 @@
   "devDependencies": {
     "tsc-alias": "^1.8.16",
     "typescript": "^5.9.3",
+    "typescript-strict-plugin": "^2.4.4",
     "vitest": "^4.0.16"
   },
   "engines": {

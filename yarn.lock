@@ -29,6 +29,7 @@ __metadata:
     node-fetch: "npm:^3.3.2"
     tsc-alias: "npm:^1.8.16"
     typescript: "npm:^5.9.3"
+    typescript-strict-plugin: "npm:^2.4.4"
     uuid: "npm:^13.0.0"
     vitest: "npm:^4.0.16"
   languageName: unknown
@@ -128,6 +129,7 @@ __metadata:
     pluggy-sdk: "npm:^0.79.0"
     supertest: "npm:^7.2.2"
     typescript: "npm:^5.9.3"
+    typescript-strict-plugin: "npm:^2.4.4"
     uuid: "npm:^13.0.0"
     vitest: "npm:^4.0.16"
     winston: "npm:^3.19.0"
@@ -212,6 +214,8 @@ __metadata:
     remark-gfm: "npm:^4.0.1"
     rollup-plugin-visualizer: "npm:^6.0.5"
     sass: "npm:^1.97.2"
+    typescript: "npm:^5.9.3"
+    typescript-strict-plugin: "npm:^2.4.4"
     usehooks-ts: "npm:^3.1.1"
     uuid: "npm:^13.0.0"
     vite: "npm:^7.3.1"
@@ -10635,7 +10639,6 @@ __metadata:
     source-map-support: "npm:^0.5.21"
     ts-node: "npm:^10.9.2"
     typescript: "npm:^5.9.3"
-    typescript-strict-plugin: "npm:^2.4.4"
   languageName: unknown
   linkType: soft
 
@@ -14233,6 +14236,7 @@ __metadata:
     fs-extra: "npm:^11.3.3"
     promise-retry: "npm:^2.0.1"
     typescript: "npm:^5.9.3"
+    typescript-strict-plugin: "npm:^2.4.4"
   languageName: unknown
   linkType: soft
 
@@ -19488,6 +19492,7 @@ __metadata:
     stream-browserify: "npm:^3.0.0"
     ts-node: "npm:^10.9.2"
     typescript: "npm:^5.9.3"
+    typescript-strict-plugin: "npm:^2.4.4"
     ua-parser-js: "npm:^2.0.7"
     uuid: "npm:^13.0.0"
     vite: "npm:^7.3.1"
@@ -22466,6 +22471,7 @@ __metadata:
     "@types/node": "npm:^22.19.3"
     cross-env: "npm:^10.1.0"
     typescript: "npm:^5.9.3"
+    typescript-strict-plugin: "npm:^2.4.4"
     vite: "npm:^7.3.1"
     workbox-precaching: "npm:^7.4.0"
   languageName: unknown

@@ -82,6 +82,8 @@
     "memoize-one": "^6.0.0",
     "mitt": "^3.0.1",
     "slash": "5.1.0",
+    "typescript": "^5.9.3",
+    "typescript-strict-plugin": "^2.4.4",
     "ua-parser-js": "^2.0.7",
     "uuid": "^13.0.0"
   },
