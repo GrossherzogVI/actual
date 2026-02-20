@@ -7,7 +7,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: grossherzogvi/actual-server
+  IMAGE_NAME: grossherzogvi/actual-budget
 
 jobs:
   build-and-push:
