@@ -41,4 +41,8 @@ export type Config = {
   token_expiration?: 'never' | 'openid-provider' | number;
   enforceOpenId: boolean;
   userCreationMode?: 'manual' | 'login';
+  webhook?: {
+    url: string;
+    secret: string;
+  };
 };

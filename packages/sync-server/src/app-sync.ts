@@ -8,6 +8,7 @@ import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 
 import { getAccountDb, isAdmin } from './account-db';
+import { dispatchWebhook } from './webhook.js';
 import { FileNotFound } from './app-sync/errors';
 import {
   File,
@@ -124,6 +125,16 @@ app.post('/sync', async (req, res): Promise<void> => {
   res.set('Content-Type', 'application/actual-sync');
   res.set('X-ACTUAL-SYNC-METHOD', 'simple');
   res.send(Buffer.from(responsePb.serializeBinary()));
+
+  if (messages.length > 0) {
+    dispatchWebhook({
+      type: 'sync',
+      fileId,
+      groupId,
+      messageCount: messages.length,
+      timestamp: new Date().toISOString(),
+    });
+  }
 });
 
 app.post('/user-get-key', (req, res) => {
@@ -271,6 +282,12 @@ app.post('/upload-user-file', async (req, res) => {
     );
 
     res.send({ status: 'ok', groupId });
+    dispatchWebhook({
+      type: 'file-upload',
+      fileId,
+      groupId: groupId as string,
+      timestamp: new Date().toISOString(),
+    });
     return;
   }
 
@@ -291,6 +308,12 @@ app.post('/upload-user-file', async (req, res) => {
   );
 
   res.send({ status: 'ok', groupId });
+  dispatchWebhook({
+    type: 'file-upload',
+    fileId,
+    groupId: groupId as string,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 app.get('/download-user-file', async (req, res) => {
@@ -427,4 +450,9 @@ app.post('/delete-user-file', (req, res) => {
   filesService.update(fileId, new FileUpdate({ deleted: true }));
 
   res.send(OK_RESPONSE);
+  dispatchWebhook({
+    type: 'file-delete',
+    fileId,
+    timestamp: new Date().toISOString(),
+  });
 });

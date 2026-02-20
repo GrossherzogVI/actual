@@ -27,6 +27,7 @@ import { RepairTransactions } from './RepairTransactions';
 import { ResetCache, ResetSync } from './Reset';
 import { ThemeSettings } from './Themes';
 import { AdvancedToggle, Setting } from './UI';
+import { WebhookSettings } from './WebhookSettings';
 
 import { getLatestAppVersion } from '@desktop-client/app/appSlice';
 import { closeBudget } from '@desktop-client/budgetfiles/budgetfilesSlice';
@@ -256,6 +257,7 @@ export function Settings() {
           <ResetCache />
           <ResetSync />
           <RepairTransactions />
+          <WebhookSettings />
           <ExperimentalFeatures />
         </AdvancedToggle>
       </View>

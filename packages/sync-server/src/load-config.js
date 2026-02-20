@@ -298,6 +298,24 @@ const configSchema = convict({
       env: 'ACTUAL_CORS_PROXY_ENABLED',
     },
   },
+
+  webhook: {
+    doc: 'Webhook configuration for sync event notifications.',
+
+    url: {
+      doc: 'URL to POST webhook events to. Empty string disables webhooks.',
+      format: String,
+      default: '',
+      env: 'ACTUAL_WEBHOOK_URL',
+    },
+
+    secret: {
+      doc: 'Shared secret for HMAC-SHA256 webhook signatures.',
+      format: String,
+      default: '',
+      env: 'ACTUAL_WEBHOOK_SECRET',
+    },
+  },
 });
 
 let configPath = null;
@@ -336,6 +354,8 @@ debug(`Login method: ${configSchema.get('loginMethod')}`);
 debug(`Allowed methods: ${configSchema.get('allowedLoginMethods').join(', ')}`);
 const corsProxyEnabled = configSchema.get('corsProxy.enabled');
 debug(`CORS Proxy enabled: ${corsProxyEnabled}`);
+const webhookUrl = configSchema.get('webhook.url');
+debug(`Webhook URL: ${webhookUrl ? webhookUrl : '(disabled)'}`);
 
 const httpsKey = configSchema.get('https.key');
 if (httpsKey) {
