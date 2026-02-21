@@ -38,6 +38,8 @@ export function PrimaryButtons() {
     '/bank-sync',
     '/settings',
     '/tools',
+    '/contracts',
+    '/forecast',
   ].some(route => location.pathname.startsWith(route));
 
   useEffect(() => {
@@ -84,6 +86,18 @@ export function PrimaryButtons() {
             title={t('Tags')}
             Icon={SvgTag}
             to="/tags"
+            indent={15}
+          />
+          <SecondaryItem
+            title={t('Contracts')}
+            Icon={SvgCreditCard}
+            to="/contracts"
+            indent={15}
+          />
+          <SecondaryItem
+            title={t('Forecast')}
+            Icon={SvgReports}
+            to="/forecast"
             indent={15}
           />
           <SecondaryItem

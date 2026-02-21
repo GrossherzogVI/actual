@@ -215,6 +215,12 @@ export function ExperimentalFeatures() {
             >
               <Trans>Budget Analysis Report</Trans>
             </FeatureToggle>
+            <FeatureToggle flag="contractManagement">
+              <Trans>Contract & Subscription Management</Trans>
+            </FeatureToggle>
+            <FeatureToggle flag="forecastEngine">
+              <Trans>Cashflow Forecast Engine</Trans>
+            </FeatureToggle>
             {showServerPrefs && (
               <ServerFeatureToggle
                 prefName="flags.plugins"

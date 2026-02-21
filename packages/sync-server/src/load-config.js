@@ -299,6 +299,31 @@ const configSchema = convict({
     },
   },
 
+  ollama: {
+    doc: 'Ollama AI configuration for classification, contract discovery, and forecast explanations.',
+
+    url: {
+      doc: 'Ollama API base URL.',
+      format: String,
+      default: 'http://localhost:11434',
+      env: 'ACTUAL_OLLAMA_URL',
+    },
+
+    model: {
+      doc: 'Default Ollama model name.',
+      format: String,
+      default: 'mistral-small',
+      env: 'ACTUAL_OLLAMA_MODEL',
+    },
+
+    enabled: {
+      doc: 'Enable AI-powered features (classification, contract discovery, forecast explanations).',
+      format: Boolean,
+      default: false,
+      env: 'ACTUAL_AI_ENABLED',
+    },
+  },
+
   webhook: {
     doc: 'Webhook configuration for sync event notifications.',
 

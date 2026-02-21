@@ -41,6 +41,11 @@ export type Config = {
   token_expiration?: 'never' | 'openid-provider' | number;
   enforceOpenId: boolean;
   userCreationMode?: 'manual' | 'login';
+  ollama?: {
+    url: string;
+    model: string;
+    enabled: boolean;
+  };
   webhook?: {
     url: string;
     secret: string;

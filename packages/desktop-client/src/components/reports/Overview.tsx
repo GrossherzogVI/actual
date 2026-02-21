@@ -36,6 +36,8 @@ import { MarkdownCard } from './reports/MarkdownCard';
 import { NetWorthCard } from './reports/NetWorthCard';
 import { SpendingCard } from './reports/SpendingCard';
 import './overview.scss';
+import { ContractsCard } from './reports/ContractsCard';
+import { ForecastCard } from './reports/ForecastCard';
 import { SummaryCard } from './reports/SummaryCard';
 
 import { MOBILE_NAV_HEIGHT } from '@desktop-client/components/mobile/MobileNavTabs';
@@ -86,6 +88,8 @@ export function Overview({ dashboard }: OverviewProps) {
   const budgetAnalysisReportEnabled = useFeatureFlag('budgetAnalysisReport');
 
   const formulaMode = useFeatureFlag('formulaMode');
+  const contractManagementEnabled = useFeatureFlag('contractManagement');
+  const forecastEngineEnabled = useFeatureFlag('forecastEngine');
 
   const [isImporting, setIsImporting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -608,6 +612,22 @@ export function Overview({ dashboard }: OverviewProps) {
                                   },
                                 ]
                               : []),
+                            ...(contractManagementEnabled
+                              ? [
+                                  {
+                                    name: 'contracts-card' as const,
+                                    text: t('Contracts overview'),
+                                  },
+                                ]
+                              : []),
+                            ...(forecastEngineEnabled
+                              ? [
+                                  {
+                                    name: 'forecast-card' as const,
+                                    text: t('Cashflow forecast'),
+                                  },
+                                ]
+                              : []),
                             {
                               name: 'custom-report' as const,
                               text: t('New custom report'),
@@ -852,6 +872,30 @@ export function Overview({ dashboard }: OverviewProps) {
                         />
                       ) : widget.type === 'formula-card' && formulaMode ? (
                         <FormulaCard
+                          widgetId={item.i}
+                          isEditing={isEditing}
+                          meta={widget.meta}
+                          onMetaChange={newMeta => onMetaChange(item, newMeta)}
+                          onRemove={() => onRemoveWidget(item.i)}
+                          onCopy={targetDashboardId =>
+                            onCopyWidget(item.i, targetDashboardId)
+                          }
+                        />
+                      ) : widget.type === 'contracts-card' &&
+                        contractManagementEnabled ? (
+                        <ContractsCard
+                          widgetId={item.i}
+                          isEditing={isEditing}
+                          meta={widget.meta}
+                          onMetaChange={newMeta => onMetaChange(item, newMeta)}
+                          onRemove={() => onRemoveWidget(item.i)}
+                          onCopy={targetDashboardId =>
+                            onCopyWidget(item.i, targetDashboardId)
+                          }
+                        />
+                      ) : widget.type === 'forecast-card' &&
+                        forecastEngineEnabled ? (
+                        <ForecastCard
                           widgetId={item.i}
                           isEditing={isEditing}
                           meta={widget.meta}

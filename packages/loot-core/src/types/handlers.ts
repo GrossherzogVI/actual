@@ -18,6 +18,8 @@ import type { TagsHandlers } from '../server/tags/app';
 import type { ToolsHandlers } from '../server/tools/app';
 import type { TransactionHandlers } from '../server/transactions/app';
 import type { WebhookHandlers } from '../server/webhooks/app';
+import type { ContractHandlers } from '../server/contracts/app';
+import type { ForecastHandlers } from '../server/forecast/app';
 
 import type { ApiHandlers } from './api-handlers';
 import type { ServerHandlers } from './server-handlers';
@@ -43,6 +45,8 @@ export type Handlers = {} & ServerHandlers &
   EncryptionHandlers &
   TagsHandlers &
   AuthHandlers &
-  WebhookHandlers;
+  WebhookHandlers &
+  ContractHandlers &
+  ForecastHandlers;
 
 export type HandlerFunctions = Handlers[keyof Handlers];

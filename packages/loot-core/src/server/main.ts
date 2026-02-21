@@ -14,6 +14,8 @@ import type { Handlers } from '../types/handlers';
 import { app as accountsApp } from './accounts/app';
 import { app as adminApp } from './admin/app';
 import { app as webhooksApp } from './webhooks/app';
+import { app as contractsApp } from './contracts/app';
+import { app as forecastApp } from './forecast/app';
 import { installAPI } from './api';
 import { aqlQuery } from './aql';
 import { app as authApp } from './auth/app';
@@ -152,6 +154,8 @@ app.combine(
   encryptionApp,
   tagsApp,
   webhooksApp,
+  contractsApp,
+  forecastApp,
 );
 
 export function getDefaultDocumentDir() {

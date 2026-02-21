@@ -367,6 +367,30 @@ export function FinancesApp() {
                     }
                   />
                 )}
+                <Route
+                  path="/contracts"
+                  lazy={() =>
+                    import('./contracts/ContractsPage').then(m => ({
+                      Component: m.ContractsPage,
+                    }))
+                  }
+                />
+                <Route
+                  path="/contracts/:id"
+                  lazy={() =>
+                    import('./contracts/ContractDetail').then(m => ({
+                      Component: m.ContractDetail,
+                    }))
+                  }
+                />
+                <Route
+                  path="/forecast"
+                  lazy={() =>
+                    import('./forecast/ForecastPage').then(m => ({
+                      Component: m.ForecastPage,
+                    }))
+                  }
+                />
                 {/* redirect all other traffic to the budget page */}
                 <Route path="/*" element={<Navigate to="/budget" replace />} />
               </Routes>
