@@ -40,6 +40,8 @@ export function PrimaryButtons() {
     '/tools',
     '/contracts',
     '/forecast',
+    '/ai-review',
+    '/documents',
   ].some(route => location.pathname.startsWith(route));
 
   useEffect(() => {
@@ -98,6 +100,18 @@ export function PrimaryButtons() {
             title={t('Forecast')}
             Icon={SvgReports}
             to="/forecast"
+            indent={15}
+          />
+          <SecondaryItem
+            title={t('AI Review')}
+            Icon={SvgTuning}
+            to="/ai-review"
+            indent={15}
+          />
+          <SecondaryItem
+            title={t('Documents')}
+            Icon={SvgStoreFront}
+            to="/documents"
             indent={15}
           />
           <SecondaryItem

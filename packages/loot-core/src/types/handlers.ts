@@ -18,8 +18,12 @@ import type { TagsHandlers } from '../server/tags/app';
 import type { ToolsHandlers } from '../server/tools/app';
 import type { TransactionHandlers } from '../server/transactions/app';
 import type { WebhookHandlers } from '../server/webhooks/app';
+import type { AIHandlers } from '../server/ai/app';
 import type { ContractHandlers } from '../server/contracts/app';
+import type { DocumentHandlers } from '../server/documents/app';
 import type { ForecastHandlers } from '../server/forecast/app';
+import type { IntelligenceHandlers } from '../server/intelligence/app';
+import type { NLQueryHandlers } from '../server/nl-query/app';
 
 import type { ApiHandlers } from './api-handlers';
 import type { ServerHandlers } from './server-handlers';
@@ -47,6 +51,10 @@ export type Handlers = {} & ServerHandlers &
   AuthHandlers &
   WebhookHandlers &
   ContractHandlers &
-  ForecastHandlers;
+  ForecastHandlers &
+  AIHandlers &
+  DocumentHandlers &
+  IntelligenceHandlers &
+  NLQueryHandlers;
 
 export type HandlerFunctions = Handlers[keyof Handlers];

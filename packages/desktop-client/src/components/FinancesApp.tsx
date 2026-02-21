@@ -391,6 +391,30 @@ export function FinancesApp() {
                     }))
                   }
                 />
+                <Route
+                  path="/ai-review"
+                  lazy={() =>
+                    import('./ai/AIReviewQueue').then(m => ({
+                      Component: m.AIReviewQueue,
+                    }))
+                  }
+                />
+                <Route
+                  path="/documents"
+                  lazy={() =>
+                    import('./documents/DocumentsPage').then(m => ({
+                      Component: m.DocumentsPage,
+                    }))
+                  }
+                />
+                <Route
+                  path="/documents/:id"
+                  lazy={() =>
+                    import('./documents/DocumentDetail').then(m => ({
+                      Component: m.DocumentDetail,
+                    }))
+                  }
+                />
                 {/* redirect all other traffic to the budget page */}
                 <Route path="/*" element={<Navigate to="/budget" replace />} />
               </Routes>

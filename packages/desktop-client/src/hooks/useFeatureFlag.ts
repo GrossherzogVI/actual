@@ -13,6 +13,9 @@ const DEFAULT_FEATURE_FLAG_STATE: Record<FeatureFlag, boolean> = {
   budgetAnalysisReport: false,
   contractManagement: false,
   forecastEngine: false,
+  aiClassification: false,
+  documentPipeline: false,
+  intelligenceLayer: false,
 };
 
 export function useFeatureFlag(name: FeatureFlag): boolean {

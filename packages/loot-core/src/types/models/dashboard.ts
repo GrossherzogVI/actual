@@ -110,6 +110,10 @@ export type ForecastWidget = AbstractWidget<
   'forecast-card',
   { horizon?: number } | null
 >;
+export type AIStatsWidget = AbstractWidget<
+  'ai-stats-card',
+  { name?: string } | null
+>;
 
 type SpecializedWidget =
   | NetWorthWidget
@@ -122,7 +126,8 @@ type SpecializedWidget =
   | CalendarWidget
   | FormulaWidget
   | ContractsWidget
-  | ForecastWidget;
+  | ForecastWidget
+  | AIStatsWidget;
 export type DashboardWidgetEntity = SpecializedWidget | CustomReportWidget;
 export type NewDashboardWidgetEntity = Omit<
   DashboardWidgetEntity,

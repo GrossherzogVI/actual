@@ -36,6 +36,7 @@ import { MarkdownCard } from './reports/MarkdownCard';
 import { NetWorthCard } from './reports/NetWorthCard';
 import { SpendingCard } from './reports/SpendingCard';
 import './overview.scss';
+import { AIStatsCard } from './reports/AIStatsCard';
 import { ContractsCard } from './reports/ContractsCard';
 import { ForecastCard } from './reports/ForecastCard';
 import { SummaryCard } from './reports/SummaryCard';
@@ -90,6 +91,7 @@ export function Overview({ dashboard }: OverviewProps) {
   const formulaMode = useFeatureFlag('formulaMode');
   const contractManagementEnabled = useFeatureFlag('contractManagement');
   const forecastEngineEnabled = useFeatureFlag('forecastEngine');
+  const aiClassificationEnabled = useFeatureFlag('aiClassification');
 
   const [isImporting, setIsImporting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -628,6 +630,14 @@ export function Overview({ dashboard }: OverviewProps) {
                                   },
                                 ]
                               : []),
+                            ...(aiClassificationEnabled
+                              ? [
+                                  {
+                                    name: 'ai-stats-card' as const,
+                                    text: t('AI classification stats'),
+                                  },
+                                ]
+                              : []),
                             {
                               name: 'custom-report' as const,
                               text: t('New custom report'),
@@ -896,6 +906,18 @@ export function Overview({ dashboard }: OverviewProps) {
                       ) : widget.type === 'forecast-card' &&
                         forecastEngineEnabled ? (
                         <ForecastCard
+                          widgetId={item.i}
+                          isEditing={isEditing}
+                          meta={widget.meta}
+                          onMetaChange={newMeta => onMetaChange(item, newMeta)}
+                          onRemove={() => onRemoveWidget(item.i)}
+                          onCopy={targetDashboardId =>
+                            onCopyWidget(item.i, targetDashboardId)
+                          }
+                        />
+                      ) : widget.type === 'ai-stats-card' &&
+                        aiClassificationEnabled ? (
+                        <AIStatsCard
                           widgetId={item.i}
                           isEditing={isEditing}
                           meta={widget.meta}

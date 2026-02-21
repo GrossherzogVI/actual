@@ -221,6 +221,15 @@ export function ExperimentalFeatures() {
             <FeatureToggle flag="forecastEngine">
               <Trans>Cashflow Forecast Engine</Trans>
             </FeatureToggle>
+            <FeatureToggle flag="aiClassification">
+              <Trans>AI Transaction Classification</Trans>
+            </FeatureToggle>
+            <FeatureToggle flag="documentPipeline">
+              <Trans>Document & Invoice Pipeline</Trans>
+            </FeatureToggle>
+            <FeatureToggle flag="intelligenceLayer">
+              <Trans>Intelligence Layer (Insights & NL Query)</Trans>
+            </FeatureToggle>
             {showServerPrefs && (
               <ServerFeatureToggle
                 prefName="flags.plugins"
