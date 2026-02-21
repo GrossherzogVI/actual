@@ -1,0 +1,351 @@
+// @ts-strict-ignore
+import React, { useCallback } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
+
+import { Button, ButtonWithLoading } from '@actual-app/components/button';
+import { Input } from '@actual-app/components/input';
+import { Select } from '@actual-app/components/select';
+import { Toggle } from '@actual-app/components/toggle';
+import { theme } from '@actual-app/components/theme';
+import { Text } from '@actual-app/components/text';
+import { View } from '@actual-app/components/view';
+
+import { useNavigate } from '@desktop-client/hooks/useNavigate';
+
+import {
+  CONTRACT_INTERVAL_OPTIONS,
+  CONTRACT_TYPE_OPTIONS,
+  EMPTY_CONTRACT_FORM,
+} from './types';
+import type { ContractEntity, ContractFormData } from './types';
+
+type ContractFormProps = {
+  initialData?: Partial<ContractFormData>;
+  contract?: ContractEntity | null;
+  saving: boolean;
+  error: string | null;
+  onSave: (data: ContractFormData) => void;
+  onDelete?: () => void;
+  onCancelContract?: () => void;
+  isNew: boolean;
+};
+
+function FormField({
+  label,
+  required,
+  style,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  style?: React.CSSProperties;
+  children: React.ReactNode;
+}) {
+  return (
+    <View style={{ marginBottom: 14, ...style }}>
+      <Text
+        style={{
+          fontSize: 12,
+          fontWeight: 500,
+          color: theme.pageTextSubdued,
+          marginBottom: 5,
+        }}
+      >
+        {label}
+        {required && (
+          <span style={{ color: theme.errorText, marginLeft: 2 }}>*</span>
+        )}
+      </Text>
+      {children}
+    </View>
+  );
+}
+
+const TYPE_SELECT_OPTIONS: [string, string][] = [
+  ['', 'Select type…'],
+  ...CONTRACT_TYPE_OPTIONS,
+];
+
+const INTERVAL_SELECT_OPTIONS: [string, string][] = [
+  ['', 'Select interval…'],
+  ...CONTRACT_INTERVAL_OPTIONS,
+];
+
+const CURRENCY_OPTIONS: [string, string][] = [
+  ['EUR', 'EUR — Euro'],
+  ['USD', 'USD — Dollar'],
+  ['GBP', 'GBP — Pound'],
+  ['CHF', 'CHF — Franc'],
+];
+
+export function ContractForm({
+  initialData,
+  contract,
+  saving,
+  error,
+  onSave,
+  onDelete,
+  onCancelContract,
+  isNew,
+}: ContractFormProps) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+
+  const [form, setForm] = React.useState<ContractFormData>({
+    ...EMPTY_CONTRACT_FORM,
+    ...initialData,
+  });
+
+  const updateField = useCallback(
+    <K extends keyof ContractFormData>(field: K, value: ContractFormData[K]) => {
+      setForm(prev => ({ ...prev, [field]: value }));
+    },
+    [],
+  );
+
+  const handleSave = useCallback(() => {
+    onSave(form);
+  }, [form, onSave]);
+
+  return (
+    <View style={{ maxWidth: 640 }}>
+      {/* Error banner */}
+      {error && (
+        <View
+          style={{
+            padding: '8px 12px',
+            marginBottom: 16,
+            backgroundColor: `${theme.errorText}15`,
+            borderRadius: 4,
+            border: `1px solid ${theme.errorText}40`,
+          }}
+        >
+          <Text style={{ color: theme.errorText, fontSize: 13 }}>{error}</Text>
+        </View>
+      )}
+
+      {/* Status indicator for existing contracts */}
+      {!isNew && contract && (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: 16,
+            gap: 8,
+          }}
+        >
+          <Text style={{ fontSize: 12, color: theme.pageTextSubdued }}>
+            <Trans>Status</Trans>:
+          </Text>
+          <Text
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              textTransform: 'capitalize',
+              color: theme.pageText,
+            }}
+          >
+            {contract.status}
+          </Text>
+        </View>
+      )}
+
+      {/* Name + Provider */}
+      <FormField label={t('Name')} required>
+        <Input
+          value={form.name}
+          onChangeValue={v => updateField('name', v)}
+          placeholder={t('e.g. Netflix, Car insurance…')}
+        />
+      </FormField>
+
+      <FormField label={t('Provider')}>
+        <Input
+          value={form.provider}
+          onChangeValue={v => updateField('provider', v)}
+          placeholder={t('Provider name')}
+        />
+      </FormField>
+
+      {/* Type + Currency in a row */}
+      <View style={{ flexDirection: 'row', gap: 16 }}>
+        <FormField label={t('Type')} style={{ flex: 1 }}>
+          <Select
+            options={TYPE_SELECT_OPTIONS}
+            value={form.type}
+            defaultLabel={t('Select type…')}
+            onChange={v => updateField('type', v)}
+            style={{ width: '100%' }}
+          />
+        </FormField>
+
+        <FormField label={t('Currency')} style={{ flex: 1 }}>
+          <Select
+            options={CURRENCY_OPTIONS}
+            value={form.currency}
+            onChange={v => updateField('currency', v)}
+            style={{ width: '100%' }}
+          />
+        </FormField>
+      </View>
+
+      {/* Amount + Interval in a row */}
+      <View style={{ flexDirection: 'row', gap: 16 }}>
+        <FormField label={t('Amount')} style={{ flex: 1 }}>
+          <Input
+            value={form.amount}
+            onChangeValue={v => updateField('amount', v)}
+            placeholder="0.00"
+            type="number"
+            inputMode="decimal"
+          />
+        </FormField>
+
+        <FormField label={t('Interval')} style={{ flex: 1 }}>
+          <Select
+            options={INTERVAL_SELECT_OPTIONS}
+            value={form.interval}
+            defaultLabel={t('Select interval…')}
+            onChange={v => updateField('interval', v)}
+            style={{ width: '100%' }}
+          />
+        </FormField>
+      </View>
+
+      {/* Start + End date in a row */}
+      <View style={{ flexDirection: 'row', gap: 16 }}>
+        <FormField label={t('Start date')} style={{ flex: 1 }}>
+          <Input
+            value={form.start_date}
+            onChangeValue={v => updateField('start_date', v)}
+            type="date"
+          />
+        </FormField>
+
+        <FormField label={t('End date')} style={{ flex: 1 }}>
+          <Input
+            value={form.end_date}
+            onChangeValue={v => updateField('end_date', v)}
+            type="date"
+          />
+        </FormField>
+      </View>
+
+      {/* Notice period + auto-renewal */}
+      <View style={{ flexDirection: 'row', gap: 16 }}>
+        <FormField label={t('Notice period (months)')} style={{ flex: 1 }}>
+          <Input
+            value={form.notice_period_months}
+            onChangeValue={v => updateField('notice_period_months', v)}
+            type="number"
+            placeholder="1"
+            inputMode="numeric"
+          />
+        </FormField>
+
+        <FormField label={t('Auto-renewal')} style={{ flex: 1 }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 10,
+              marginTop: 4,
+            }}
+          >
+            <Toggle
+              id="auto-renewal-toggle"
+              isOn={form.auto_renewal}
+              onToggle={isOn => updateField('auto_renewal', isOn)}
+            />
+            <Text style={{ fontSize: 13, color: theme.pageText }}>
+              {form.auto_renewal ? t('Enabled') : t('Disabled')}
+            </Text>
+          </View>
+        </FormField>
+      </View>
+
+      {/* IBAN + Counterparty */}
+      <View style={{ flexDirection: 'row', gap: 16 }}>
+        <FormField label={t('IBAN')} style={{ flex: 1 }}>
+          <Input
+            value={form.iban}
+            onChangeValue={v => updateField('iban', v)}
+            placeholder="DE89 3704 0044 …"
+          />
+        </FormField>
+
+        <FormField label={t('Counterparty')} style={{ flex: 1 }}>
+          <Input
+            value={form.counterparty}
+            onChangeValue={v => updateField('counterparty', v)}
+            placeholder={t('Recipient name')}
+          />
+        </FormField>
+      </View>
+
+      {/* Notes */}
+      <FormField label={t('Notes')}>
+        <textarea
+          value={form.notes}
+          onChange={e => updateField('notes', e.target.value)}
+          placeholder={t('Additional notes…')}
+          rows={3}
+          style={{
+            width: '100%',
+            padding: '6px 10px',
+            borderRadius: 4,
+            border: `1px solid ${theme.tableBorder}`,
+            backgroundColor: theme.tableBackground,
+            color: theme.pageText,
+            fontSize: 13,
+            fontFamily: 'inherit',
+            resize: 'vertical',
+            boxSizing: 'border-box',
+          }}
+        />
+      </FormField>
+
+      {/* Action row */}
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          marginTop: 20,
+          gap: 10,
+        }}
+      >
+        {/* Destructive actions on the left */}
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          {!isNew && onDelete && (
+            <Button
+              variant="bare"
+              onPress={onDelete}
+              style={{ color: theme.errorText }}
+            >
+              <Trans>Delete</Trans>
+            </Button>
+          )}
+          {!isNew && onCancelContract && contract?.status === 'active' && (
+            <Button variant="bare" onPress={onCancelContract}>
+              <Trans>Cancel contract</Trans>
+            </Button>
+          )}
+        </View>
+
+        {/* Primary actions on the right */}
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <Button onPress={() => navigate('/contracts')}>
+            <Trans>Back</Trans>
+          </Button>
+          <ButtonWithLoading
+            variant="primary"
+            isLoading={saving}
+            onPress={handleSave}
+          >
+            {isNew ? <Trans>Create</Trans> : <Trans>Save</Trans>}
+          </ButtonWithLoading>
+        </View>
+      </View>
+    </View>
+  );
+}

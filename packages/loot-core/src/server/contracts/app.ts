@@ -1,36 +1,62 @@
 // @ts-strict-ignore
 import * as asyncStorage from '../../platform/server/asyncStorage';
+import { currentDay } from '../../shared/months';
 import { createApp } from '../app';
 import { del, get, patch, post } from '../post';
+import { createSchedule } from '../schedules/app';
 import { getServer } from '../server-config';
 
 export type ContractEntity = {
   id: string;
-  file_id: string;
   name: string;
   provider: string | null;
   type:
-    | 'insurance'
-    | 'rent'
-    | 'utility'
     | 'subscription'
-    | 'tax'
+    | 'insurance'
+    | 'utility'
     | 'loan'
-    | 'other'
-    | null;
+    | 'membership'
+    | 'rent'
+    | 'tax'
+    | 'other';
   category_id: string | null;
-  amount: number | null;
-  frequency: string;
+  schedule_id: string | null;
+  amount: number | null; // cents
+  currency: string;
+  interval:
+    | 'weekly'
+    | 'monthly'
+    | 'quarterly'
+    | 'semi-annual'
+    | 'annual'
+    | 'custom';
+  custom_interval_days: number | null;
+  payment_account_id: string | null;
   start_date: string | null;
   end_date: string | null;
-  cancellation_period_days: number | null;
+  notice_period_months: number;
+  auto_renewal: boolean;
   cancellation_deadline: string | null;
-  next_payment_date: string | null;
-  schedule_id: string | null;
-  status: string;
+  status: 'active' | 'expiring' | 'cancelled' | 'paused' | 'discovered';
   notes: string | null;
+  iban: string | null;
+  counterparty: string | null;
+  tags: string[];
+  annual_cost: number | null;
+  cost_per_day: number | null;
+  health: 'green' | 'yellow' | 'red';
+  price_history: unknown[];
+  additional_events: unknown[];
+  documents: unknown[];
   created_at: string;
   updated_at: string;
+};
+
+export type ContractSummary = {
+  total_monthly: number;
+  total_annual: number;
+  by_type: Record<string, number>;
+  by_status: Record<string, number>;
 };
 
 export type ContractHandlers = {
@@ -39,7 +65,11 @@ export type ContractHandlers = {
   'contract-create': typeof createContract;
   'contract-update': typeof updateContract;
   'contract-delete': typeof deleteContract;
+  'contract-summary': typeof contractSummary;
+  'contract-expiring': typeof contractExpiring;
   'contract-discover': typeof discoverContracts;
+  'contract-bulk-import': typeof contractBulkImport;
+  'contract-price-change': typeof contractPriceChange;
 };
 
 export const app = createApp<ContractHandlers>();
@@ -49,20 +79,44 @@ app.method('contract-get', getContract);
 app.method('contract-create', createContract);
 app.method('contract-update', updateContract);
 app.method('contract-delete', deleteContract);
+app.method('contract-summary', contractSummary);
+app.method('contract-expiring', contractExpiring);
 app.method('contract-discover', discoverContracts);
+app.method('contract-bulk-import', contractBulkImport);
+app.method('contract-price-change', contractPriceChange);
+
+// Maps contract interval to Actual schedule frequency string
+function intervalToFrequency(
+  interval: string,
+): 'weekly' | 'monthly' | 'yearly' {
+  switch (interval) {
+    case 'weekly':
+      return 'weekly';
+    case 'quarterly':
+    case 'semi-annual':
+    case 'monthly':
+      return 'monthly';
+    case 'annual':
+      return 'yearly';
+    default:
+      return 'monthly';
+  }
+}
 
 async function listContracts(args: {
-  fileId: string;
   status?: string;
-  expiringWithin?: number;
+  type?: string;
+  category?: string;
+  search?: string;
 }): Promise<ContractEntity[] | { error: string }> {
   const userToken = await asyncStorage.getItem('user-token');
   if (!userToken) return { error: 'not-logged-in' };
 
-  const params = new URLSearchParams({ fileId: args.fileId });
+  const params = new URLSearchParams();
   if (args.status) params.set('status', args.status);
-  if (args.expiringWithin)
-    params.set('expiringWithin', String(args.expiringWithin));
+  if (args.type) params.set('type', args.type);
+  if (args.category) params.set('category', args.category);
+  if (args.search) params.set('search', args.search);
 
   try {
     const res = await get(
@@ -104,29 +158,68 @@ async function getContract(args: {
 
 async function createContract(data: {
   name: string;
-  file_id: string;
   provider?: string;
   type?: string;
   category_id?: string;
   amount?: number;
-  frequency?: string;
+  currency?: string;
+  interval?: string;
+  custom_interval_days?: number;
+  payment_account_id?: string;
   start_date?: string;
   end_date?: string;
-  cancellation_period_days?: number;
-  schedule_id?: string;
+  notice_period_months?: number;
+  auto_renewal?: boolean;
+  status?: string;
   notes?: string;
+  iban?: string;
+  counterparty?: string;
+  tags?: string[];
 }): Promise<ContractEntity | { error: string }> {
   const userToken = await asyncStorage.getItem('user-token');
   if (!userToken) return { error: 'not-logged-in' };
 
+  // Step 1: If payment info provided, create an Actual schedule first
+  let scheduleId: string | null = null;
+  if (data.amount && data.interval && data.interval !== 'custom') {
+    try {
+      scheduleId = await createSchedule({
+        schedule: {
+          name: data.name,
+          posts_transaction: false,
+        },
+        conditions: [
+          ...(data.payment_account_id
+            ? [{ op: 'is', field: 'account', value: data.payment_account_id }]
+            : []),
+          { op: 'is', field: 'amount', value: data.amount },
+          {
+            op: 'isapprox',
+            field: 'date',
+            value: {
+              frequency: intervalToFrequency(data.interval),
+              start: data.start_date || currentDay(),
+              interval: 1,
+            },
+          },
+        ],
+      });
+    } catch (err) {
+      return { error: err.message || 'schedule-create-failed' };
+    }
+  }
+
+  // Step 2: Create contract on sync-server with schedule reference
   try {
     const result = await post(
       getServer().BASE_SERVER + '/contracts',
-      data,
+      { ...data, schedule_id: scheduleId },
       { 'X-ACTUAL-TOKEN': userToken },
     );
     return result as ContractEntity;
   } catch (err) {
+    // If contract creation fails and we created a schedule, we can't easily
+    // roll back the schedule here (no delete access), but log the orphan risk.
     return { error: err.reason || err.message || 'unknown' };
   }
 }
@@ -134,7 +227,7 @@ async function createContract(data: {
 async function updateContract(args: {
   id: string;
   data: Partial<
-    Omit<ContractEntity, 'id' | 'file_id' | 'created_at' | 'updated_at'>
+    Omit<ContractEntity, 'id' | 'created_at' | 'updated_at'>
   >;
 }): Promise<ContractEntity | { error: string }> {
   const userToken = await asyncStorage.getItem('user-token');
@@ -170,9 +263,54 @@ async function deleteContract(args: {
   }
 }
 
+async function contractSummary(): Promise<ContractSummary | { error: string }> {
+  const userToken = await asyncStorage.getItem('user-token');
+  if (!userToken) return { error: 'not-logged-in' };
+
+  try {
+    const res = await get(
+      getServer().BASE_SERVER + '/contracts/summary',
+      { headers: { 'X-ACTUAL-TOKEN': userToken } },
+    );
+    if (res) {
+      const parsed = JSON.parse(res);
+      if (parsed.status === 'ok') return parsed.data;
+      return { error: parsed.reason || 'unknown' };
+    }
+  } catch (err) {
+    return { error: err.message || 'network-failure' };
+  }
+  return { error: 'no-response' };
+}
+
+async function contractExpiring(args?: {
+  withinDays?: number;
+}): Promise<ContractEntity[] | { error: string }> {
+  const userToken = await asyncStorage.getItem('user-token');
+  if (!userToken) return { error: 'not-logged-in' };
+
+  const params = new URLSearchParams();
+  if (args?.withinDays) params.set('withinDays', String(args.withinDays));
+
+  try {
+    const res = await get(
+      getServer().BASE_SERVER + `/contracts/expiring?${params.toString()}`,
+      { headers: { 'X-ACTUAL-TOKEN': userToken } },
+    );
+    if (res) {
+      const parsed = JSON.parse(res);
+      if (parsed.status === 'ok') return parsed.data;
+      return { error: parsed.reason || 'unknown' };
+    }
+  } catch (err) {
+    return { error: err.message || 'network-failure' };
+  }
+  return { error: 'no-response' };
+}
+
 async function discoverContracts(args?: {
-  fileId?: string;
-}): Promise<{ message: string } | { error: string }> {
+  lookbackDays?: number;
+}): Promise<{ discovered: number; contracts: unknown[] } | { error: string }> {
   const userToken = await asyncStorage.getItem('user-token');
   if (!userToken) return { error: 'not-logged-in' };
 
@@ -182,7 +320,53 @@ async function discoverContracts(args?: {
       args || {},
       { 'X-ACTUAL-TOKEN': userToken },
     );
-    return result as { message: string };
+    return result as { discovered: number; contracts: unknown[] };
+  } catch (err) {
+    return { error: err.reason || err.message || 'unknown' };
+  }
+}
+
+async function contractBulkImport(args: {
+  contracts: unknown[];
+  source?: string;
+}): Promise<{ imported: number; skipped: number } | { error: string }> {
+  const userToken = await asyncStorage.getItem('user-token');
+  if (!userToken) return { error: 'not-logged-in' };
+
+  try {
+    const result = await post(
+      getServer().BASE_SERVER + '/contracts/bulk-import',
+      args,
+      { 'X-ACTUAL-TOKEN': userToken },
+    );
+    return result as { imported: number; skipped: number };
+  } catch (err) {
+    return { error: err.reason || err.message || 'unknown' };
+  }
+}
+
+async function contractPriceChange(args: {
+  id: string;
+  oldAmount: number;
+  newAmount: number;
+  changeDate: string;
+  reason?: string;
+}): Promise<{ priceHistory: unknown } | { error: string }> {
+  const userToken = await asyncStorage.getItem('user-token');
+  if (!userToken) return { error: 'not-logged-in' };
+
+  try {
+    const result = await post(
+      getServer().BASE_SERVER + `/contracts/${args.id}/price-change`,
+      {
+        old_amount: args.oldAmount,
+        new_amount: args.newAmount,
+        change_date: args.changeDate,
+        reason: args.reason,
+      },
+      { 'X-ACTUAL-TOKEN': userToken },
+    );
+    return result as { priceHistory: unknown };
   } catch (err) {
     return { error: err.reason || err.message || 'unknown' };
   }

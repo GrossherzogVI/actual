@@ -2,10 +2,13 @@ import { useEffect } from 'react';
 
 import * as Platform from 'loot-core/shared/platform';
 
+import { useFeatureFlag } from '@desktop-client/hooks/useFeatureFlag';
 import { useNavigate } from '@desktop-client/hooks/useNavigate';
 
 export function GlobalKeys() {
   const navigate = useNavigate();
+  const financeOS = useFeatureFlag('financeOS');
+
   useEffect(() => {
     const handleKeys = (e: KeyboardEvent) => {
       if (Platform.isBrowser) {
@@ -13,6 +16,48 @@ export function GlobalKeys() {
       }
 
       if (e.metaKey) {
+        // financeOS mode: keys 1-9 map to the new layout
+        if (financeOS) {
+          switch (e.key) {
+            case '1':
+              void navigate('/dashboard');
+              break;
+            case '2':
+              void navigate('/accounts');
+              break;
+            case '3':
+              void navigate('/contracts');
+              break;
+            case '4':
+              void navigate('/calendar');
+              break;
+            case '5':
+              void navigate('/budget');
+              break;
+            case '6':
+              void navigate('/reports');
+              break;
+            case '7':
+              // Import placeholder — navigates to /settings until Import page exists
+              void navigate('/settings');
+              break;
+            case '8':
+              void navigate('/review');
+              break;
+            case '9':
+              void navigate('/settings');
+              break;
+            case ',':
+              if (Platform.OS === 'mac') {
+                void navigate('/settings');
+              }
+              break;
+            default:
+          }
+          return;
+        }
+
+        // Default mode shortcuts
         switch (e.key) {
           case '1':
             void navigate('/budget');
@@ -36,7 +81,7 @@ export function GlobalKeys() {
     document.addEventListener('keydown', handleKeys);
 
     return () => document.removeEventListener('keydown', handleKeys);
-  }, [navigate]);
+  }, [navigate, financeOS]);
 
   return null;
 }

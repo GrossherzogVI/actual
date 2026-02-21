@@ -3,7 +3,9 @@ import type { ComponentType, ReactNode, SVGProps } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
 import {
+  SvgAdd,
   SvgCog,
+  SvgCreditCard,
   SvgLibrary,
   SvgPiggyBank,
   SvgReports,
@@ -21,11 +23,13 @@ import { Text } from '@actual-app/components/text';
 import { View } from '@actual-app/components/view';
 import { css } from '@emotion/css';
 import { Command } from 'cmdk';
+import { send } from 'loot-core/platform/client/connection';
 
 import { CellValue, CellValueText } from './spreadsheet/CellValue';
 
 import { useAccounts } from '@desktop-client/hooks/useAccounts';
 import { useDashboardPages } from '@desktop-client/hooks/useDashboardPages';
+import { useFeatureFlag } from '@desktop-client/hooks/useFeatureFlag';
 import { useMetadataPref } from '@desktop-client/hooks/useMetadataPref';
 import { useModalState } from '@desktop-client/hooks/useModalState';
 import { useNavigate } from '@desktop-client/hooks/useNavigate';
@@ -61,6 +65,66 @@ type SearchSection = {
   items: Readonly<SearchableItem[]>;
   onSelect: (item: Pick<SearchableItem, 'id'>) => void;
 };
+
+type ContractEntry = {
+  id: string;
+  name: string;
+  amount: number | null;
+  interval: string | null;
+};
+
+/** Simple arithmetic expression evaluator — supports +, -, *, / with parens */
+function evalMath(expr: string): number | null {
+  // Allow only digits, operators, spaces, dots, parens
+  if (!/^[\d\s+\-*/().]+$/.test(expr)) return null;
+  try {
+    // Build a safe evaluator without eval()
+    const tokens = expr.replace(/\s/g, '').match(/(\d+\.?\d*|[+\-*/()])/g);
+    if (!tokens) return null;
+    return parseMathExpr(tokens, { pos: 0 });
+  } catch {
+    return null;
+  }
+}
+
+function parseMathExpr(tokens: string[], state: { pos: number }): number {
+  let left = parseMathTerm(tokens, state);
+  while (state.pos < tokens.length && (tokens[state.pos] === '+' || tokens[state.pos] === '-')) {
+    const op = tokens[state.pos++];
+    const right = parseMathTerm(tokens, state);
+    left = op === '+' ? left + right : left - right;
+  }
+  return left;
+}
+
+function parseMathTerm(tokens: string[], state: { pos: number }): number {
+  let left = parseMathFactor(tokens, state);
+  while (state.pos < tokens.length && (tokens[state.pos] === '*' || tokens[state.pos] === '/')) {
+    const op = tokens[state.pos++];
+    const right = parseMathFactor(tokens, state);
+    if (op === '/' && right === 0) throw new Error('div/0');
+    left = op === '*' ? left * right : left / right;
+  }
+  return left;
+}
+
+function parseMathFactor(tokens: string[], state: { pos: number }): number {
+  const token = tokens[state.pos];
+  if (token === '(') {
+    state.pos++; // consume '('
+    const val = parseMathExpr(tokens, state);
+    state.pos++; // consume ')'
+    return val;
+  }
+  if (token === '-') {
+    state.pos++;
+    return -parseMathFactor(tokens, state);
+  }
+  state.pos++;
+  const num = parseFloat(token);
+  if (isNaN(num)) throw new Error('invalid token');
+  return num;
+}
 
 function BalanceRow<
   SheetName extends SheetNames,
@@ -101,6 +165,19 @@ export function CommandBar() {
   const navigate = useNavigate();
   const [budgetName] = useMetadataPref('budgetName');
   const { modalStack } = useModalState();
+
+  const contractManagementEnabled = useFeatureFlag('contractManagement');
+  const extendedCommandBar = useFeatureFlag('extendedCommandBar');
+
+  const [contracts, setContracts] = useState<ContractEntry[]>([]);
+  useEffect(() => {
+    if (!contractManagementEnabled || !open) return;
+    void (send as Function)('contract-list', {}).then((result: unknown) => {
+      if (Array.isArray(result)) {
+        setContracts(result as ContractEntry[]);
+      }
+    });
+  }, [contractManagementEnabled, open]);
 
   const navigationItems = useMemo(
     () => [
@@ -173,81 +250,255 @@ export function CommandBar() {
     [navigate],
   );
 
-  const sections: SearchSection[] = [
-    {
-      key: 'navigation',
-      heading: t('Navigation'),
-      items: navigationItems,
-      onSelect: ({ id }) => {
-        const item = navigationItems.find(item => item.id === id);
-        if (item) handleNavigate(item.path);
+  // Determine the current input mode based on prefix
+  const isActionMode = extendedCommandBar && search.startsWith('>');
+  const isCalcMode = extendedCommandBar && search.startsWith('=');
+  const isAmountMode =
+    extendedCommandBar &&
+    !isActionMode &&
+    !isCalcMode &&
+    (search.startsWith('€') || /^\d/.test(search));
+
+  // Quick action items (mode: ">")
+  const quickActionItems: SearchableItem[] = useMemo(
+    () => [
+      { id: 'qa-add-transaction', name: t('Add Transaction'), Icon: SvgAdd },
+      { id: 'qa-new-contract', name: t('New Contract'), Icon: SvgNotesPaperText },
+      { id: 'qa-review-queue', name: t('Review Queue'), Icon: SvgCreditCard },
+      { id: 'qa-sync-all', name: t('Sync All'), Icon: SvgWallet },
+      { id: 'qa-import-data', name: t('Import Data'), Icon: SvgLibrary },
+      { id: 'qa-settings', name: t('Settings'), Icon: SvgCog },
+    ],
+    [t],
+  );
+
+  const handleQuickAction = useCallback(
+    (id: string) => {
+      setOpen(false);
+      switch (id) {
+        case 'qa-add-transaction':
+          void navigate('/quick-add');
+          break;
+        case 'qa-new-contract':
+          void navigate('/contracts?new=1');
+          break;
+        case 'qa-review-queue':
+          void navigate('/review');
+          break;
+        case 'qa-sync-all':
+          void (send as Function)('sync');
+          break;
+        case 'qa-import-data':
+          void navigate('/import');
+          break;
+        case 'qa-settings':
+          void navigate('/settings');
+          break;
+      }
+    },
+    [navigate],
+  );
+
+  // Calculator mode (mode: "=")
+  const calcExpr = isCalcMode ? search.slice(1) : '';
+  const calcResult = isCalcMode ? evalMath(calcExpr) : null;
+  const calcItems: SearchableItem[] = useMemo(() => {
+    if (!isCalcMode || calcExpr === '') return [];
+    if (calcResult === null) {
+      return [{ id: 'calc-invalid', name: t('Invalid expression'), Icon: SvgTuning }];
+    }
+    return [
+      {
+        id: 'calc-result',
+        name: `= ${calcResult}`,
+        content: (
+          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', flex: 1 }}>
+            <Text style={{ fontFamily: 'monospace' }}>{calcExpr} = {calcResult}</Text>
+            <Text style={{ fontSize: '0.75rem', color: 'var(--color-pageTextSubdued)' }}>
+              {t('Press Enter to copy')}
+            </Text>
+          </View>
+        ),
+        Icon: SvgTuning,
       },
+    ];
+  }, [isCalcMode, calcExpr, calcResult, t]);
+
+  const handleCalcSelect = useCallback(
+    (id: string) => {
+      if (id === 'calc-result' && calcResult !== null) {
+        void navigator.clipboard.writeText(String(calcResult));
+      }
+      setOpen(false);
     },
-    {
-      key: 'accounts',
-      heading: t('Accounts'),
-      items: [
-        {
-          id: 'onbudget',
-          name: t('On Budget'),
-          content: (
-            <BalanceRow<'account', 'onbudget-accounts-balance'>
-              label={t('On Budget')}
-              binding={onBudgetAccountBalance()}
-            />
-          ),
-          Icon: SvgLibrary,
-        },
-        {
-          id: 'offbudget',
-          name: t('Off Budget'),
-          content: (
-            <BalanceRow<'account', 'offbudget-accounts-balance'>
-              label={t('Off Budget')}
-              binding={offBudgetAccountBalance()}
-            />
-          ),
-          Icon: SvgLibrary,
-        },
-        ...accounts.map(account => ({
-          ...account,
-          content: (
-            <BalanceRow<'account', 'balance'>
-              label={account.name}
-              binding={accountBalance(account.id)}
-            />
-          ),
-          Icon: SvgPiggyBank,
-        })),
-      ],
-      onSelect: ({ id }) => handleNavigate(`/accounts/${id}`),
-    },
-    {
-      key: 'reports',
-      heading: t('Reports'),
-      items: dashboardPages.map(dashboardPage => ({
-        ...dashboardPage,
-        Icon: SvgReports,
-      })),
-      onSelect: ({ id }) => handleNavigate(`/reports/${id}`),
-    },
-    {
-      key: 'reports-custom',
-      heading: t('Custom Reports'),
-      items: customReports.map(report => ({
-        ...report,
-        Icon: SvgNotesPaperText,
-      })),
-      onSelect: ({ id }) => handleNavigate(`/reports/custom/${id}`),
-    },
+    [calcResult],
+  );
+
+  // Amount search stub (mode: "€" or digit)
+  const amountItems: SearchableItem[] = useMemo(() => {
+    if (!isAmountMode) return [];
+    return [
+      {
+        id: 'amount-search',
+        name: t('Search transactions by amount'),
+        Icon: SvgCreditCard,
+      },
+    ];
+  }, [isAmountMode, t]);
+
+  const sections: SearchSection[] = [
+    ...(isActionMode
+      ? [
+          {
+            key: 'actions',
+            heading: t('Actions'),
+            items: quickActionItems.filter(item =>
+              item.name.toLowerCase().includes(search.slice(1).toLowerCase()),
+            ),
+            onSelect: ({ id }: Pick<SearchableItem, 'id'>) => handleQuickAction(id),
+          },
+        ]
+      : isCalcMode
+        ? [
+            {
+              key: 'calculator',
+              heading: t('Calculator'),
+              items: calcItems,
+              onSelect: ({ id }: Pick<SearchableItem, 'id'>) => handleCalcSelect(id),
+            },
+          ]
+        : isAmountMode
+          ? [
+              {
+                key: 'amount-search',
+                heading: t('Transactions'),
+                items: amountItems,
+                onSelect: () => {
+                  setOpen(false);
+                  void navigate('/accounts');
+                },
+              },
+            ]
+          : [
+              {
+                key: 'navigation',
+                heading: t('Navigation'),
+                items: navigationItems,
+                onSelect: ({ id }: Pick<SearchableItem, 'id'>) => {
+                  const item = navigationItems.find(item => item.id === id);
+                  if (item) handleNavigate(item.path);
+                },
+              },
+              {
+                key: 'accounts',
+                heading: t('Accounts'),
+                items: [
+                  {
+                    id: 'onbudget',
+                    name: t('On Budget'),
+                    content: (
+                      <BalanceRow<'account', 'onbudget-accounts-balance'>
+                        label={t('On Budget')}
+                        binding={onBudgetAccountBalance()}
+                      />
+                    ),
+                    Icon: SvgLibrary,
+                  },
+                  {
+                    id: 'offbudget',
+                    name: t('Off Budget'),
+                    content: (
+                      <BalanceRow<'account', 'offbudget-accounts-balance'>
+                        label={t('Off Budget')}
+                        binding={offBudgetAccountBalance()}
+                      />
+                    ),
+                    Icon: SvgLibrary,
+                  },
+                  ...accounts.map(account => ({
+                    ...account,
+                    content: (
+                      <BalanceRow<'account', 'balance'>
+                        label={account.name}
+                        binding={accountBalance(account.id)}
+                      />
+                    ),
+                    Icon: SvgPiggyBank,
+                  })),
+                ],
+                onSelect: ({ id }: Pick<SearchableItem, 'id'>) =>
+                  handleNavigate(`/accounts/${id}`),
+              },
+              {
+                key: 'reports',
+                heading: t('Reports'),
+                items: dashboardPages.map(dashboardPage => ({
+                  ...dashboardPage,
+                  Icon: SvgReports,
+                })),
+                onSelect: ({ id }: Pick<SearchableItem, 'id'>) =>
+                  handleNavigate(`/reports/${id}`),
+              },
+              {
+                key: 'reports-custom',
+                heading: t('Custom Reports'),
+                items: customReports.map(report => ({
+                  ...report,
+                  Icon: SvgNotesPaperText,
+                })),
+                onSelect: ({ id }: Pick<SearchableItem, 'id'>) =>
+                  handleNavigate(`/reports/custom/${id}`),
+              },
+              ...(contractManagementEnabled
+                ? [
+                    {
+                      key: 'contracts',
+                      heading: t('Contracts'),
+                      items: contracts.map(c => ({
+                        id: c.id,
+                        name: c.name,
+                        content: (
+                          <View
+                            style={{
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              flex: 1,
+                            }}
+                          >
+                            <Text>{c.name}</Text>
+                            {c.amount != null && c.interval && (
+                              <Text
+                                style={{
+                                  fontSize: '0.8rem',
+                                  color: 'var(--color-pageTextSubdued)',
+                                }}
+                              >
+                                {(c.amount / 100).toFixed(2)} €/{c.interval}
+                              </Text>
+                            )}
+                          </View>
+                        ),
+                        Icon: SvgNotesPaperText,
+                      })),
+                      onSelect: ({ id }: Pick<SearchableItem, 'id'>) =>
+                        handleNavigate(`/contracts/${id}`),
+                    },
+                  ]
+                : []),
+            ]),
   ];
 
   const searchLower = search.toLowerCase();
   const filteredSections = sections.map(section => ({
     ...section,
-    items: section.items.filter(item =>
-      item.name.toLowerCase().includes(searchLower),
-    ),
+    // For action/calc/amount modes the items are already pre-filtered above
+    items:
+      isActionMode || isCalcMode || isAmountMode
+        ? section.items
+        : section.items.filter(item =>
+            item.name.toLowerCase().includes(searchLower),
+          ),
   }));
   const hasResults = filteredSections.some(section => !!section.items.length);
 
@@ -277,7 +528,11 @@ export function CommandBar() {
     >
       <Command.Input
         autoFocus
-        placeholder={t('Search {{budgetName}}...', { budgetName })}
+        placeholder={
+          extendedCommandBar
+            ? t('Search, > actions, = calc, € amount...')
+            : t('Search {{budgetName}}...', { budgetName })
+        }
         value={search}
         onValueChange={setSearch}
         className={css({

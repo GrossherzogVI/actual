@@ -1,2 +1,2 @@
 export { ContractsPage } from './ContractsPage';
-export { ContractDetail } from './ContractDetail';
+export { ContractDetailPage } from './ContractDetailPage';

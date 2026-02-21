@@ -8,10 +8,13 @@ export type FeatureFlag =
   | 'customThemes'
   | 'budgetAnalysisReport'
   | 'contractManagement'
-  | 'forecastEngine'
-  | 'aiClassification'
-  | 'documentPipeline'
-  | 'intelligenceLayer';
+  | 'financeOS'
+  | 'aiSmartMatching'
+  | 'reviewQueue'
+  | 'quickAdd'
+  | 'paymentCalendar'
+  | 'germanCategories'
+  | 'extendedCommandBar';
 
 /**
  * Cross-device preferences. These sync across devices when they are changed.

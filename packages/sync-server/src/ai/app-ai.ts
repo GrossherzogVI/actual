@@ -17,233 +17,334 @@ app.use(express.json());
 app.use(requestLoggerMiddleware);
 app.use(validateSessionMiddleware);
 
-function logAudit(fileId: string, action: string, details: unknown) {
+const HIGH_CONFIDENCE_THRESHOLD = 0.85;
+const HIGH_TIER_MIN_MATCHES = 5;
+const HIGH_TIER_MIN_ACCURACY = 0.85;
+
+// ─── Smart Matching (three-tier flow) ─────────────────────────────────────
+
+/**
+ * Three-tier matching flow:
+ *   1. pinned rules (exact payee match) → ASSIGN, confidence=1.0
+ *   2. ai_high rules (>85% accuracy, >5 matches) → ASSIGN silently
+ *   3. No match → Ollama classify → confidence determines review queue
+ */
+function matchSmartRule(
+  payee: string,
+  iban?: string,
+): { category_id: string; confidence: number; tier: string } | null {
   const db = getAccountDb();
-  db.mutate(
-    `INSERT INTO ai_audit_log (file_id, action, details, created_at)
-     VALUES (?, ?, ?, datetime('now'))`,
-    [fileId, action, JSON.stringify(details)],
-  );
+
+  // Tier 1: pinned exact match
+  const pinnedExact = db.first(
+    `SELECT * FROM smart_match_rules
+     WHERE tier = 'pinned' AND match_type = 'exact' AND payee_pattern = ?`,
+    [payee],
+  ) as Record<string, unknown> | undefined;
+  if (pinnedExact) {
+    return { category_id: pinnedExact.category_id as string, confidence: 1.0, tier: 'pinned' };
+  }
+
+  // Tier 1: pinned IBAN match
+  if (iban) {
+    const pinnedIban = db.first(
+      `SELECT * FROM smart_match_rules
+       WHERE tier = 'pinned' AND match_type = 'iban' AND payee_pattern = ?`,
+      [iban],
+    ) as Record<string, unknown> | undefined;
+    if (pinnedIban) {
+      return { category_id: pinnedIban.category_id as string, confidence: 1.0, tier: 'pinned' };
+    }
+  }
+
+  // Tier 2: ai_high — contains match
+  const candidates = db.all(
+    `SELECT * FROM smart_match_rules
+     WHERE tier = 'ai_high' AND match_count >= ?`,
+    [HIGH_TIER_MIN_MATCHES],
+  ) as Record<string, unknown>[];
+
+  for (const rule of candidates) {
+    const accuracy =
+      (rule.match_count as number) > 0
+        ? (rule.correct_count as number) / (rule.match_count as number)
+        : 0;
+
+    if (accuracy < HIGH_TIER_MIN_ACCURACY) continue;
+
+    const pattern = rule.payee_pattern as string;
+    const matchType = rule.match_type as string;
+
+    let matched = false;
+    if (matchType === 'exact') {
+      matched = payee === pattern;
+    } else if (matchType === 'contains') {
+      matched = payee.toLowerCase().includes(pattern.toLowerCase());
+    } else if (matchType === 'regex') {
+      try {
+        matched = new RegExp(pattern, 'i').test(payee);
+      } catch {
+        // invalid regex, skip
+      }
+    } else if (matchType === 'iban' && iban) {
+      matched = iban === pattern;
+    }
+
+    if (matched) {
+      return {
+        category_id: rule.category_id as string,
+        confidence: rule.confidence as number,
+        tier: 'ai_high',
+      };
+    }
+  }
+
+  return null;
 }
 
-function upsertRuleSuggestion(
-  fileId: string,
+function updateRuleMatchStats(
   payeePattern: string,
-  matchField: string,
-  matchOp: string,
+  matchType: string,
   categoryId: string,
+  correct: boolean,
 ) {
   const db = getAccountDb();
-  const existing = db.first(
-    `SELECT * FROM ai_rule_suggestions
-     WHERE file_id = ? AND payee_pattern = ? AND match_field = ? AND match_op = ? AND category = ?`,
-    [fileId, payeePattern, matchField, matchOp, categoryId],
-  );
-
-  if (existing) {
-    db.mutate(
-      `UPDATE ai_rule_suggestions SET hit_count = hit_count + 1 WHERE id = ?`,
-      [existing.id],
-    );
-    return existing.id;
-  }
-
-  const id = uuidv4();
   db.mutate(
-    `INSERT INTO ai_rule_suggestions (id, file_id, payee_pattern, match_field, match_op, category, hit_count, status, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, 1, 'pending', datetime('now'))`,
-    [id, fileId, payeePattern, matchField, matchOp, categoryId],
+    `UPDATE smart_match_rules
+     SET match_count = match_count + 1,
+         correct_count = correct_count + ?,
+         confidence = CAST(correct_count + ? AS REAL) / (match_count + 1),
+         last_matched_at = datetime('now'),
+         updated_at = datetime('now')
+     WHERE payee_pattern = ? AND match_type = ? AND category_id = ?`,
+    [correct ? 1 : 0, correct ? 1 : 0, payeePattern, matchType, categoryId],
   );
-  return id;
+
+  // Promote ai_low to ai_high if threshold crossed
+  db.mutate(
+    `UPDATE smart_match_rules
+     SET tier = 'ai_high', updated_at = datetime('now')
+     WHERE tier = 'ai_low'
+       AND match_count >= ?
+       AND CAST(correct_count AS REAL) / match_count >= ?
+       AND payee_pattern = ? AND match_type = ? AND category_id = ?`,
+    [HIGH_TIER_MIN_MATCHES, HIGH_TIER_MIN_ACCURACY, payeePattern, matchType, categoryId],
+  );
 }
 
-/** POST /classify — classify a single transaction */
-app.post('/classify', async (req, res) => {
-  if (!isOllamaEnabled()) {
-    res.status(503).json({ status: 'error', reason: 'ai-not-enabled' });
-    return;
-  }
+// ─── Classify endpoints ────────────────────────────────────────────────────
 
-  const { transaction, categories, fileId } = req.body || {};
+/** POST /ai/classify — classify single transaction with three-tier flow */
+app.post('/classify', async (req, res) => {
+  const { transaction, categories, fileId } = req.body ?? {};
 
   if (!transaction || !categories || !fileId) {
     res.status(400).json({ status: 'error', reason: 'missing-fields' });
     return;
   }
 
-  try {
-    const result = await classifyTransaction(transaction, categories);
+  const db = getAccountDb();
 
-    const db = getAccountDb();
-    const id = uuidv4();
-    const status =
-      result.confidence > 0.9
-        ? 'auto_applied'
-        : result.confidence >= 0.7
-          ? 'pending'
-          : 'pending';
+  // Try smart match first
+  const ruleMatch = matchSmartRule(
+    transaction.payee ?? '',
+    transaction.iban,
+  );
 
+  if (ruleMatch) {
+    // Update match stats for matched rule
     db.mutate(
-      `INSERT OR REPLACE INTO ai_classifications (id, file_id, transaction_id, proposed_category, confidence, reasoning, status, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
-      [
-        id,
-        fileId,
-        result.transactionId,
-        result.categoryId,
-        result.confidence,
-        result.reasoning,
-        status,
-      ],
+      `UPDATE smart_match_rules
+       SET match_count = match_count + 1, last_matched_at = datetime('now'), updated_at = datetime('now')
+       WHERE category_id = ? AND tier IN ('pinned','ai_high')`,
+      [ruleMatch.category_id],
     );
 
-    logAudit(fileId, 'classify', {
-      transactionId: result.transactionId,
-      categoryId: result.categoryId,
-      confidence: result.confidence,
-      status,
-    });
-
-    if (result.ruleSuggestion) {
-      upsertRuleSuggestion(
-        fileId,
-        result.ruleSuggestion.payeePattern,
-        result.ruleSuggestion.matchField,
-        result.ruleSuggestion.matchOp,
-        result.categoryId,
-      );
-    }
-
-    res.json({ status: 'ok', data: result });
-  } catch (err) {
-    res
-      .status(500)
-      .json({ status: 'error', reason: (err as Error).message });
-  }
-});
-
-/** POST /classify-batch — classify multiple transactions */
-app.post('/classify-batch', async (req, res) => {
-  if (!isOllamaEnabled()) {
-    res.status(503).json({ status: 'error', reason: 'ai-not-enabled' });
+    res.json({ status: 'ok', data: { ...ruleMatch, source: 'rule' } });
     return;
   }
 
-  const { transactions, categories, fileId } = req.body || {};
+  // Fall back to Ollama
+  if (!isOllamaEnabled()) {
+    res.json({
+      status: 'ok',
+      data: { category_id: null, confidence: 0, tier: 'none', source: 'none' },
+    });
+    return;
+  }
+
+  try {
+    const result = await classifyTransaction(transaction, categories);
+
+    // Store result and optionally queue for review
+    const classId = uuidv4();
+    db.mutate(
+      `INSERT OR REPLACE INTO smart_match_rules
+         (id, payee_pattern, match_type, category_id, tier, confidence, match_count, correct_count, created_by)
+       VALUES (?, ?, 'contains', ?, 'ai_low', ?, 1, ?, 'ai')
+       ON CONFLICT DO NOTHING`,
+      [
+        classId,
+        transaction.payee,
+        result.categoryId,
+        result.confidence,
+        result.confidence >= HIGH_CONFIDENCE_THRESHOLD ? 1 : 0,
+      ],
+    );
+
+    // Add to review queue if confidence below threshold
+    if (result.confidence < HIGH_CONFIDENCE_THRESHOLD) {
+      const reviewId = uuidv4();
+      db.mutate(
+        `INSERT INTO review_queue (id, type, priority, transaction_id, ai_suggestion, ai_confidence)
+         VALUES (?, 'low_confidence', 'review', ?, ?, ?)`,
+        [
+          reviewId,
+          transaction.id,
+          JSON.stringify({ category_id: result.categoryId, confidence: result.confidence }),
+          result.confidence,
+        ],
+      );
+    }
+
+    res.json({
+      status: 'ok',
+      data: {
+        category_id: result.categoryId,
+        confidence: result.confidence,
+        tier: result.confidence >= HIGH_CONFIDENCE_THRESHOLD ? 'ai_high' : 'ai_low',
+        source: 'ollama',
+        reasoning: result.reasoning,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ status: 'error', reason: (err as Error).message });
+  }
+});
+
+/** POST /ai/classify-batch — classify multiple transactions */
+app.post('/classify-batch', async (req, res) => {
+  const { transactions, categories, fileId } = req.body ?? {};
 
   if (!transactions?.length || !categories || !fileId) {
     res.status(400).json({ status: 'error', reason: 'missing-fields' });
     return;
   }
 
-  try {
-    const results = await classifyBatch(transactions, categories, fileId);
+  const db = getAccountDb();
+  const results: unknown[] = [];
+  let ruleMatched = 0;
+  let ollamaHigh = 0;
+  let ollamaLow = 0;
+  let failed = 0;
 
-    const db = getAccountDb();
-    let autoApplied = 0;
-    let pendingReview = 0;
-    let skipped = 0;
-
-    for (const result of results) {
-      let status: string;
-      if (result.confidence > 0.9) {
-        status = 'auto_applied';
-        autoApplied++;
-      } else if (result.confidence >= 0.7) {
-        status = 'pending';
-        pendingReview++;
-      } else {
-        status = 'pending';
-        skipped++;
-        logAudit(fileId, 'classify-skipped', {
-          transactionId: result.transactionId,
-          confidence: result.confidence,
-        });
-        continue;
-      }
-
-      const id = uuidv4();
-      db.mutate(
-        `INSERT OR REPLACE INTO ai_classifications (id, file_id, transaction_id, proposed_category, confidence, reasoning, status, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
-        [
-          id,
-          fileId,
-          result.transactionId,
-          result.categoryId,
-          result.confidence,
-          result.reasoning,
-          status,
-        ],
-      );
-
-      if (result.ruleSuggestion) {
-        upsertRuleSuggestion(
-          fileId,
-          result.ruleSuggestion.payeePattern,
-          result.ruleSuggestion.matchField,
-          result.ruleSuggestion.matchOp,
-          result.categoryId,
-        );
-      }
+  for (const transaction of transactions) {
+    const ruleMatch = matchSmartRule(transaction.payee ?? '', transaction.iban);
+    if (ruleMatch) {
+      results.push({ ...ruleMatch, transactionId: transaction.id, source: 'rule' });
+      ruleMatched++;
+      continue;
     }
 
-    logAudit(fileId, 'classify-batch', {
-      total: results.length,
-      autoApplied,
-      pendingReview,
-      skipped,
-    });
+    if (!isOllamaEnabled()) {
+      results.push({ transactionId: transaction.id, category_id: null, confidence: 0, source: 'none' });
+      continue;
+    }
 
-    res.json({
-      status: 'ok',
-      data: {
-        results,
-        autoApplied,
-        pendingReview,
-        skipped,
-      },
-    });
-  } catch (err) {
-    res
-      .status(500)
-      .json({ status: 'error', reason: (err as Error).message });
+    try {
+      const result = await classifyTransaction(transaction, categories);
+      const tier = result.confidence >= HIGH_CONFIDENCE_THRESHOLD ? 'ai_high' : 'ai_low';
+      results.push({ ...result, tier, source: 'ollama' });
+
+      if (result.confidence < HIGH_CONFIDENCE_THRESHOLD) {
+        const reviewId = uuidv4();
+        db.mutate(
+          `INSERT INTO review_queue (id, type, priority, transaction_id, ai_suggestion, ai_confidence)
+           VALUES (?, 'low_confidence', 'review', ?, ?, ?)`,
+          [
+            reviewId,
+            transaction.id,
+            JSON.stringify({ category_id: result.categoryId, confidence: result.confidence }),
+            result.confidence,
+          ],
+        );
+        ollamaLow++;
+      } else {
+        ollamaHigh++;
+      }
+    } catch {
+      results.push({ transactionId: transaction.id, category_id: null, confidence: 0, source: 'error' });
+      failed++;
+    }
   }
+
+  res.json({
+    status: 'ok',
+    data: { results, summary: { ruleMatched, ollamaHigh, ollamaLow, failed } },
+  });
 });
 
-/** GET /queue — list pending classifications */
-app.get('/queue', (req, res) => {
-  const { fileId, limit } = req.query;
+// ─── Smart Match Rules CRUD ────────────────────────────────────────────────
 
-  if (!fileId) {
-    res.status(400).json({ status: 'error', reason: 'file-id-required' });
-    return;
+/** GET /ai/rules — list all smart match rules */
+app.get('/rules', (req, res) => {
+  const { tier, limit } = req.query;
+  const db = getAccountDb();
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+
+  if (tier) {
+    conditions.push('tier = ?');
+    params.push(tier);
   }
 
-  const db = getAccountDb();
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const limitNum = parseInt(String(limit ?? '200'), 10);
+
   const rows = db.all(
-    `SELECT * FROM ai_classifications
-     WHERE file_id = ? AND status = 'pending'
-     ORDER BY created_at DESC
+    `SELECT * FROM smart_match_rules ${whereClause}
+     ORDER BY tier, confidence DESC
      LIMIT ?`,
-    [fileId, parseInt(String(limit), 10) || 50],
+    [...params, limitNum],
   );
 
   res.json({ status: 'ok', data: rows });
 });
 
-/** POST /queue/:id/resolve — accept or reject a classification */
-app.post('/queue/:id/resolve', (req, res) => {
-  const { status: newStatus } = req.body || {};
+/** POST /ai/rules — create or update a pinned rule */
+app.post('/rules', (req, res) => {
+  const { payee_pattern, match_type, category_id, tier } = req.body ?? {};
 
-  if (!newStatus || !['accepted', 'rejected'].includes(newStatus)) {
-    res.status(400).json({ status: 'error', reason: 'invalid-status' });
+  if (!payee_pattern || !category_id) {
+    res.status(400).json({ status: 'error', reason: 'missing-fields' });
     return;
   }
 
   const db = getAccountDb();
+  const id = uuidv4();
+
+  db.mutate(
+    `INSERT INTO smart_match_rules
+       (id, payee_pattern, match_type, category_id, tier, confidence, match_count, correct_count, created_by)
+     VALUES (?, ?, ?, ?, ?, 1.0, 0, 0, 'user')`,
+    [
+      id,
+      payee_pattern,
+      match_type ?? 'exact',
+      category_id,
+      tier ?? 'pinned',
+    ],
+  );
+
+  const created = db.first('SELECT * FROM smart_match_rules WHERE id = ?', [id]);
+  res.json({ status: 'ok', data: created });
+});
+
+/** DELETE /ai/rules/:id — delete a smart match rule */
+app.delete('/rules/:id', (req, res) => {
+  const db = getAccountDb();
   const existing = db.first(
-    'SELECT * FROM ai_classifications WHERE id = ?',
+    'SELECT id FROM smart_match_rules WHERE id = ?',
     [req.params.id],
   );
 
@@ -252,74 +353,72 @@ app.post('/queue/:id/resolve', (req, res) => {
     return;
   }
 
-  db.mutate(
-    `UPDATE ai_classifications SET status = ?, resolved_at = datetime('now') WHERE id = ?`,
-    [newStatus, req.params.id],
-  );
-
-  logAudit(existing.file_id, 'queue-resolve', {
-    classificationId: req.params.id,
-    previousStatus: existing.status,
-    newStatus,
-  });
-
-  const updated = db.first(
-    'SELECT * FROM ai_classifications WHERE id = ?',
-    [req.params.id],
-  );
-
-  res.json({ status: 'ok', data: updated });
+  db.mutate('DELETE FROM smart_match_rules WHERE id = ?', [req.params.id]);
+  res.json({ status: 'ok', data: { deleted: true } });
 });
 
-/** GET /rule-suggestions — list rule suggestions */
-app.get('/rule-suggestions', (req, res) => {
-  const { fileId, minHitCount } = req.query;
+// ─── Learning endpoint ─────────────────────────────────────────────────────
 
-  if (!fileId) {
-    res.status(400).json({ status: 'error', reason: 'file-id-required' });
+/** POST /ai/learn — record user correction, update rule confidence */
+app.post('/learn', (req, res) => {
+  const { payee_pattern, match_type, category_id, correct } = req.body ?? {};
+
+  if (!payee_pattern || !category_id || correct === undefined) {
+    res.status(400).json({ status: 'error', reason: 'missing-fields' });
     return;
   }
 
-  const threshold = parseInt(String(minHitCount), 10) || 3;
-  const db = getAccountDb();
-  const rows = db.all(
-    `SELECT * FROM ai_rule_suggestions
-     WHERE file_id = ? AND hit_count >= ? AND status = 'pending'
-     ORDER BY hit_count DESC`,
-    [fileId, threshold],
+  updateRuleMatchStats(
+    payee_pattern,
+    match_type ?? 'contains',
+    category_id,
+    Boolean(correct),
   );
 
-  res.json({ status: 'ok', data: rows });
+  res.json({ status: 'ok', data: { learned: true } });
 });
 
-/** POST /rule-suggestions/:id/accept — accept a rule suggestion */
-app.post('/rule-suggestions/:id/accept', (req, res) => {
+// ─── Stats endpoint ────────────────────────────────────────────────────────
+
+/** GET /ai/stats — classification statistics */
+app.get('/stats', (_req, res) => {
   const db = getAccountDb();
-  const existing = db.first(
-    'SELECT * FROM ai_rule_suggestions WHERE id = ?',
-    [req.params.id],
-  );
 
-  if (!existing) {
-    res.status(404).json({ status: 'error', reason: 'not-found' });
-    return;
-  }
+  const totalRules = (db.first(
+    'SELECT COUNT(*) as count FROM smart_match_rules',
+    [],
+  ) as Record<string, number>).count;
 
-  db.mutate(
-    `UPDATE ai_rule_suggestions SET status = 'accepted' WHERE id = ?`,
-    [req.params.id],
-  );
+  const pinnedRules = (db.first(
+    "SELECT COUNT(*) as count FROM smart_match_rules WHERE tier = 'pinned'",
+    [],
+  ) as Record<string, number>).count;
 
-  logAudit(existing.file_id, 'rule-suggestion-accept', {
-    suggestionId: req.params.id,
-    payeePattern: existing.payee_pattern,
-    category: existing.category,
+  const aiHighRules = (db.first(
+    "SELECT COUNT(*) as count FROM smart_match_rules WHERE tier = 'ai_high'",
+    [],
+  ) as Record<string, number>).count;
+
+  const pendingReview = (db.first(
+    "SELECT COUNT(*) as count FROM review_queue WHERE status = 'pending'",
+    [],
+  ) as Record<string, number>).count;
+
+  // Average accuracy across all rules with matches
+  const accuracyRow = db.first(
+    `SELECT AVG(CAST(correct_count AS REAL) / match_count) as avg_accuracy
+     FROM smart_match_rules WHERE match_count > 0`,
+    [],
+  ) as Record<string, number | null>;
+
+  res.json({
+    status: 'ok',
+    data: {
+      total_rules: totalRules,
+      pinned_rules: pinnedRules,
+      ai_high_rules: aiHighRules,
+      pending_review: pendingReview,
+      avg_accuracy: accuracyRow.avg_accuracy ?? 0,
+    },
   });
-
-  const updated = db.first(
-    'SELECT * FROM ai_rule_suggestions WHERE id = ?',
-    [req.params.id],
-  );
-
-  res.json({ status: 'ok', data: { ruleCreated: true, suggestion: updated } });
 });

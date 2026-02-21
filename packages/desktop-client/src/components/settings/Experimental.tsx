@@ -215,20 +215,29 @@ export function ExperimentalFeatures() {
             >
               <Trans>Budget Analysis Report</Trans>
             </FeatureToggle>
+            <FeatureToggle flag="financeOS">
+              <Trans>Finance OS (Dashboard, Navigation)</Trans>
+            </FeatureToggle>
             <FeatureToggle flag="contractManagement">
-              <Trans>Contract & Subscription Management</Trans>
+              <Trans>Contract Management</Trans>
             </FeatureToggle>
-            <FeatureToggle flag="forecastEngine">
-              <Trans>Cashflow Forecast Engine</Trans>
+            <FeatureToggle flag="aiSmartMatching">
+              <Trans>AI Smart Matching</Trans>
             </FeatureToggle>
-            <FeatureToggle flag="aiClassification">
-              <Trans>AI Transaction Classification</Trans>
+            <FeatureToggle flag="reviewQueue">
+              <Trans>Review Queue</Trans>
             </FeatureToggle>
-            <FeatureToggle flag="documentPipeline">
-              <Trans>Document & Invoice Pipeline</Trans>
+            <FeatureToggle flag="quickAdd">
+              <Trans>Quick Add (⌘N)</Trans>
             </FeatureToggle>
-            <FeatureToggle flag="intelligenceLayer">
-              <Trans>Intelligence Layer (Insights & NL Query)</Trans>
+            <FeatureToggle flag="paymentCalendar">
+              <Trans>Payment Calendar</Trans>
+            </FeatureToggle>
+            <FeatureToggle flag="germanCategories">
+              <Trans>German Category Tree</Trans>
+            </FeatureToggle>
+            <FeatureToggle flag="extendedCommandBar">
+              <Trans>Extended Command Bar</Trans>
             </FeatureToggle>
             {showServerPrefs && (
               <ServerFeatureToggle

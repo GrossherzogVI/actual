@@ -16,10 +16,10 @@ import { app as adminApp } from './admin/app';
 import { app as webhooksApp } from './webhooks/app';
 import { app as aiApp } from './ai/app';
 import { app as contractsApp } from './contracts/app';
-import { app as documentsApp } from './documents/app';
-import { app as forecastApp } from './forecast/app';
-import { app as intelligenceApp } from './intelligence/app';
-import { app as nlQueryApp } from './nl-query/app';
+import { app as reviewApp } from './review/app';
+import { app as importDataApp } from './import-data/app';
+import { app as categoriesSetupApp } from './categories-setup/app';
+import { app as quickAddApp } from './quick-add/app';
 import { installAPI } from './api';
 import { aqlQuery } from './aql';
 import { app as authApp } from './auth/app';
@@ -159,11 +159,11 @@ app.combine(
   tagsApp,
   webhooksApp,
   contractsApp,
-  forecastApp,
   aiApp,
-  documentsApp,
-  intelligenceApp,
-  nlQueryApp,
+  reviewApp,
+  importDataApp,
+  categoriesSetupApp,
+  quickAddApp,
 );
 
 export function getDefaultDocumentDir() {

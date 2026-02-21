@@ -12,10 +12,13 @@ const DEFAULT_FEATURE_FLAG_STATE: Record<FeatureFlag, boolean> = {
   customThemes: false,
   budgetAnalysisReport: false,
   contractManagement: false,
-  forecastEngine: false,
-  aiClassification: false,
-  documentPipeline: false,
-  intelligenceLayer: false,
+  financeOS: false,
+  aiSmartMatching: false,
+  reviewQueue: false,
+  quickAdd: false,
+  paymentCalendar: false,
+  germanCategories: false,
+  extendedCommandBar: false,
 };
 
 export function useFeatureFlag(name: FeatureFlag): boolean {

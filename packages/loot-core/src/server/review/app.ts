@@ -1,0 +1,180 @@
+// @ts-strict-ignore
+import * as asyncStorage from '../../platform/server/asyncStorage';
+import { createApp } from '../app';
+import { del, get, patch, post } from '../post';
+import { getServer } from '../server-config';
+
+export type ReviewItem = {
+  id: string;
+  type:
+    | 'uncategorized'
+    | 'low_confidence'
+    | 'recurring_detected'
+    | 'amount_mismatch'
+    | 'budget_suggestion'
+    | 'parked_expense';
+  priority: 'urgent' | 'review' | 'suggestion';
+  transaction_id: string | null;
+  contract_id: string | null;
+  schedule_id: string | null;
+  ai_suggestion: unknown | null;
+  ai_confidence: number | null;
+  status: 'pending' | 'accepted' | 'rejected' | 'snoozed' | 'dismissed';
+  snoozed_until: string | null;
+  resolved_at: string | null;
+  resolved_action: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ReviewCount = {
+  pending: number;
+  urgent: number;
+  review: number;
+  suggestion: number;
+};
+
+export type ReviewHandlers = {
+  'review-list': typeof reviewList;
+  'review-count': typeof reviewCount;
+  'review-update': typeof reviewUpdate;
+  'review-batch': typeof reviewBatch;
+  'review-apply': typeof reviewApply;
+  'review-dismiss': typeof reviewDismiss;
+};
+
+export const app = createApp<ReviewHandlers>();
+
+app.method('review-list', reviewList);
+app.method('review-count', reviewCount);
+app.method('review-update', reviewUpdate);
+app.method('review-batch', reviewBatch);
+app.method('review-apply', reviewApply);
+app.method('review-dismiss', reviewDismiss);
+
+async function reviewList(args?: {
+  type?: string;
+  priority?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<ReviewItem[] | { error: string }> {
+  const userToken = await asyncStorage.getItem('user-token');
+  if (!userToken) return { error: 'not-logged-in' };
+
+  const params = new URLSearchParams();
+  if (args?.type) params.set('type', args.type);
+  if (args?.priority) params.set('priority', args.priority);
+  if (args?.limit) params.set('limit', String(args.limit));
+  if (args?.offset) params.set('offset', String(args.offset));
+
+  try {
+    const res = await get(
+      getServer().BASE_SERVER + `/review?${params.toString()}`,
+      { headers: { 'X-ACTUAL-TOKEN': userToken } },
+    );
+    if (res) {
+      const parsed = JSON.parse(res);
+      if (parsed.status === 'ok') return parsed.data;
+      return { error: parsed.reason || 'unknown' };
+    }
+  } catch (err) {
+    return { error: err.message || 'network-failure' };
+  }
+  return { error: 'no-response' };
+}
+
+async function reviewCount(): Promise<ReviewCount | { error: string }> {
+  const userToken = await asyncStorage.getItem('user-token');
+  if (!userToken) return { error: 'not-logged-in' };
+
+  try {
+    const res = await get(
+      getServer().BASE_SERVER + '/review/count',
+      { headers: { 'X-ACTUAL-TOKEN': userToken } },
+    );
+    if (res) {
+      const parsed = JSON.parse(res);
+      if (parsed.status === 'ok') return parsed.data;
+      return { error: parsed.reason || 'unknown' };
+    }
+  } catch (err) {
+    return { error: err.message || 'network-failure' };
+  }
+  return { error: 'no-response' };
+}
+
+async function reviewUpdate(args: {
+  id: string;
+  status: 'accepted' | 'rejected' | 'snoozed' | 'dismissed';
+  snoozed_until?: string;
+}): Promise<ReviewItem | { error: string }> {
+  const userToken = await asyncStorage.getItem('user-token');
+  if (!userToken) return { error: 'not-logged-in' };
+
+  try {
+    const result = await patch(
+      getServer().BASE_SERVER + `/review/${args.id}`,
+      { status: args.status, snoozed_until: args.snoozed_until },
+      { 'X-ACTUAL-TOKEN': userToken },
+    );
+    return result as ReviewItem;
+  } catch (err) {
+    return { error: err.reason || err.message || 'unknown' };
+  }
+}
+
+async function reviewBatch(args: {
+  ids: string[];
+  action: 'accept' | 'reject' | 'dismiss';
+}): Promise<{ updated: number } | { error: string }> {
+  const userToken = await asyncStorage.getItem('user-token');
+  if (!userToken) return { error: 'not-logged-in' };
+
+  try {
+    const result = await post(
+      getServer().BASE_SERVER + '/review/batch',
+      args,
+      { 'X-ACTUAL-TOKEN': userToken },
+    );
+    return result as { updated: number };
+  } catch (err) {
+    return { error: err.reason || err.message || 'unknown' };
+  }
+}
+
+async function reviewApply(args: {
+  id: string;
+  action?: unknown;
+}): Promise<{ applied: boolean; result: unknown } | { error: string }> {
+  const userToken = await asyncStorage.getItem('user-token');
+  if (!userToken) return { error: 'not-logged-in' };
+
+  try {
+    const result = await post(
+      getServer().BASE_SERVER + `/review/${args.id}/apply`,
+      { action: args.action },
+      { 'X-ACTUAL-TOKEN': userToken },
+    );
+    return result as { applied: boolean; result: unknown };
+  } catch (err) {
+    return { error: err.reason || err.message || 'unknown' };
+  }
+}
+
+async function reviewDismiss(args: {
+  id: string;
+}): Promise<{ deleted: boolean } | { error: string }> {
+  const userToken = await asyncStorage.getItem('user-token');
+  if (!userToken) return { error: 'not-logged-in' };
+
+  try {
+    const result = await del(
+      getServer().BASE_SERVER + `/review/${args.id}`,
+      {},
+      { 'X-ACTUAL-TOKEN': userToken },
+    );
+    return result as { deleted: boolean };
+  } catch (err) {
+    return { error: err.reason || err.message || 'unknown' };
+  }
+}

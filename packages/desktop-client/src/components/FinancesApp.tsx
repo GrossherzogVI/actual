@@ -26,12 +26,13 @@ import { useMultiuserEnabled } from './ServerContext';
 import { Settings } from './settings';
 import { FloatableSidebar } from './sidebar';
 import { ManageTagsPage } from './tags/ManageTagsPage';
-import { AIReviewQueue } from './ai/AIReviewQueue';
-import { ContractDetail } from './contracts/ContractDetail';
+import { CalendarPage } from './calendar/CalendarPage';
+import { ToastProvider } from './common/Toast';
+import { ContractDetailPage } from './contracts/ContractDetailPage';
 import { ContractsPage } from './contracts/ContractsPage';
-import { DocumentDetail } from './documents/DocumentDetail';
-import { DocumentsPage } from './documents/DocumentsPage';
-import { ForecastPage } from './forecast/ForecastPage';
+import { DashboardPage } from './dashboard/DashboardPage';
+import { ImportPage } from './import/ImportPage';
+import { ReviewQueuePage } from './review/ReviewQueuePage';
 import { Titlebar } from './Titlebar';
 
 import { accountQueries } from '@desktop-client/accounts';
@@ -200,6 +201,7 @@ export function FinancesApp() {
   const scrollableRef = useRef<HTMLDivElement>(null);
 
   return (
+    <ToastProvider>
     <View style={{ height: '100%' }}>
       <RouterBehaviors />
       <GlobalKeys />
@@ -373,12 +375,13 @@ export function FinancesApp() {
                     }
                   />
                 )}
+                <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/contracts" element={<ContractsPage />} />
-                <Route path="/contracts/:id" element={<ContractDetail />} />
-                <Route path="/forecast" element={<ForecastPage />} />
-                <Route path="/ai-review" element={<AIReviewQueue />} />
-                <Route path="/documents" element={<DocumentsPage />} />
-                <Route path="/documents/:id" element={<DocumentDetail />} />
+                <Route path="/contracts/:id" element={<ContractDetailPage />} />
+                <Route path="/calendar" element={<CalendarPage />} />
+                <Route path="/review" element={<ReviewQueuePage />} />
+                <Route path="/import" element={<ImportPage />} />
+                <Route path="/import/:type" element={<ImportPage />} />
                 {/* redirect all other traffic to the budget page */}
                 <Route path="/*" element={<Navigate to="/budget" replace />} />
               </Routes>
@@ -400,5 +403,6 @@ export function FinancesApp() {
         </View>
       </View>
     </View>
+    </ToastProvider>
   );
 }

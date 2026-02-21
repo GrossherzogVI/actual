@@ -105,16 +105,6 @@ export type MarkdownWidget = AbstractWidget<
   { content: string; text_align?: 'left' | 'right' | 'center' }
 >;
 
-export type ContractsWidget = AbstractWidget<'contracts-card', null>;
-export type ForecastWidget = AbstractWidget<
-  'forecast-card',
-  { horizon?: number } | null
->;
-export type AIStatsWidget = AbstractWidget<
-  'ai-stats-card',
-  { name?: string } | null
->;
-
 type SpecializedWidget =
   | NetWorthWidget
   | CashFlowWidget
@@ -124,10 +114,7 @@ type SpecializedWidget =
   | MarkdownWidget
   | SummaryWidget
   | CalendarWidget
-  | FormulaWidget
-  | ContractsWidget
-  | ForecastWidget
-  | AIStatsWidget;
+  | FormulaWidget;
 export type DashboardWidgetEntity = SpecializedWidget | CustomReportWidget;
 export type NewDashboardWidgetEntity = Omit<
   DashboardWidgetEntity,

@@ -19,10 +19,10 @@ import * as syncApp from './app-sync';
 import * as webhooksApp from './app-webhooks';
 import * as aiApp from './ai/app-ai';
 import * as contractsApp from './contracts/app-contracts';
-import * as documentsApp from './documents/app-documents';
-import * as forecastApp from './forecast/app-forecast';
-import * as intelligenceApp from './intelligence/app-intelligence';
-import * as nlQueryApp from './nl-query/app-nl-query';
+import * as reviewApp from './review/app-review';
+import * as importApp from './import/app-import';
+import * as categoriesApp from './categories/app-categories';
+import * as quickAddApp from './quick-add/app-quick-add';
 import { config } from './load-config';
 
 const app = express();
@@ -76,11 +76,11 @@ app.use('/admin', adminApp.handlers);
 app.use('/openid', openidApp.handlers);
 app.use('/webhooks', webhooksApp.handlers);
 app.use('/contracts', contractsApp.handlers);
-app.use('/forecast', forecastApp.handlers);
 app.use('/ai', aiApp.handlers);
-app.use('/documents', documentsApp.handlers);
-app.use('/intelligence', intelligenceApp.handlers);
-app.use('/nl-query', nlQueryApp.handlers);
+app.use('/review', reviewApp.handlers);
+app.use('/import', importApp.handlers);
+app.use('/categories-setup', categoriesApp.handlers);
+app.use('/quick-add', quickAddApp.handlers);
 
 app.get('/mode', (req, res) => {
   res.send(config.get('mode'));

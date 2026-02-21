@@ -219,4 +219,35 @@ export const theme = {
   tooltipBorder: 'var(--color-tooltipBorder)',
   calendarCellBackground: 'var(--color-calendarCellBackground)',
   overlayBackground: 'var(--color-overlayBackground)',
+
+  // Status / health colors
+  healthGreen: 'var(--color-healthGreen)',
+  healthYellow: 'var(--color-healthYellow)',
+  healthRed: 'var(--color-healthRed)',
+
+  // Elevated card / badge / toast
+  cardBackgroundElevated: 'var(--color-cardBackgroundElevated)',
+  cardBorderSubtle: 'var(--color-cardBorderSubtle)',
+  badgeBackground: 'var(--color-badgeBackground)',
+  badgeText: 'var(--color-badgeText)',
+  toastBackground: 'var(--color-toastBackground)',
+  toastText: 'var(--color-toastText)',
+
+  // Skeleton loading
+  skeletonBase: 'var(--color-skeletonBase)',
+  skeletonHighlight: 'var(--color-skeletonHighlight)',
+
+  // Category colors (12 L1 groups — German category tree)
+  categoryWohnen: 'var(--color-categoryWohnen)',
+  categoryMobilitaet: 'var(--color-categoryMobilitaet)',
+  categoryLebensmittel: 'var(--color-categoryLebensmittel)',
+  categoryFreizeit: 'var(--color-categoryFreizeit)',
+  categoryVersicherungen: 'var(--color-categoryVersicherungen)',
+  categoryFinanzen: 'var(--color-categoryFinanzen)',
+  categoryGesundheit: 'var(--color-categoryGesundheit)',
+  categoryEinkaeufe: 'var(--color-categoryEinkaeufe)',
+  categoryBildung: 'var(--color-categoryBildung)',
+  categoryKinder: 'var(--color-categoryKinder)',
+  categorySonstiges: 'var(--color-categorySonstiges)',
+  categoryEinkommen: 'var(--color-categoryEinkommen)',
 };

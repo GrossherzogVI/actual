@@ -20,10 +20,10 @@ import type { TransactionHandlers } from '../server/transactions/app';
 import type { WebhookHandlers } from '../server/webhooks/app';
 import type { AIHandlers } from '../server/ai/app';
 import type { ContractHandlers } from '../server/contracts/app';
-import type { DocumentHandlers } from '../server/documents/app';
-import type { ForecastHandlers } from '../server/forecast/app';
-import type { IntelligenceHandlers } from '../server/intelligence/app';
-import type { NLQueryHandlers } from '../server/nl-query/app';
+import type { ReviewHandlers } from '../server/review/app';
+import type { ImportDataHandlers } from '../server/import-data/app';
+import type { CategoriesSetupHandlers } from '../server/categories-setup/app';
+import type { QuickAddHandlers } from '../server/quick-add/app';
 
 import type { ApiHandlers } from './api-handlers';
 import type { ServerHandlers } from './server-handlers';
@@ -51,10 +51,10 @@ export type Handlers = {} & ServerHandlers &
   AuthHandlers &
   WebhookHandlers &
   ContractHandlers &
-  ForecastHandlers &
   AIHandlers &
-  DocumentHandlers &
-  IntelligenceHandlers &
-  NLQueryHandlers;
+  ReviewHandlers &
+  ImportDataHandlers &
+  CategoriesSetupHandlers &
+  QuickAddHandlers;
 
 export type HandlerFunctions = Handlers[keyof Handlers];

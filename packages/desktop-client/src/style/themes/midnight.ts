@@ -239,6 +239,37 @@ export const calendarCellBackground = colorPalette.navy900;
 
 export const overlayBackground = 'rgba(0, 0, 0, 0.3)';
 
+// Status / health colors (same in light + dark)
+export const healthGreen = '#22C55E';
+export const healthYellow = '#EAB308';
+export const healthRed = '#EF4444';
+
+// Elevated card / badge / toast
+export const cardBackgroundElevated = colorPalette.gray500;
+export const cardBorderSubtle = colorPalette.gray600;
+export const badgeBackground = colorPalette.purple300;
+export const badgeText = colorPalette.white;
+export const toastBackground = colorPalette.gray900;
+export const toastText = colorPalette.gray100;
+
+// Skeleton loading
+export const skeletonBase = colorPalette.gray600;
+export const skeletonHighlight = colorPalette.gray500;
+
+// Category colors — brand colors, same in both themes
+export const categoryWohnen = '#4A90D9';
+export const categoryMobilitaet = '#F5A623';
+export const categoryLebensmittel = '#7ED321';
+export const categoryFreizeit = '#BD10E0';
+export const categoryVersicherungen = '#9013FE';
+export const categoryFinanzen = '#417505';
+export const categoryGesundheit = '#D0021B';
+export const categoryEinkaeufe = '#F8E71C';
+export const categoryBildung = '#50E3C2';
+export const categoryKinder = '#FF6B6B';
+export const categorySonstiges = '#9B9B9B';
+export const categoryEinkommen = '#7ED321';
+
 // Chart colors - Qualitative scale (9 colors)
 export const chartQual1 = colorPalette.chartQual1;
 export const chartQual2 = colorPalette.chartQual2;
