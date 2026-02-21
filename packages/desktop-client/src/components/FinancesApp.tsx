@@ -26,6 +26,12 @@ import { useMultiuserEnabled } from './ServerContext';
 import { Settings } from './settings';
 import { FloatableSidebar } from './sidebar';
 import { ManageTagsPage } from './tags/ManageTagsPage';
+import { AIReviewQueue } from './ai/AIReviewQueue';
+import { ContractDetail } from './contracts/ContractDetail';
+import { ContractsPage } from './contracts/ContractsPage';
+import { DocumentDetail } from './documents/DocumentDetail';
+import { DocumentsPage } from './documents/DocumentsPage';
+import { ForecastPage } from './forecast/ForecastPage';
 import { Titlebar } from './Titlebar';
 
 import { accountQueries } from '@desktop-client/accounts';
@@ -367,54 +373,12 @@ export function FinancesApp() {
                     }
                   />
                 )}
-                <Route
-                  path="/contracts"
-                  lazy={() =>
-                    import('./contracts/ContractsPage').then(m => ({
-                      Component: m.ContractsPage,
-                    }))
-                  }
-                />
-                <Route
-                  path="/contracts/:id"
-                  lazy={() =>
-                    import('./contracts/ContractDetail').then(m => ({
-                      Component: m.ContractDetail,
-                    }))
-                  }
-                />
-                <Route
-                  path="/forecast"
-                  lazy={() =>
-                    import('./forecast/ForecastPage').then(m => ({
-                      Component: m.ForecastPage,
-                    }))
-                  }
-                />
-                <Route
-                  path="/ai-review"
-                  lazy={() =>
-                    import('./ai/AIReviewQueue').then(m => ({
-                      Component: m.AIReviewQueue,
-                    }))
-                  }
-                />
-                <Route
-                  path="/documents"
-                  lazy={() =>
-                    import('./documents/DocumentsPage').then(m => ({
-                      Component: m.DocumentsPage,
-                    }))
-                  }
-                />
-                <Route
-                  path="/documents/:id"
-                  lazy={() =>
-                    import('./documents/DocumentDetail').then(m => ({
-                      Component: m.DocumentDetail,
-                    }))
-                  }
-                />
+                <Route path="/contracts" element={<ContractsPage />} />
+                <Route path="/contracts/:id" element={<ContractDetail />} />
+                <Route path="/forecast" element={<ForecastPage />} />
+                <Route path="/ai-review" element={<AIReviewQueue />} />
+                <Route path="/documents" element={<DocumentsPage />} />
+                <Route path="/documents/:id" element={<DocumentDetail />} />
                 {/* redirect all other traffic to the budget page */}
                 <Route path="/*" element={<Navigate to="/budget" replace />} />
               </Routes>
