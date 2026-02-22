@@ -103,6 +103,7 @@ export type ContractFormData = {
   type: string;
   amount: string; // display string, converted to cents on save
   interval: string;
+  category_id: string;
   start_date: string;
   end_date: string;
   notice_period_months: string;
@@ -120,6 +121,7 @@ export const EMPTY_CONTRACT_FORM: ContractFormData = {
   type: '',
   amount: '',
   interval: 'monthly',
+  category_id: '',
   start_date: '',
   end_date: '',
   notice_period_months: '',

@@ -9,6 +9,8 @@ import type { ScheduleEntity } from 'loot-core/types/models';
 import { useMetadataPref } from '@desktop-client/hooks/useMetadataPref';
 import { usePayees } from '@desktop-client/hooks/usePayees';
 import { useSchedules } from '@desktop-client/hooks/useSchedules';
+import { useSheetValue } from '@desktop-client/hooks/useSheetValue';
+import { allAccountBalance } from '@desktop-client/spreadsheet/bindings';
 
 import type { CalendarEntry, WeekData } from '../types';
 
@@ -146,6 +148,7 @@ interface ContractRaw {
   start_date: string | null;
   status: string;
   type: string | null;
+  schedule_id: string | null;
 }
 
 interface UseCalendarDataResult {
@@ -188,9 +191,7 @@ export function useCalendarData(): UseCalendarDataResult {
     return map;
   }, [payees]);
 
-  // We use 0 as a placeholder — real balance would come from account data.
-  // For the MVP we show relative projections from 0 so the shape is visible.
-  const startingBalance = 0;
+  const startingBalance = useSheetValue<'account', 'accounts-balance'>(allAccountBalance()) ?? 0;
 
   const loading = contractsLoading || schedulesLoading;
 
@@ -251,8 +252,13 @@ export function useCalendarData(): UseCalendarDataResult {
     }
 
     // --- Schedule entries (from Actual's schedule engine) ---
+    // Skip schedules that are already represented by a contract entry
+    const contractScheduleIds = new Set(
+      contracts.filter(c => c.schedule_id).map(c => c.schedule_id!),
+    );
     for (const schedule of schedules) {
       if (schedule.completed || !schedule.next_date) continue;
+      if (contractScheduleIds.has(schedule.id)) continue;
 
       const nextDate = schedule.next_date;
       // Only include schedules whose next_date falls within our 30-day window

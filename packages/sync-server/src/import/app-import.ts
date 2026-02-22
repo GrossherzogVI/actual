@@ -1,3 +1,5 @@
+import { createHash } from 'crypto';
+
 import express from 'express';
 
 import {
@@ -8,11 +10,32 @@ import {
 const app = express();
 
 export { app as handlers };
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 app.use(requestLoggerMiddleware);
 app.use(validateSessionMiddleware);
 
-// Supported German bank CSV formats with their column mappings
+// ─── Types ──────────────────────────────────────────────────────────────────
+
+interface ImportPreviewRow {
+  date: string;
+  payee: string;
+  amount: number;
+  notes: string | null;
+  imported_id: string;
+  account_id?: string;
+  suggested_category_id?: string;
+  confidence?: number;
+}
+
+interface ImportPreviewResult {
+  rows: ImportPreviewRow[];
+  total: number;
+  detected_format: { id: string; name: string } | null;
+  warnings: string[];
+}
+
+// ─── Supported German bank CSV formats with their column mappings ───────────
+
 const BANK_FORMATS = [
   {
     id: 'dkb',
@@ -105,16 +128,125 @@ const BANK_FORMATS = [
     },
     date_format: 'DD.MM.YYYY',
   },
-];
+] as const;
+
+type BankFormat = (typeof BANK_FORMATS)[number];
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+/**
+ * Parse a German-style amount string to integer cents.
+ * Handles: "1.234,56", "-1.234,56", "(1.234,56)", "1234,56", "1234.56", "-1234.56"
+ */
+function parseGermanAmount(str: string): number {
+  if (!str || typeof str !== 'string') return 0;
+
+  let s = str.trim();
+  let negative = false;
+
+  // Handle parentheses as negative: (1.234,56)
+  if (s.startsWith('(') && s.endsWith(')')) {
+    negative = true;
+    s = s.slice(1, -1).trim();
+  }
+
+  // Handle leading minus
+  if (s.startsWith('-')) {
+    negative = true;
+    s = s.slice(1).trim();
+  }
+
+  // Handle trailing minus (some German banks)
+  if (s.endsWith('-')) {
+    negative = true;
+    s = s.slice(0, -1).trim();
+  }
+
+  // Remove currency symbols and whitespace
+  s = s.replace(/[€$\s]/g, '');
+
+  // Determine format: German (1.234,56) vs English (1,234.56) vs plain (1234.56)
+  const lastComma = s.lastIndexOf(',');
+  const lastDot = s.lastIndexOf('.');
+
+  let cents: number;
+
+  if (lastComma > lastDot) {
+    // German format: dots are thousands separators, comma is decimal
+    s = s.replace(/\./g, '').replace(',', '.');
+    cents = Math.round(parseFloat(s) * 100);
+  } else if (lastDot > lastComma) {
+    // English/plain format: commas are thousands separators, dot is decimal
+    s = s.replace(/,/g, '');
+    cents = Math.round(parseFloat(s) * 100);
+  } else if (lastComma !== -1 && lastDot === -1) {
+    // Only comma present — treat as decimal separator
+    s = s.replace(',', '.');
+    cents = Math.round(parseFloat(s) * 100);
+  } else {
+    // No decimal separator — could be whole euros or already cents
+    cents = Math.round(parseFloat(s) * 100);
+  }
+
+  if (isNaN(cents)) return 0;
+  return negative ? -cents : cents;
+}
+
+/**
+ * Parse a date string to YYYY-MM-DD.
+ * Handles: DD.MM.YYYY, DD.MM.YY, YYYY-MM-DD, DD/MM/YYYY
+ */
+function parseGermanDate(str: string, _formatHint?: string): string {
+  if (!str || typeof str !== 'string') return '';
+  const s = str.trim();
+
+  // Already YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+
+  // DD.MM.YYYY or DD/MM/YYYY
+  const matchFull = s.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/);
+  if (matchFull) {
+    const [, day, month, year] = matchFull;
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+
+  // DD.MM.YY
+  const matchShort = s.match(/^(\d{1,2})[./](\d{1,2})[./](\d{2})$/);
+  if (matchShort) {
+    const [, day, month, shortYear] = matchShort;
+    const year = parseInt(shortYear) > 50 ? `19${shortYear}` : `20${shortYear}`;
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+
+  // Fallback: try Date constructor
+  const parsed = new Date(s);
+  if (!isNaN(parsed.getTime())) {
+    return parsed.toISOString().slice(0, 10);
+  }
+
+  return '';
+}
+
+/**
+ * Generate a deterministic import ID for dedup.
+ */
+function generateImportedId(
+  date: string,
+  payee: string,
+  amount: number,
+  rowIndex: number,
+): string {
+  const input = `${date}|${payee}|${amount}|${rowIndex}`;
+  return createHash('sha256').update(input).digest('hex').slice(0, 16);
+}
 
 // Detect bank format from CSV header line
-function detectBankFormat(headers: string[]): (typeof BANK_FORMATS)[number] | null {
-  // Try to match by looking for known column names
+function detectBankFormat(headers: string[]): BankFormat | null {
+  const headersLower = headers.map(h => h.toLowerCase().trim());
   for (const format of BANK_FORMATS) {
     if (format.id === 'finanzguru') continue; // XLSX only
     const dateCol = format.columns.date.toLowerCase();
     const payeeCol = format.columns.payee.toLowerCase();
-    const headersLower = headers.map(h => h.toLowerCase().trim());
     if (
       headersLower.some(h => h.includes(dateCol)) &&
       headersLower.some(h => h.includes(payeeCol))
@@ -128,13 +260,21 @@ function detectBankFormat(headers: string[]): (typeof BANK_FORMATS)[number] | nu
 // Detect recurring patterns in transaction list
 function detectRecurringPatterns(
   transactions: Array<{ payee: string; amount: number; date: string }>,
-): Array<{ payee: string; amount: number; likely_interval: string; occurrence_count: number }> {
-  const payeeGroups: Record<string, { amounts: number[]; dates: string[] }> = {};
+): Array<{
+  payee: string;
+  amount: number;
+  likely_interval: string;
+  occurrence_count: number;
+}> {
+  const payeeGroups: Record<
+    string,
+    { amounts: number[]; dates: string[]; originalPayee: string }
+  > = {};
 
   for (const tx of transactions) {
     const key = tx.payee.toLowerCase().trim();
     if (!payeeGroups[key]) {
-      payeeGroups[key] = { amounts: [], dates: [] };
+      payeeGroups[key] = { amounts: [], dates: [], originalPayee: tx.payee };
     }
     payeeGroups[key].amounts.push(tx.amount);
     payeeGroups[key].dates.push(tx.date);
@@ -154,7 +294,7 @@ function detectRecurringPatterns(
     const amounts = group.amounts;
     const minAmount = Math.min(...amounts);
     const maxAmount = Math.max(...amounts);
-    if (Math.abs(maxAmount - minAmount) > Math.abs(minAmount) * 0.1) continue; // >10% variance
+    if (Math.abs(maxAmount - minAmount) > Math.abs(minAmount) * 0.1) continue;
 
     // Estimate interval from date gaps
     const sortedDates = group.dates
@@ -166,7 +306,9 @@ function detectRecurringPatterns(
 
     const gaps: number[] = [];
     for (let i = 1; i < sortedDates.length; i++) {
-      gaps.push((sortedDates[i] - sortedDates[i - 1]) / (1000 * 60 * 60 * 24));
+      gaps.push(
+        (sortedDates[i] - sortedDates[i - 1]) / (1000 * 60 * 60 * 24),
+      );
     }
     const avgGap = gaps.reduce((a, b) => a + b, 0) / gaps.length;
 
@@ -179,14 +321,11 @@ function detectRecurringPatterns(
 
     if (likely_interval === 'unknown') continue;
 
-    // Find the original payee (not lowercased)
-    const originalPayee = transactions.find(
-      t => t.payee.toLowerCase().trim() === Object.keys(payeeGroups).find(k => k === Object.keys(payeeGroups).find(k2 => k2 === k)),
-    )?.payee ?? '';
-
     patterns.push({
-      payee: originalPayee || group.dates[0], // fallback
-      amount: Math.round(amounts.reduce((a, b) => a + b, 0) / amounts.length),
+      payee: group.originalPayee,
+      amount: Math.round(
+        amounts.reduce((a, b) => a + b, 0) / amounts.length,
+      ),
       likely_interval,
       occurrence_count: group.dates.length,
     });
@@ -195,7 +334,113 @@ function detectRecurringPatterns(
   return patterns;
 }
 
-// ─── Routes ────────────────────────────────────────────────────────────────
+/**
+ * Find the header row index in parsed CSV rows by looking for known column names.
+ */
+function findHeaderRow(
+  rows: string[][],
+  format: BankFormat | null,
+): number {
+  const targetCols = format
+    ? [format.columns.date.toLowerCase(), format.columns.amount.toLowerCase()]
+    : ['buchungstag', 'betrag', 'date', 'amount', 'buchung', 'datum'];
+
+  for (let i = 0; i < Math.min(rows.length, 20); i++) {
+    const rowLower = rows[i].map(c => c.toLowerCase().trim());
+    const matches = targetCols.filter(col =>
+      rowLower.some(cell => cell.includes(col)),
+    );
+    if (matches.length >= 2 || (format && matches.length >= 1)) {
+      return i;
+    }
+  }
+  return 0;
+}
+
+/**
+ * Map a parsed CSV row (keyed by header) to an ImportPreviewRow using column mappings.
+ */
+function mapRowToPreview(
+  row: Record<string, string>,
+  format: BankFormat | null,
+  headers: string[],
+  rowIndex: number,
+): ImportPreviewRow | null {
+  let dateStr = '';
+  let payeeStr = '';
+  let amountStr = '';
+  let notesStr = '';
+
+  if (format) {
+    // Use format column mapping — find the actual header that matches
+    const findCol = (target: string) => {
+      const targetLower = target.toLowerCase();
+      const header = headers.find(h =>
+        h.toLowerCase().trim().includes(targetLower),
+      );
+      return header ? (row[header] ?? '') : '';
+    };
+
+    dateStr = findCol(format.columns.date);
+    payeeStr = findCol(format.columns.payee);
+    amountStr = findCol(format.columns.amount);
+    notesStr = findCol(format.columns.notes);
+  } else {
+    // Best-effort: try common column names
+    const findByNames = (names: string[]) => {
+      for (const name of names) {
+        const header = headers.find(h =>
+          h.toLowerCase().trim().includes(name.toLowerCase()),
+        );
+        if (header && row[header]) return row[header];
+      }
+      return '';
+    };
+
+    dateStr = findByNames([
+      'Buchungstag',
+      'Buchung',
+      'Datum',
+      'Date',
+      'Valuta',
+    ]);
+    payeeStr = findByNames([
+      'Empfänger',
+      'Payee',
+      'Auftraggeber',
+      'Beguenstigter',
+      'Name',
+    ]);
+    amountStr = findByNames(['Betrag', 'Amount', 'Umsatz']);
+    notesStr = findByNames([
+      'Verwendungszweck',
+      'Payment reference',
+      'Buchungstext',
+      'Description',
+    ]);
+  }
+
+  const date = parseGermanDate(
+    dateStr,
+    format?.date_format,
+  );
+  const amount = parseGermanAmount(amountStr);
+
+  if (!date) return null;
+
+  const payee = payeeStr.trim() || 'Unknown';
+  const notes = notesStr.trim() || null;
+
+  return {
+    date,
+    payee,
+    amount,
+    notes,
+    imported_id: generateImportedId(date, payee, amount, rowIndex),
+  };
+}
+
+// ─── Routes ─────────────────────────────────────────────────────────────────
 
 /** GET /import/bank-formats — list supported German bank CSV formats */
 app.get('/bank-formats', (_req, res) => {
@@ -210,124 +455,260 @@ app.get('/bank-formats', (_req, res) => {
   });
 });
 
-/** POST /import/finanzguru — parse Finanzguru XLSX and return preview */
-app.post('/finanzguru', (req, res) => {
-  // Finanzguru XLSX parsing requires the xlsx library.
-  // Returning a structured preview stub until xlsx is installed.
-  // The frontend sends the file as base64 in req.body.file_base64
-  const { file_base64 } = req.body ?? {};
+/** POST /import/csv — parse CSV file, auto-detect bank format, return preview */
+app.post('/csv', async (req, res) => {
+  try {
+    const { fileData, bankFormat, delimiter, encoding } = req.body ?? {};
 
-  if (!file_base64) {
-    res.status(400).json({ status: 'error', reason: 'file-required' });
-    return;
-  }
+    if (!fileData) {
+      res.status(400).json({ status: 'error', reason: 'file-data-required' });
+      return;
+    }
 
-  // Stub: return preview metadata. Real implementation would:
-  // 1. Decode base64 to buffer
-  // 2. Parse with xlsx.read(buffer, { type: 'buffer' })
-  // 3. Extract sheet data and map columns
-  res.json({
-    status: 'ok',
-    data: {
-      format: 'finanzguru',
-      preview: [],
-      total_rows: 0,
-      columns_detected: ['Datum', 'Empfänger', 'Betrag', 'Kategorie', 'Verwendungszweck'],
-      message: 'XLSX parsing not yet implemented — install xlsx package',
-    },
-  });
-});
+    const warnings: string[] = [];
 
-/** POST /import/finanzguru/commit — commit mapped Finanzguru data */
-app.post('/finanzguru/commit', (req, res) => {
-  const { transactions, category_map } = req.body ?? {};
+    // 1. Decode base64 to Buffer
+    const rawBuffer = Buffer.from(fileData, 'base64');
 
-  if (!Array.isArray(transactions)) {
-    res.status(400).json({ status: 'error', reason: 'transactions-required' });
-    return;
-  }
+    // 2. Detect/convert encoding
+    const iconv = await import('iconv-lite');
+    let csvText: string;
 
-  // Stub: real implementation would write to loot-core via handler bridge
-  res.json({
-    status: 'ok',
-    data: {
-      imported: 0,
-      skipped: 0,
-      message: 'Commit not yet implemented',
-    },
-  });
-});
+    const targetEncoding = encoding || 'ISO-8859-1';
+    if (
+      targetEncoding.toLowerCase() === 'utf-8' ||
+      targetEncoding.toLowerCase() === 'utf8'
+    ) {
+      csvText = rawBuffer.toString('utf-8');
+      // Strip BOM if present
+      if (csvText.charCodeAt(0) === 0xfeff) {
+        csvText = csvText.slice(1);
+      }
+    } else {
+      csvText = iconv.default.decode(rawBuffer, targetEncoding);
+    }
 
-/** POST /import/csv — parse CSV, auto-detect bank format, return preview */
-app.post('/csv', (req, res) => {
-  const { csv_text, bank_format_id } = req.body ?? {};
+    // 3. Parse with csv-parse/sync
+    const { parse } = await import('csv-parse/sync');
 
-  if (!csv_text) {
-    res.status(400).json({ status: 'error', reason: 'csv-text-required' });
-    return;
-  }
+    // Detect delimiter from first line if not provided
+    const firstLine = csvText.split('\n')[0] ?? '';
+    const effectiveDelimiter =
+      delimiter || (firstLine.includes(';') ? ';' : ',');
 
-  const lines = csv_text.split('\n').filter((l: string) => l.trim());
-  if (lines.length < 2) {
-    res.status(400).json({ status: 'error', reason: 'csv-too-short' });
-    return;
-  }
+    let allRows: string[][];
+    try {
+      allRows = parse(csvText, {
+        delimiter: effectiveDelimiter,
+        relax_column_count: true,
+        relax_quotes: true,
+        skip_empty_lines: true,
+        trim: true,
+      }) as string[][];
+    } catch (parseError: unknown) {
+      const msg =
+        parseError instanceof Error ? parseError.message : 'Unknown parse error';
+      res
+        .status(400)
+        .json({ status: 'error', reason: 'csv-parse-failed', detail: msg });
+      return;
+    }
 
-  // Auto-detect delimiter
-  const firstLine = lines[0];
-  const delimiter = firstLine.includes(';') ? ';' : ',';
-  const headers = firstLine.split(delimiter).map((h: string) => h.trim().replace(/^"|"$/g, ''));
+    if (allRows.length < 2) {
+      res.status(400).json({ status: 'error', reason: 'csv-too-short' });
+      return;
+    }
 
-  // Detect or use provided bank format
-  let detectedFormat = null;
-  if (bank_format_id) {
-    detectedFormat = BANK_FORMATS.find(f => f.id === bank_format_id) ?? null;
-  }
-  if (!detectedFormat) {
-    detectedFormat = detectBankFormat(headers);
-  }
+    // 4. Auto-detect bank format
+    let detectedFormat: BankFormat | null = null;
+    if (bankFormat) {
+      detectedFormat =
+        BANK_FORMATS.find(f => f.id === bankFormat) ?? null;
+    }
 
-  // Parse data rows (up to 5 for preview)
-  const dataRows = lines.slice(1, 6).map((line: string) => {
-    const values = line.split(delimiter).map((v: string) => v.trim().replace(/^"|"$/g, ''));
-    const row: Record<string, string> = {};
-    headers.forEach((header: string, i: number) => {
-      row[header] = values[i] ?? '';
-    });
-    return row;
-  });
+    // Find header row
+    const headerRowIdx = findHeaderRow(allRows, detectedFormat);
+    const headers = allRows[headerRowIdx].map(h =>
+      h.replace(/^"|"$/g, '').trim(),
+    );
 
-  res.json({
-    status: 'ok',
-    data: {
+    if (!detectedFormat) {
+      detectedFormat = detectBankFormat(headers);
+    }
+
+    if (detectedFormat) {
+      warnings.push(`Auto-detected format: ${detectedFormat.name}`);
+    } else {
+      warnings.push(
+        'Could not auto-detect bank format. Using best-effort column mapping.',
+      );
+    }
+
+    // 5. Map data rows
+    const dataRows = allRows.slice(headerRowIdx + 1);
+    const rows: ImportPreviewRow[] = [];
+    let skippedRows = 0;
+
+    for (let i = 0; i < dataRows.length; i++) {
+      const rawRow = dataRows[i];
+      const row: Record<string, string> = {};
+      headers.forEach((header, idx) => {
+        row[header] = (rawRow[idx] ?? '').replace(/^"|"$/g, '').trim();
+      });
+
+      const mapped = mapRowToPreview(row, detectedFormat, headers, i);
+      if (mapped) {
+        rows.push(mapped);
+      } else {
+        skippedRows++;
+      }
+    }
+
+    if (skippedRows > 0) {
+      warnings.push(
+        `Skipped ${skippedRows} rows due to missing or unparseable date.`,
+      );
+    }
+
+    const result: ImportPreviewResult = {
+      rows,
+      total: rows.length,
       detected_format: detectedFormat
         ? { id: detectedFormat.id, name: detectedFormat.name }
         : null,
-      headers,
-      preview_rows: dataRows,
-      total_rows: lines.length - 1,
-    },
-  });
+      warnings,
+    };
+
+    res.json({ status: 'ok', data: result });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    console.error('CSV import error:', msg);
+    res.status(500).json({ status: 'error', reason: 'internal', detail: msg });
+  }
 });
 
-/** POST /import/csv/commit — commit mapped CSV data */
-app.post('/csv/commit', (req, res) => {
-  const { transactions } = req.body ?? {};
+/** POST /import/finanzguru — parse Finanzguru XLSX and return preview */
+app.post('/finanzguru', async (req, res) => {
+  try {
+    const { fileData, accountMapping } = req.body ?? {};
 
-  if (!Array.isArray(transactions)) {
-    res.status(400).json({ status: 'error', reason: 'transactions-required' });
-    return;
+    if (!fileData) {
+      res.status(400).json({ status: 'error', reason: 'file-data-required' });
+      return;
+    }
+
+    const warnings: string[] = [];
+
+    // 1. Decode base64 to buffer
+    const buffer = Buffer.from(fileData, 'base64');
+
+    // 2. Parse with xlsx (dynamically imported, may not have types installed)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let XLSX: any;
+    try {
+      // Use string variable to bypass TS module resolution
+      const xlsxModule = 'xlsx';
+      XLSX = await import(xlsxModule);
+    } catch {
+      res.status(500).json({
+        status: 'error',
+        reason: 'xlsx-not-installed',
+        detail: 'The xlsx package is not installed. Run yarn install.',
+      });
+      return;
+    }
+    const workbook = XLSX.read(buffer, { type: 'buffer' });
+
+    const sheetName = workbook.SheetNames[0];
+    if (!sheetName) {
+      res
+        .status(400)
+        .json({ status: 'error', reason: 'no-sheets-found' });
+      return;
+    }
+
+    const sheet = workbook.Sheets[sheetName];
+    const jsonRows = XLSX.utils.sheet_to_json(sheet, {
+      defval: '',
+    }) as Record<string, unknown>[];
+
+    if (jsonRows.length === 0) {
+      res.status(400).json({ status: 'error', reason: 'xlsx-empty' });
+      return;
+    }
+
+    // 3. Map Finanzguru columns
+    const finanzguruFormat = BANK_FORMATS.find(f => f.id === 'finanzguru')!;
+    const acctMap: Record<string, string> = accountMapping ?? {};
+
+    const rows: ImportPreviewRow[] = [];
+    let skippedRows = 0;
+
+    for (let i = 0; i < jsonRows.length; i++) {
+      const raw = jsonRows[i];
+
+      const dateStr = String(raw[finanzguruFormat.columns.date] ?? '');
+      const payeeStr = String(raw[finanzguruFormat.columns.payee] ?? '');
+      const amountStr = String(raw[finanzguruFormat.columns.amount] ?? '');
+      const notesStr = String(
+        raw[finanzguruFormat.columns.notes] ?? '',
+      );
+      const ibanStr = String(raw[finanzguruFormat.columns.iban] ?? '');
+      const categoryStr = String(
+        raw[(finanzguruFormat.columns as Record<string, string>).category] ?? '',
+      );
+
+      const date = parseGermanDate(dateStr, finanzguruFormat.date_format);
+      const amount = parseGermanAmount(amountStr);
+
+      if (!date) {
+        skippedRows++;
+        continue;
+      }
+
+      const payee = payeeStr.trim() || 'Unknown';
+      const notes = [notesStr.trim(), categoryStr ? `[${categoryStr}]` : '']
+        .filter(Boolean)
+        .join(' ') || null;
+
+      const row: ImportPreviewRow = {
+        date,
+        payee,
+        amount,
+        notes,
+        imported_id: generateImportedId(date, payee, amount, i),
+      };
+
+      // Map IBAN to account_id if mapping provided
+      if (ibanStr && acctMap[ibanStr]) {
+        row.account_id = acctMap[ibanStr];
+      }
+
+      rows.push(row);
+    }
+
+    if (skippedRows > 0) {
+      warnings.push(
+        `Skipped ${skippedRows} rows due to missing or unparseable date.`,
+      );
+    }
+
+    const result: ImportPreviewResult = {
+      rows,
+      total: rows.length,
+      detected_format: {
+        id: finanzguruFormat.id,
+        name: finanzguruFormat.name,
+      },
+      warnings,
+    };
+
+    res.json({ status: 'ok', data: result });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Finanzguru import error:', msg);
+    res.status(500).json({ status: 'error', reason: 'internal', detail: msg });
   }
-
-  // Stub: real implementation writes to loot-core
-  res.json({
-    status: 'ok',
-    data: {
-      imported: 0,
-      skipped: 0,
-      message: 'Commit not yet implemented',
-    },
-  });
 });
 
 /** POST /import/detect-contracts — scan imported transactions for recurring patterns */
@@ -335,7 +716,9 @@ app.post('/detect-contracts', (req, res) => {
   const { transactions } = req.body ?? {};
 
   if (!Array.isArray(transactions)) {
-    res.status(400).json({ status: 'error', reason: 'transactions-required' });
+    res
+      .status(400)
+      .json({ status: 'error', reason: 'transactions-required' });
     return;
   }
 

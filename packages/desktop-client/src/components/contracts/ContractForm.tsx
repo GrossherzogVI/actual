@@ -10,6 +10,7 @@ import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
 import { View } from '@actual-app/components/view';
 
+import { useCategories } from '@desktop-client/hooks/useCategories';
 import { useNavigate } from '@desktop-client/hooks/useNavigate';
 
 import {
@@ -90,6 +91,17 @@ export function ContractForm({
 }: ContractFormProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { data: categoryData } = useCategories();
+
+  const categoryOptions = React.useMemo<[string, string][]>(() => {
+    const opts: [string, string][] = [['', t('No category')]];
+    for (const group of categoryData?.grouped ?? []) {
+      for (const cat of group.categories ?? []) {
+        opts.push([cat.id, `${group.name}: ${cat.name}`]);
+      }
+    }
+    return opts;
+  }, [categoryData, t]);
 
   const [form, setForm] = React.useState<ContractFormData>({
     ...EMPTY_CONTRACT_FORM,
@@ -211,6 +223,17 @@ export function ContractForm({
           />
         </FormField>
       </View>
+
+      {/* Category */}
+      <FormField label={t('Category')}>
+        <Select
+          options={categoryOptions}
+          value={form.category_id}
+          defaultLabel={t('No category')}
+          onChange={v => updateField('category_id', v)}
+          style={{ width: '100%' }}
+        />
+      </FormField>
 
       {/* Start + End date in a row */}
       <View style={{ flexDirection: 'row', gap: 16 }}>
