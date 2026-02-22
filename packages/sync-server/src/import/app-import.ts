@@ -30,7 +30,7 @@ interface ImportPreviewRow {
 interface ImportPreviewResult {
   rows: ImportPreviewRow[];
   total: number;
-  detected_format: { id: string; name: string } | null;
+  detected_format: string | null;
   warnings: string[];
 }
 
@@ -119,12 +119,12 @@ const BANK_FORMATS = [
     delimiter: ',',
     skip_rows: 1,
     columns: {
-      date: 'Datum',
-      payee: 'Empfänger',
+      date: 'Buchungstag',
+      payee: 'Beguenstigter/Auftraggeber',
       amount: 'Betrag',
-      iban: 'IBAN',
+      iban: 'Referenzkonto',
       notes: 'Verwendungszweck',
-      category: 'Kategorie',
+      category: 'Analyse-Hauptkategorie',
     },
     date_format: 'DD.MM.YYYY',
   },
@@ -199,6 +199,20 @@ function parseGermanAmount(str: string): number {
 function parseGermanDate(str: string, _formatHint?: string): string {
   if (!str || typeof str !== 'string') return '';
   const s = str.trim();
+
+  // Handle Excel serial date numbers (e.g., 43883 = 2020-02-22)
+  if (/^\d{4,5}$/.test(s)) {
+    const serial = parseInt(s);
+    if (serial > 30000 && serial < 60000) {
+      // Excel epoch is Jan 1, 1900 (with the Lotus 1-2-3 bug: day 0 = Jan 0, 1900)
+      const excelEpoch = new Date(1899, 11, 30); // Dec 30, 1899
+      const date = new Date(excelEpoch.getTime() + serial * 86400000);
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+  }
 
   // Already YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
@@ -573,9 +587,7 @@ app.post('/csv', async (req, res) => {
     const result: ImportPreviewResult = {
       rows,
       total: rows.length,
-      detected_format: detectedFormat
-        ? { id: detectedFormat.id, name: detectedFormat.name }
-        : null,
+      detected_format: detectedFormat?.name ?? null,
       warnings,
     };
 
@@ -647,7 +659,16 @@ app.post('/finanzguru', async (req, res) => {
     for (let i = 0; i < jsonRows.length; i++) {
       const raw = jsonRows[i];
 
-      const dateStr = String(raw[finanzguruFormat.columns.date] ?? '');
+      const rawDate = raw[finanzguruFormat.columns.date];
+      let dateStr: string;
+      if (rawDate instanceof Date) {
+        dateStr = rawDate.toISOString().slice(0, 10);
+      } else if (typeof rawDate === 'number') {
+        // Excel serial date
+        dateStr = String(rawDate);
+      } else {
+        dateStr = String(rawDate ?? '');
+      }
       const payeeStr = String(raw[finanzguruFormat.columns.payee] ?? '');
       const amountStr = String(raw[finanzguruFormat.columns.amount] ?? '');
       const notesStr = String(
@@ -696,10 +717,7 @@ app.post('/finanzguru', async (req, res) => {
     const result: ImportPreviewResult = {
       rows,
       total: rows.length,
-      detected_format: {
-        id: finanzguruFormat.id,
-        name: finanzguruFormat.name,
-      },
+      detected_format: finanzguruFormat.name,
       warnings,
     };
 
