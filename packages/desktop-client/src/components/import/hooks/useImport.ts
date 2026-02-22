@@ -98,6 +98,7 @@ export function useImport({ format }: UseImportOptions): UseImportReturn {
         format === 'finanzguru'
           ? {
               rows: args.rows,
+              accountId: args.accountId,
               accountMapping: args.accountMapping ?? {},
               categoryMapping: args.categoryMapping,
             }

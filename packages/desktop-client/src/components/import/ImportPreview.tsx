@@ -167,7 +167,7 @@ export function ImportPreview({ rows, total, categoryNames = {} }: Props) {
                   {catName ?? t('— uncategorized —')}
                 </Text>
                 {/* Status */}
-                <View style={{ flex: 1 }}>
+                <View style={{ flex: 1, overflow: 'hidden' }}>
                   <Text
                     style={{
                       fontSize: 11,

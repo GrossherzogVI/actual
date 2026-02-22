@@ -75,16 +75,27 @@ async function importFinanzguruPreview(args: {
 
 async function importFinanzguruCommit(args: {
   rows: ImportPreviewRow[];
-  accountMapping: Record<string, string>;
+  accountId?: string;
+  accountMapping?: Record<string, string>;
   categoryMapping?: Record<string, string>;
 }): Promise<ImportCommitResult | { error: string }> {
   try {
+    const accountMapping = args.accountMapping ?? {};
+
     // Group rows by account — Finanzguru exports contain multiple IBANs
+    // If accountId is provided and accountMapping is empty, use it as fallback for all rows
     const byAccount = new Map<string, ImportPreviewRow[]>();
     let unmappedCount = 0;
+    const useFallback = args.accountId && Object.keys(accountMapping).length === 0;
+
     for (const row of args.rows) {
-      const accountId =
-        (row.account_id && args.accountMapping[row.account_id]) ?? undefined;
+      let accountId: string | undefined;
+      if (useFallback) {
+        accountId = args.accountId;
+      } else {
+        accountId =
+          (row.account_id && accountMapping[row.account_id]) ?? undefined;
+      }
       if (!accountId) {
         unmappedCount++;
         continue;

@@ -7,6 +7,9 @@ import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
 import { View } from '@actual-app/components/view';
 
+import { useAccounts } from '@desktop-client/hooks/useAccounts';
+import { useCategories } from '@desktop-client/hooks/useCategories';
+
 import { CategoryMapper } from './CategoryMapper';
 import { ImportAdvisor } from './ImportAdvisor';
 import { ImportPreview } from './ImportPreview';
@@ -63,14 +66,26 @@ export function FinanzguruWizard() {
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+  const { data: accounts = [] } = useAccounts();
+  const { data: categoryData } = useCategories();
+
   const { state, preview, result, error, loading, uploadAndPreview, commit, reset } = useImport({
     format: 'finanzguru',
   });
 
-  // Extract unique external categories from preview rows (via notes field as proxy)
+  // Extract unique external categories from suggested_category_id
   const externalCats: string[] = preview
-    ? [...new Set(preview.rows.map(r => r.notes ?? '').filter(Boolean))]
+    ? [...new Set(preview.rows.map(r => r.suggested_category_id ?? '').filter(Boolean))]
     : [];
+
+  // Map Actual Budget categories for the CategoryMapper dropdown
+  const internalCategories = (categoryData?.list ?? [])
+    .filter(c => !c.tombstone && !c.hidden)
+    .map(c => ({ id: c.id, name: c.name }));
+
+  // Open (non-closed, non-tombstone) accounts for the account selector
+  const openAccounts = accounts.filter(a => !a.closed && !a.tombstone);
 
   const { mappings, matchedCount, updateMapping, autoMatch, getMappingRecord } =
     useCategoryMapping({ externalCategories: externalCats });
@@ -96,14 +111,14 @@ export function FinanzguruWizard() {
   );
 
   const handleCommit = useCallback(async () => {
-    if (!preview) return;
+    if (!preview || !selectedAccountId) return;
     await commit({
       rows: preview.rows,
-      accountMapping: {},
+      accountId: selectedAccountId,
       categoryMapping: getMappingRecord(),
     });
     setStep(5);
-  }, [preview, commit, getMappingRecord]);
+  }, [preview, selectedAccountId, commit, getMappingRecord]);
 
   const handleReset = useCallback(() => {
     reset();
@@ -204,11 +219,36 @@ export function FinanzguruWizard() {
               file: file?.name ?? '',
             })}
           </Text>
+
+          {/* Account selector */}
+          <View style={{ gap: 6 }}>
+            <Text style={{ fontSize: 13, fontWeight: 500, color: theme.pageText }}>
+              <Trans>Import into account</Trans>
+            </Text>
+            <select
+              value={selectedAccountId}
+              onChange={e => setSelectedAccountId(e.target.value)}
+              style={{
+                padding: '8px 12px',
+                borderRadius: 6,
+                border: `1px solid ${theme.tableBorder}`,
+                backgroundColor: theme.tableBackground,
+                color: theme.pageText,
+                fontSize: 13,
+              }}
+            >
+              <option value="">{t('— Select account —')}</option>
+              {openAccounts.map(a => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
+          </View>
+
           <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'flex-end' }}>
             <Button variant="bare" onPress={handleReset}>
               <Trans>Start over</Trans>
             </Button>
-            <Button variant="primary" onPress={() => setStep(3)}>
+            <Button variant="primary" onPress={() => setStep(3)} isDisabled={!selectedAccountId}>
               <Trans>Next: Map categories</Trans>
             </Button>
           </View>
@@ -229,7 +269,7 @@ export function FinanzguruWizard() {
           <CategoryMapper
             mappings={mappings}
             matchedCount={matchedCount}
-            internalCategories={[]}
+            internalCategories={internalCategories}
             onUpdate={updateMapping}
             onAutoMatch={autoMatch}
           />

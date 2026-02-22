@@ -692,9 +692,7 @@ app.post('/finanzguru', async (req, res) => {
       }
 
       const payee = payeeStr.trim() || 'Unknown';
-      const notes = [notesStr.trim(), categoryStr ? `[${categoryStr}]` : '']
-        .filter(Boolean)
-        .join(' ') || null;
+      const notes = notesStr.trim() || null;
 
       const row: ImportPreviewRow = {
         date,
@@ -703,6 +701,10 @@ app.post('/finanzguru', async (req, res) => {
         notes,
         imported_id: generateImportedId(date, payee, amount, i),
       };
+
+      if (categoryStr) {
+        row.suggested_category_id = categoryStr;
+      }
 
       // Map IBAN to account_id if mapping provided
       if (ibanStr && acctMap[ibanStr]) {
