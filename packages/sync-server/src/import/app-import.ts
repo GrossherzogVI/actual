@@ -460,12 +460,16 @@ function mapRowToPreview(
 app.get('/bank-formats', (_req, res) => {
   res.json({
     status: 'ok',
-    data: BANK_FORMATS.map(f => ({
-      id: f.id,
-      name: f.name,
-      encoding: f.encoding,
-      delimiter: f.delimiter,
-    })),
+    data: [
+      ...BANK_FORMATS.map(f => ({
+        id: f.id,
+        name: f.name,
+        encoding: f.encoding,
+        delimiter: f.delimiter,
+      })),
+      { id: 'mt940', name: 'MT940 (SWIFT)', encoding: 'UTF-8', delimiter: null },
+      { id: 'camt053', name: 'CAMT.053 (ISO 20022)', encoding: 'UTF-8', delimiter: null },
+    ],
   });
 });
 
@@ -725,6 +729,259 @@ app.post('/finanzguru', async (req, res) => {
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Unknown error';
     console.error('Finanzguru import error:', msg);
+    res.status(500).json({ status: 'error', reason: 'internal', detail: msg });
+  }
+});
+
+// ─── MT940 Parser ────────────────────────────────────────────────────────────
+
+/**
+ * Parse an MT940 SWIFT statement file.
+ * Format overview:
+ *   :20:  Transaction reference (header)
+ *   :25:  Account identification
+ *   :28C: Statement number
+ *   :60F: Opening balance
+ *   :61:  Value date / amount / reference (one per transaction)
+ *   :86:  Narrative / usage purpose (optional, follows :61:)
+ *   :62F: Closing balance
+ *
+ * Each :61: line: YYMMDD[MMDD]<C|D>[N]<amount>,<decimal>N<ref>
+ *   C = credit (positive), D = debit (negative)
+ */
+function parseMT940(text: string): ImportPreviewRow[] {
+  const rows: ImportPreviewRow[] = [];
+
+  // Split into transaction blocks — each starts at :61:
+  const lines = text.split(/\r?\n/);
+
+  let currentField = '';
+  let currentValue = '';
+
+  // Accumulate all field-value pairs in order
+  const fields: Array<{ tag: string; value: string }> = [];
+
+  for (const line of lines) {
+    const tagMatch = line.match(/^:(\d{2}[A-Z]?):/);
+    if (tagMatch) {
+      if (currentField) {
+        fields.push({ tag: currentField, value: currentValue.trim() });
+      }
+      currentField = tagMatch[1];
+      currentValue = line.slice(tagMatch[0].length);
+    } else if (currentField) {
+      currentValue += '\n' + line;
+    }
+  }
+  if (currentField) {
+    fields.push({ tag: currentField, value: currentValue.trim() });
+  }
+
+  // Walk fields collecting :61: + optional :86: pairs
+  for (let i = 0; i < fields.length; i++) {
+    const f = fields[i];
+    if (f.tag !== '61') continue;
+
+    // :61: line: YYMMDD[MMDD]<C|D|RD|RC>[N]<amount,cents>N<ref>[//<counterref>]
+    // Example: 2302150215D1500,00NTRFNONREF
+    const m = f.value.match(
+      /^(\d{6})(\d{4})?(C|D|RD|RC)N?(\d+),(\d{0,2})(.*)/,
+    );
+    if (!m) continue;
+
+    const [, yymmdd, mmdd, direction, major, minor] = m;
+    const yy = yymmdd.slice(0, 2);
+    const mm = yymmdd.slice(2, 4);
+    const dd = yymmdd.slice(4, 6);
+    const year = parseInt(yy) > 50 ? `19${yy}` : `20${yy}`;
+    const valueDate = mmdd
+      ? `${year}-${mmdd.slice(0, 2)}-${mmdd.slice(2, 4)}`
+      : `${year}-${mm}-${dd}`;
+
+    const cents = parseInt(major) * 100 + parseInt((minor || '0').padEnd(2, '0').slice(0, 2));
+    const isDebit = direction === 'D' || direction === 'RD';
+    const amount = isDebit ? -cents : cents;
+
+    // Narrative from optional :86: right after this :61:
+    let notes: string | null = null;
+    let payee = 'Unknown';
+
+    const next = fields[i + 1];
+    if (next && next.tag === '86') {
+      const narrative = next.value;
+      // Try to extract payee from subfield 32 (Auftraggeber/Empfänger)
+      const payeeMatch = narrative.match(/\?32([^\?]+)/);
+      const purposeMatch = narrative.match(/\?20([^\?]+)/);
+      if (payeeMatch) payee = payeeMatch[1].trim();
+      notes = purposeMatch ? purposeMatch[1].trim() : narrative.slice(0, 120);
+      i++; // consume the :86:
+    }
+
+    rows.push({
+      date: valueDate,
+      payee,
+      amount,
+      notes,
+      imported_id: generateImportedId(valueDate, payee, amount, rows.length),
+    });
+  }
+
+  return rows;
+}
+
+// ─── CAMT.053 Parser ─────────────────────────────────────────────────────────
+
+/**
+ * Parse a CAMT.053 (ISO 20022 BankToCustomerStatement) XML file.
+ * Structure: BkToCstmrStmt > Stmt > Ntry (one per booked entry)
+ *   Each Ntry has:
+ *     Amt       — amount with currency attribute
+ *     CdtDbtInd — CRDT or DBIT
+ *     BookgDt > Dt — booking date YYYY-MM-DD
+ *     NtryDtls > TxDtls > RltdPties > Dbtr > Nm  — debtor name (payee for debits)
+ *     NtryDtls > TxDtls > RltdPties > Cdtr > Nm  — creditor name (payee for credits)
+ *     NtryDtls > TxDtls > RmtInf > Ustrd — unstructured remittance info (notes)
+ */
+function parseCAMT053(xmlText: string): ImportPreviewRow[] {
+  const rows: ImportPreviewRow[] = [];
+
+  // Minimal XML text parser — extract all <Ntry> blocks
+  const ntryBlocks = xmlText.match(/<Ntry>([\s\S]*?)<\/Ntry>/g) ?? [];
+
+  for (let idx = 0; idx < ntryBlocks.length; idx++) {
+    const block = ntryBlocks[idx];
+
+    const getText = (tag: string): string => {
+      const m = block.match(new RegExp(`<${tag}[^>]*>([^<]*)</${tag}>`));
+      return m ? m[1].trim() : '';
+    };
+
+    // Booking date — prefer <BookgDt><Dt> over <ValDt><Dt>
+    const bookingSection = block.match(/<BookgDt>([\s\S]*?)<\/BookgDt>/)?.[1] ?? '';
+    const valueSection = block.match(/<ValDt>([\s\S]*?)<\/ValDt>/)?.[1] ?? '';
+    const dateRaw =
+      bookingSection.match(/<Dt>([^<]+)<\/Dt>/)?.[1]?.trim() ||
+      valueSection.match(/<Dt>([^<]+)<\/Dt>/)?.[1]?.trim() ||
+      '';
+    const date = parseGermanDate(dateRaw);
+    if (!date) continue;
+
+    // Amount (already decimal EUR in CAMT)
+    const amtRaw = getText('Amt');
+    const amtNum = parseFloat(amtRaw.replace(',', '.'));
+    if (isNaN(amtNum)) continue;
+    const cents = Math.round(amtNum * 100);
+
+    const cdtDbt = getText('CdtDbtInd');
+    const isDebit = cdtDbt === 'DBIT';
+    const amount = isDebit ? -cents : cents;
+
+    // Payee: for debits = creditor; for credits = debtor
+    const txDtls = block.match(/<TxDtls>([\s\S]*?)<\/TxDtls>/)?.[1] ?? '';
+    const cdtrSection = txDtls.match(/<Cdtr>([\s\S]*?)<\/Cdtr>/)?.[1] ?? '';
+    const dbtrSection = txDtls.match(/<Dbtr>([\s\S]*?)<\/Dbtr>/)?.[1] ?? '';
+    const cdtrName = cdtrSection.match(/<Nm>([^<]+)<\/Nm>/)?.[1]?.trim() ?? '';
+    const dbtrName = dbtrSection.match(/<Nm>([^<]+)<\/Nm>/)?.[1]?.trim() ?? '';
+    const payee = (isDebit ? cdtrName : dbtrName) || 'Unknown';
+
+    // Notes: unstructured remittance info
+    const rmtInf = txDtls.match(/<RmtInf>([\s\S]*?)<\/RmtInf>/)?.[1] ?? '';
+    const ustrd = rmtInf.match(/<Ustrd>([^<]+)<\/Ustrd>/)?.[1]?.trim() ?? null;
+    const notes = ustrd || null;
+
+    rows.push({
+      date,
+      payee,
+      amount,
+      notes,
+      imported_id: generateImportedId(date, payee, amount, idx),
+    });
+  }
+
+  return rows;
+}
+
+// ─── Updated detectBankFormat (extended for text markers) ────────────────────
+
+/**
+ * Detect if raw text content is MT940 or CAMT.053.
+ * Returns 'mt940' | 'camt053' | null.
+ */
+function detectTextFormat(text: string): 'mt940' | 'camt053' | null {
+  const firstLine = text.slice(0, 200);
+  if (firstLine.includes(':20:') || firstLine.includes(':25:')) return 'mt940';
+  if (
+    text.includes('BkToCstmrStmt') ||
+    text.includes('camt.053') ||
+    text.includes('<Stmt>')
+  )
+    return 'camt053';
+  return null;
+}
+
+/** POST /import/mt940 — parse MT940 SWIFT statement file */
+app.post('/mt940', (req, res) => {
+  try {
+    const { fileData } = req.body ?? {};
+    if (!fileData) {
+      res.status(400).json({ status: 'error', reason: 'file-data-required' });
+      return;
+    }
+
+    const buffer = Buffer.from(fileData, 'base64');
+    // MT940 files are typically ISO-8859-1 or UTF-8
+    let text = buffer.toString('utf-8');
+    if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+
+    const rows = parseMT940(text);
+
+    const result: ImportPreviewResult = {
+      rows,
+      total: rows.length,
+      detected_format: 'MT940 (SWIFT)',
+      warnings:
+        rows.length === 0
+          ? ['No transactions found. Verify this is a valid MT940 file.']
+          : [],
+    };
+
+    res.json({ status: 'ok', data: result });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    console.error('MT940 import error:', msg);
+    res.status(500).json({ status: 'error', reason: 'internal', detail: msg });
+  }
+});
+
+/** POST /import/camt053 — parse CAMT.053 XML bank statement */
+app.post('/camt053', (req, res) => {
+  try {
+    const { fileData } = req.body ?? {};
+    if (!fileData) {
+      res.status(400).json({ status: 'error', reason: 'file-data-required' });
+      return;
+    }
+
+    const buffer = Buffer.from(fileData, 'base64');
+    let text = buffer.toString('utf-8');
+    if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+
+    const rows = parseCAMT053(text);
+
+    const result: ImportPreviewResult = {
+      rows,
+      total: rows.length,
+      detected_format: 'CAMT.053 (ISO 20022)',
+      warnings:
+        rows.length === 0
+          ? ['No transactions found. Verify this is a valid CAMT.053 XML file.']
+          : [],
+    };
+
+    res.json({ status: 'ok', data: result });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    console.error('CAMT.053 import error:', msg);
     res.status(500).json({ status: 'error', reason: 'internal', detail: msg });
   }
 });

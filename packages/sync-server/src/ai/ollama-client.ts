@@ -47,11 +47,18 @@ export async function ollamaGenerate(
     body.images = options.images;
   }
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    throw new Error(
+      `Ollama connection failed (${cfg.url}): ${(err as Error).message}`,
+    );
+  }
 
   if (!response.ok) {
     const text = await response.text().catch(() => 'unknown error');
@@ -87,11 +94,18 @@ export async function ollamaChat(
     body.format = options.format;
   }
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    throw new Error(
+      `Ollama connection failed (${cfg.url}): ${(err as Error).message}`,
+    );
+  }
 
   if (!response.ok) {
     const text = await response.text().catch(() => 'unknown error');

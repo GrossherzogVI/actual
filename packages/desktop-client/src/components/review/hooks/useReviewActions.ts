@@ -50,22 +50,33 @@ export function useReviewActions({
   const accept = useCallback(
     (id: string) =>
       withProcessing(id, async () => {
-        // First try to apply the suggestion (categorize / create contract etc.),
-        // then mark accepted. If apply fails we still mark accepted so the item
-        // is cleared from the queue.
-        await (send as Function)('review-apply', { id });
-        return updateItem(id, 'accepted');
+        const result = await (send as Function)('review-accept', { id });
+        return result && !('error' in result);
       }),
     [withProcessing],
   );
 
   const reject = useCallback(
-    (id: string) => withProcessing(id, () => updateItem(id, 'rejected')),
+    (id: string, correctCategoryId?: string) =>
+      withProcessing(id, async () => {
+        const result = await (send as Function)('review-reject', {
+          id,
+          correct_category_id: correctCategoryId,
+        });
+        return result && !('error' in result);
+      }),
     [withProcessing],
   );
 
   const snooze = useCallback(
-    (id: string) => withProcessing(id, () => updateItem(id, 'snoozed')),
+    (id: string, days?: number) =>
+      withProcessing(id, async () => {
+        const result = await (send as Function)('review-snooze', {
+          id,
+          days: days ?? 7,
+        });
+        return result && !('error' in result);
+      }),
     [withProcessing],
   );
 
@@ -79,23 +90,13 @@ export function useReviewActions({
   );
 
   const acceptHighConfidence = useCallback(
-    async (items: ReviewItem[], threshold = 0.9): Promise<number> => {
-      const eligible = items.filter(
-        item =>
-          item.status === 'pending' &&
-          item.ai_confidence != null &&
-          item.ai_confidence >= threshold,
-      );
-      if (eligible.length === 0) return 0;
-
-      const ids = eligible.map(i => i.id);
-      const result = await (send as Function)('review-batch', {
-        ids,
-        status: 'accepted',
+    async (_items: ReviewItem[], threshold = 0.9): Promise<number> => {
+      const result = await (send as Function)('review-batch-accept', {
+        minConfidence: threshold,
       });
       if (result && !('error' in result)) {
         onSuccess?.();
-        return ids.length;
+        return (result as { accepted: number }).accepted;
       }
       return 0;
     },

@@ -1,12 +1,14 @@
 // @ts-strict-ignore
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { Button } from '@actual-app/components/button';
 import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
 import { View } from '@actual-app/components/view';
 
 import { useSheetValue } from '@desktop-client/hooks/useSheetValue';
+import { useSyncedPref } from '@desktop-client/hooks/useSyncedPref';
 import { allAccountBalance } from '@desktop-client/spreadsheet/bindings';
 
 import type { UpcomingPayment } from '../types';
@@ -47,18 +49,30 @@ function ProjectionRow({
   label,
   value,
   isNegative,
+  isBelowThreshold,
 }: {
   label: string;
   value: string;
   isNegative: boolean;
+  isBelowThreshold: boolean;
 }) {
+  const textColor = isNegative || isBelowThreshold
+    ? (theme.errorText ?? '#ef4444')
+    : theme.pageText;
+
   return (
     <View
       style={{
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingBottom: 6,
+        padding: '3px 6px',
+        borderRadius: 4,
+        ...(isBelowThreshold && !isNegative
+          ? {
+              backgroundColor: `${theme.errorText ?? '#ef4444'}12`,
+            }
+          : {}),
       }}
     >
       <Text style={{ color: theme.pageTextSubdued, fontSize: 13 }}>{label}</Text>
@@ -66,7 +80,7 @@ function ProjectionRow({
         style={{
           fontSize: 13,
           fontWeight: 500,
-          color: isNegative ? (theme.errorText ?? '#ef4444') : theme.pageText,
+          color: textColor,
         }}
       >
         {value}
@@ -81,6 +95,34 @@ export function BalanceProjectionWidget({ upcomingPayments = [] }: Props) {
   // Query-based binding — no SheetNameProvider needed
   const currentBalance = useSheetValue<'account', 'accounts-balance'>(allAccountBalance());
 
+  // Balance threshold pref (shared with CalendarPage, stored as cents string)
+  const [thresholdRaw, setThresholdRaw] = useSyncedPref('balanceThreshold');
+  const threshold = thresholdRaw ? parseInt(thresholdRaw, 10) : null;
+  const thresholdEnabled = threshold !== null && !Number.isNaN(threshold);
+
+  // Local state for threshold settings popover
+  const [showSettings, setShowSettings] = useState(false);
+  const [thresholdInput, setThresholdInput] = useState<string>(
+    threshold ? String(threshold / 100) : '',
+  );
+
+  const handleToggleThreshold = useCallback(() => {
+    if (thresholdEnabled) {
+      setThresholdRaw('');
+      setThresholdInput('');
+    } else {
+      setThresholdRaw('50000');
+      setThresholdInput('500');
+    }
+  }, [thresholdEnabled, setThresholdRaw]);
+
+  const handleThresholdBlur = useCallback(() => {
+    const euros = parseFloat(thresholdInput);
+    if (!Number.isNaN(euros) && euros >= 0) {
+      setThresholdRaw(String(Math.round(euros * 100)));
+    }
+  }, [thresholdInput, setThresholdRaw]);
+
   const hasData = currentBalance != null;
 
   const projections = hasData
@@ -94,12 +136,96 @@ export function BalanceProjectionWidget({ upcomingPayments = [] }: Props) {
           days === 0
             ? currentBalance
             : projectBalance(currentBalance, upcomingPayments, days);
-        return { label, value: formatEur(projected), isNegative: projected < 0 };
+        return {
+          label,
+          value: formatEur(projected),
+          isNegative: projected < 0,
+          isBelowThreshold: thresholdEnabled && projected < threshold,
+        };
       })
     : [];
 
+  // Determine if any projection crosses the threshold (for card border highlight)
+  const anyBelowThreshold = thresholdEnabled && projections.some(p => p.isBelowThreshold);
+
   return (
-    <WidgetCard title={t('Balance Projection')} style={{ gridColumn: '1 / -1' }}>
+    <WidgetCard
+      title={t('Balance Projection')}
+      style={{
+        gridColumn: '1 / -1',
+        ...(anyBelowThreshold
+          ? {
+              borderColor: theme.errorText ?? '#ef4444',
+              boxShadow: `0 0 0 1px ${theme.errorText ?? '#ef4444'}30`,
+            }
+          : {}),
+      }}
+    >
+      {/* Settings toggle row */}
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'flex-end',
+          alignItems: 'center',
+          marginTop: -8,
+          marginBottom: 4,
+          gap: 6,
+        }}
+      >
+        {showSettings && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Button
+              variant="bare"
+              onPress={handleToggleThreshold}
+              style={{
+                fontSize: 11,
+                padding: '2px 8px',
+                border: `1px solid ${thresholdEnabled ? (theme.errorText ?? '#ef4444') : theme.tableBorder}`,
+                borderRadius: 10,
+                backgroundColor: thresholdEnabled ? `${theme.errorText ?? '#ef4444'}18` : 'transparent',
+                color: thresholdEnabled ? (theme.errorText ?? '#ef4444') : theme.pageTextSubdued,
+              }}
+            >
+              {thresholdEnabled ? t('Disable') : t('Enable')}
+            </Button>
+            {thresholdEnabled && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                <Text style={{ fontSize: 11, color: theme.pageTextSubdued }}>Min €</Text>
+                <input
+                  type="number"
+                  min={0}
+                  step={100}
+                  value={thresholdInput}
+                  onChange={e => setThresholdInput(e.target.value)}
+                  onBlur={handleThresholdBlur}
+                  style={{
+                    width: 60,
+                    fontSize: 11,
+                    padding: '2px 4px',
+                    border: `1px solid ${theme.tableBorder}`,
+                    borderRadius: 4,
+                    backgroundColor: theme.tableBackground,
+                    color: theme.pageText,
+                  }}
+                />
+              </View>
+            )}
+          </View>
+        )}
+        <Button
+          variant="bare"
+          onPress={() => setShowSettings(prev => !prev)}
+          aria-label={t('Threshold settings')}
+          style={{
+            fontSize: 13,
+            padding: '2px 6px',
+            color: thresholdEnabled ? (theme.errorText ?? '#ef4444') : theme.pageTextSubdued,
+          }}
+        >
+          ⚙
+        </Button>
+      </View>
+
       {!hasData ? (
         <Text style={{ color: theme.pageTextSubdued, fontSize: 13 }}>
           {t('Loading balance data...')}
@@ -110,6 +236,7 @@ export function BalanceProjectionWidget({ upcomingPayments = [] }: Props) {
             label={t('Current balance')}
             value={formatEur(currentBalance)}
             isNegative={currentBalance < 0}
+            isBelowThreshold={thresholdEnabled && currentBalance < threshold}
           />
           <Text
             style={{
@@ -130,8 +257,35 @@ export function BalanceProjectionWidget({ upcomingPayments = [] }: Props) {
               label={p.label}
               value={p.value}
               isNegative={p.isNegative}
+              isBelowThreshold={p.isBelowThreshold}
             />
           ))}
+          {thresholdEnabled && (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+                marginTop: 6,
+                padding: '3px 6px',
+                borderRadius: 4,
+                backgroundColor: `${theme.errorText ?? '#ef4444'}08`,
+              }}
+            >
+              <View
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  backgroundColor: theme.errorText ?? '#ef4444',
+                  flexShrink: 0,
+                }}
+              />
+              <Text style={{ fontSize: 11, color: theme.errorText ?? '#ef4444' }}>
+                {t('Threshold: {{amount}}', { amount: formatEur(threshold) })}
+              </Text>
+            </View>
+          )}
           <Text
             style={{
               color: theme.pageTextSubdued,

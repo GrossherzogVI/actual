@@ -240,6 +240,146 @@ app.post('/:id/apply', (req, res) => {
   });
 });
 
+// ─── Batch accept by confidence threshold ────────────────────────────────
+
+/** POST /review/batch-accept — accept all pending items above confidence threshold */
+app.post('/batch-accept', (req, res) => {
+  const { minConfidence } = req.body ?? {};
+  const threshold = typeof minConfidence === 'number' ? minConfidence : 0.9;
+
+  const db = getAccountDb();
+
+  const result = db.mutate(
+    `UPDATE review_queue SET
+       status = 'accepted',
+       resolved_at = datetime('now'),
+       resolved_action = 'batch_accept',
+       updated_at = datetime('now')
+     WHERE status = 'pending' AND ai_confidence >= ?`,
+    [threshold],
+  );
+
+  res.json({
+    status: 'ok',
+    data: { accepted: result.changes ?? 0, threshold },
+  });
+});
+
+// ─── Individual inline actions ───────────────────────────────────────────
+
+/** POST /review/:id/accept — accept and apply AI suggestion */
+app.post('/:id/accept', (req, res) => {
+  const db = getAccountDb();
+  const item = db.first(
+    'SELECT * FROM review_queue WHERE id = ?',
+    [req.params.id],
+  ) as Record<string, unknown> | undefined;
+
+  if (!item) {
+    res.status(404).json({ status: 'error', reason: 'not-found' });
+    return;
+  }
+
+  if (item.status !== 'pending') {
+    res.status(400).json({ status: 'error', reason: 'already-resolved' });
+    return;
+  }
+
+  db.mutate(
+    `UPDATE review_queue SET
+       status = 'accepted',
+       resolved_at = datetime('now'),
+       resolved_action = 'inline_accept',
+       updated_at = datetime('now')
+     WHERE id = ?`,
+    [req.params.id],
+  );
+
+  const suggestion = item.ai_suggestion
+    ? JSON.parse(item.ai_suggestion as string)
+    : null;
+
+  res.json({
+    status: 'ok',
+    data: { accepted: true, suggestion },
+  });
+});
+
+/** POST /review/:id/reject — reject, optionally provide correct category */
+app.post('/:id/reject', (req, res) => {
+  const { correct_category_id } = req.body ?? {};
+
+  const db = getAccountDb();
+  const item = db.first(
+    'SELECT * FROM review_queue WHERE id = ?',
+    [req.params.id],
+  ) as Record<string, unknown> | undefined;
+
+  if (!item) {
+    res.status(404).json({ status: 'error', reason: 'not-found' });
+    return;
+  }
+
+  if (item.status !== 'pending') {
+    res.status(400).json({ status: 'error', reason: 'already-resolved' });
+    return;
+  }
+
+  const resolvedAction = correct_category_id
+    ? `rejected_with_correction:${correct_category_id}`
+    : 'inline_reject';
+
+  db.mutate(
+    `UPDATE review_queue SET
+       status = 'rejected',
+       resolved_at = datetime('now'),
+       resolved_action = ?,
+       updated_at = datetime('now')
+     WHERE id = ?`,
+    [resolvedAction, req.params.id],
+  );
+
+  res.json({
+    status: 'ok',
+    data: { rejected: true, correct_category_id: correct_category_id ?? null },
+  });
+});
+
+/** POST /review/:id/snooze — snooze for N days */
+app.post('/:id/snooze', (req, res) => {
+  const { days } = req.body ?? {};
+  const snoozeDays = typeof days === 'number' ? days : 7;
+
+  const db = getAccountDb();
+  const item = db.first(
+    'SELECT * FROM review_queue WHERE id = ?',
+    [req.params.id],
+  ) as Record<string, unknown> | undefined;
+
+  if (!item) {
+    res.status(404).json({ status: 'error', reason: 'not-found' });
+    return;
+  }
+
+  if (item.status !== 'pending') {
+    res.status(400).json({ status: 'error', reason: 'already-resolved' });
+    return;
+  }
+
+  db.mutate(
+    `UPDATE review_queue SET
+       status = 'snoozed',
+       snoozed_until = datetime('now', '+' || ? || ' days'),
+       resolved_action = 'snoozed',
+       updated_at = datetime('now')
+     WHERE id = ?`,
+    [snoozeDays, req.params.id],
+  );
+
+  const updated = db.first('SELECT * FROM review_queue WHERE id = ?', [req.params.id]);
+  res.json({ status: 'ok', data: updated });
+});
+
 /** DELETE /review/:id — dismiss permanently */
 app.delete('/:id', (req, res) => {
   const db = getAccountDb();

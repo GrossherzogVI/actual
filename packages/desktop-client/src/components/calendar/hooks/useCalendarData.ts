@@ -172,6 +172,13 @@ interface ContractRaw {
   schedule_id: string | null;
 }
 
+interface UseCalendarDataOptions {
+  /** Day of month for payday cycle (1–28). When set the window runs from
+   *  the most recent past payday to the next payday. When undefined/null
+   *  the classic 30-day window from today is used. */
+  paydayDate?: number | null;
+}
+
 interface UseCalendarDataResult {
   weeks: WeekData[];
   allEntries: CalendarEntry[];
@@ -179,6 +186,10 @@ interface UseCalendarDataResult {
   error: string | null;
   reload: () => void;
   startingBalance: number;
+  /** ISO date string for the start of the active window */
+  windowStart: string;
+  /** ISO date string for the end of the active window */
+  windowEnd: string;
 }
 
 import {
@@ -186,7 +197,49 @@ import {
   getScheduleName,
 } from '@desktop-client/utils/schedule-helpers';
 
-export function useCalendarData(): UseCalendarDataResult {
+// ---------------------------------------------------------------------------
+// Payday window helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Given a payday day-of-month (1–28) and today, compute [fromDate, toDate]
+ * spanning from the most recent past payday to the next upcoming payday.
+ */
+function getPaydayCycleWindow(paydayDay: number, today: Date): [string, string] {
+  const year = today.getFullYear();
+  const month = today.getMonth();
+  const day = today.getDate();
+
+  // Clamp paydayDay to avoid issues with short months
+  const clamp = (d: Date, pd: number) =>
+    new Date(d.getFullYear(), d.getMonth(), Math.min(pd, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()));
+
+  let cycleStart: Date;
+  let cycleEnd: Date;
+
+  const thisMonthPayday = clamp(new Date(year, month, 1), paydayDay);
+
+  if (day >= thisMonthPayday.getDate()) {
+    // Payday already passed this month — cycle: thisMonthPayday → nextMonthPayday - 1
+    cycleStart = thisMonthPayday;
+    const nextMonth = new Date(year, month + 1, 1);
+    cycleEnd = clamp(nextMonth, paydayDay);
+  } else {
+    // Payday hasn't arrived yet — cycle: prevMonthPayday → thisMonthPayday - 1
+    const prevMonth = new Date(year, month - 1, 1);
+    cycleStart = clamp(prevMonth, paydayDay);
+    cycleEnd = thisMonthPayday;
+  }
+
+  // Make cycleEnd exclusive-1 day (show UP TO day before next payday)
+  const cycleEndInclusive = new Date(cycleEnd);
+  cycleEndInclusive.setDate(cycleEndInclusive.getDate() - 1);
+
+  return [toISODate(cycleStart), toISODate(cycleEndInclusive)];
+}
+
+export function useCalendarData(options?: UseCalendarDataOptions): UseCalendarDataResult {
+  const { paydayDate } = options ?? {};
   const [contracts, setContracts] = useState<ContractRaw[]>([]);
   const [contractsLoading, setContractsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -238,13 +291,22 @@ export function useCalendarData(): UseCalendarDataResult {
     void load();
   }, [load]);
 
-  const allEntries = useMemo<CalendarEntry[]>(() => {
+  // Compute date window separately so it can be returned
+  const [windowStart, windowEnd] = useMemo<[string, string]>(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const fromDate = toISODate(today);
+    if (paydayDate && paydayDate >= 1 && paydayDate <= 28) {
+      return getPaydayCycleWindow(paydayDate, today);
+    }
+    const from = toISODate(today);
     const toDate30 = new Date(today);
     toDate30.setDate(today.getDate() + 30);
-    const toDate = toISODate(toDate30);
+    return [from, toISODate(toDate30)];
+  }, [paydayDate]);
+
+  const allEntries = useMemo<CalendarEntry[]>(() => {
+    const fromDate = windowStart;
+    const toDate = windowEnd;
 
     const entries: CalendarEntry[] = [];
 
@@ -298,12 +360,12 @@ export function useCalendarData(): UseCalendarDataResult {
     // Sort chronologically
     entries.sort((a, b) => a.date.localeCompare(b.date));
     return entries;
-  }, [contracts, schedules, payeesById]);
+  }, [contracts, schedules, payeesById, windowStart, windowEnd]);
 
   const weeks = useMemo(
     () => groupByWeek(allEntries, startingBalance),
     [allEntries, startingBalance],
   );
 
-  return { weeks, allEntries, loading, error, reload: load, startingBalance };
+  return { weeks, allEntries, loading, error, reload: load, startingBalance, windowStart, windowEnd };
 }

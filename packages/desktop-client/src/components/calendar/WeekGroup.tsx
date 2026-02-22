@@ -14,6 +14,7 @@ import type { WeekData } from './types';
 
 interface Props {
   week: WeekData;
+  balanceThreshold?: number | null;
 }
 
 function formatWeekHeader(weekStart: string): string {
@@ -40,7 +41,7 @@ function getByDay(week: WeekData): Map<string, { count: number; total: number }>
   return map;
 }
 
-export function WeekGroup({ week }: Props) {
+export function WeekGroup({ week, balanceThreshold }: Props) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(true);
 
@@ -167,7 +168,7 @@ export function WeekGroup({ week }: Props) {
               backgroundColor: `${theme.tableHeaderBackground}80`,
             }}
           >
-            <BalanceProjectionLine balance={week.runningBalance} />
+            <BalanceProjectionLine balance={week.runningBalance} threshold={balanceThreshold} />
           </View>
         </>
       )}

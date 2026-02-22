@@ -1,5 +1,6 @@
 // @ts-strict-ignore
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { Input } from '@actual-app/components/input';
 import { theme } from '@actual-app/components/theme';
@@ -12,6 +13,8 @@ type AmountInputProps = {
   evaluatedAmount: number | null;
   autoFocus?: boolean;
   isIncome?: boolean;
+  /** Suggested amount (mode of recent transactions for the selected category). Shown as placeholder in subdued color. */
+  suggestedPlaceholder?: string;
   'data-quick-add-amount'?: boolean;
 };
 
@@ -32,12 +35,17 @@ export function AmountInput({
   evaluatedAmount,
   autoFocus,
   isIncome = false,
+  suggestedPlaceholder,
   ...rest
 }: AmountInputProps) {
+  const { t } = useTranslation();
   const showResult = isExpression(value) && evaluatedAmount !== null;
 
   // Color: income = green, expense = default text
   const amountColor = isIncome ? '#10b981' : theme.formInputText;
+
+  // Show suggestion hint below when field is empty and a suggestion exists
+  const showSuggestion = value === '' && !!suggestedPlaceholder;
 
   return (
     <View style={{ alignItems: 'center', padding: '12px 16px 8px' }}>
@@ -45,7 +53,7 @@ export function AmountInput({
         autoFocus={autoFocus}
         value={value}
         onChange={e => onChange(e.target.value)}
-        placeholder="0.00"
+        placeholder={suggestedPlaceholder || '0.00'}
         data-quick-add-amount={rest['data-quick-add-amount'] ? 'true' : undefined}
         style={{
           fontSize: 28,
@@ -70,6 +78,18 @@ export function AmountInput({
           }}
         >
           = {formatEur(evaluatedAmount)}
+        </Text>
+      )}
+      {showSuggestion && !showResult && (
+        <Text
+          style={{
+            marginTop: 4,
+            fontSize: 11,
+            color: theme.pageTextSubdued,
+            fontStyle: 'italic',
+          }}
+        >
+          {t('Häufig: {{amount}}', { amount: suggestedPlaceholder })}
         </Text>
       )}
     </View>

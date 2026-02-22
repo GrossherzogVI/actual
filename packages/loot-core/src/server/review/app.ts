@@ -42,6 +42,10 @@ export type ReviewHandlers = {
   'review-apply': typeof reviewApply;
   'review-dismiss': typeof reviewDismiss;
   'review-create': typeof reviewCreate;
+  'review-batch-accept': typeof reviewBatchAccept;
+  'review-accept': typeof reviewAccept;
+  'review-reject': typeof reviewReject;
+  'review-snooze': typeof reviewSnooze;
 };
 
 export const app = createApp<ReviewHandlers>();
@@ -53,6 +57,10 @@ app.method('review-batch', reviewBatch);
 app.method('review-apply', reviewApply);
 app.method('review-dismiss', reviewDismiss);
 app.method('review-create', reviewCreate);
+app.method('review-batch-accept', reviewBatchAccept);
+app.method('review-accept', reviewAccept);
+app.method('review-reject', reviewReject);
+app.method('review-snooze', reviewSnooze);
 
 async function reviewList(args?: {
   type?: string;
@@ -201,6 +209,80 @@ async function reviewCreate(args: {
     const result = await post(
       getServer().BASE_SERVER + '/review',
       args,
+      { 'X-ACTUAL-TOKEN': userToken },
+    );
+    return result as ReviewItem;
+  } catch (err) {
+    return { error: err.reason || err.message || 'unknown' };
+  }
+}
+
+async function reviewBatchAccept(args?: {
+  minConfidence?: number;
+}): Promise<{ accepted: number; threshold: number } | { error: string }> {
+  const userToken = await asyncStorage.getItem('user-token');
+  if (!userToken) return { error: 'not-logged-in' };
+
+  try {
+    const result = await post(
+      getServer().BASE_SERVER + '/review/batch-accept',
+      { minConfidence: args?.minConfidence ?? 0.9 },
+      { 'X-ACTUAL-TOKEN': userToken },
+    );
+    return result as { accepted: number; threshold: number };
+  } catch (err) {
+    return { error: err.reason || err.message || 'unknown' };
+  }
+}
+
+async function reviewAccept(args: {
+  id: string;
+}): Promise<{ accepted: boolean; suggestion: unknown } | { error: string }> {
+  const userToken = await asyncStorage.getItem('user-token');
+  if (!userToken) return { error: 'not-logged-in' };
+
+  try {
+    const result = await post(
+      getServer().BASE_SERVER + `/review/${args.id}/accept`,
+      {},
+      { 'X-ACTUAL-TOKEN': userToken },
+    );
+    return result as { accepted: boolean; suggestion: unknown };
+  } catch (err) {
+    return { error: err.reason || err.message || 'unknown' };
+  }
+}
+
+async function reviewReject(args: {
+  id: string;
+  correct_category_id?: string;
+}): Promise<{ rejected: boolean; correct_category_id: string | null } | { error: string }> {
+  const userToken = await asyncStorage.getItem('user-token');
+  if (!userToken) return { error: 'not-logged-in' };
+
+  try {
+    const result = await post(
+      getServer().BASE_SERVER + `/review/${args.id}/reject`,
+      { correct_category_id: args.correct_category_id },
+      { 'X-ACTUAL-TOKEN': userToken },
+    );
+    return result as { rejected: boolean; correct_category_id: string | null };
+  } catch (err) {
+    return { error: err.reason || err.message || 'unknown' };
+  }
+}
+
+async function reviewSnooze(args: {
+  id: string;
+  days?: number;
+}): Promise<ReviewItem | { error: string }> {
+  const userToken = await asyncStorage.getItem('user-token');
+  if (!userToken) return { error: 'not-logged-in' };
+
+  try {
+    const result = await post(
+      getServer().BASE_SERVER + `/review/${args.id}/snooze`,
+      { days: args.days ?? 7 },
       { 'X-ACTUAL-TOKEN': userToken },
     );
     return result as ReviewItem;

@@ -1,5 +1,5 @@
 // @ts-strict-ignore
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
 
@@ -22,6 +22,7 @@ import {
   CONTRACT_STATUS_COLORS,
   CONTRACT_TYPE_COLORS,
   EMPTY_CONTRACT_FORM,
+  daysUntil,
   formatAmountEur,
 } from './types';
 import type {
@@ -139,6 +140,280 @@ function NotesEditor({
   );
 }
 
+// ─── Kündigungsschreiben Modal ───────────────────────────────────────────────
+
+function buildKuendigungsschreiben(
+  contract: ContractEntity,
+  senderName: string,
+  senderAddress: string,
+  today: string,
+): string {
+  const providerLine = contract.provider ?? contract.name;
+  const counterparty = contract.counterparty ?? '';
+  const rawStartDate = contract.start_date ?? '';
+  const startDate = rawStartDate
+    ? new Date(rawStartDate + 'T00:00:00').toLocaleDateString('de-DE', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      })
+    : '';
+  const ref = contract.iban ?? contract.id.slice(0, 8).toUpperCase();
+
+  return [
+    senderName,
+    senderAddress,
+    '',
+    providerLine,
+    counterparty ? counterparty : '',
+    '',
+    today,
+    '',
+    `Betreff: Kündigung des Vertrages – ${contract.name}`,
+    '',
+    `Sehr geehrte Damen und Herren,`,
+    '',
+    `hiermit kündige ich den oben genannten Vertrag${startDate ? ` (Vertragsbeginn: ${startDate})` : ''}`,
+    `zum nächstmöglichen Termin, hilfsweise zum nächst zulässigen Termin.`,
+    '',
+    `Vertragsreferenz: ${ref}`,
+    '',
+    `Ich bitte um eine schriftliche Bestätigung der Kündigung sowie`,
+    `die Nennung des genauen Kündigungstermins.`,
+    '',
+    `Mit freundlichen Grüßen`,
+    '',
+    senderName,
+  ]
+    .filter(line => line !== undefined)
+    .join('\n');
+}
+
+function KuendigungsschreibenModal({
+  contract,
+  onClose,
+}: {
+  contract: ContractEntity;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const today = new Date().toLocaleDateString('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+
+  const [senderName, setSenderName] = useState('');
+  const [senderAddress, setSenderAddress] = useState('');
+  const [copied, setCopied] = useState(false);
+  const backdropRef = useRef<HTMLDivElement>(null);
+
+  const letterText = buildKuendigungsschreiben(
+    contract,
+    senderName || t('Ihr Name'),
+    senderAddress || t('Ihre Adresse'),
+    today,
+  );
+
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(letterText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // clipboard not available — silently ignore
+    }
+  }, [letterText]);
+
+  const handleBackdrop = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.target === backdropRef.current) onClose();
+    },
+    [onClose],
+  );
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  return (
+    <View
+      ref={backdropRef}
+      onMouseDown={handleBackdrop}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 4000,
+        backgroundColor: 'rgba(0,0,0,0.45)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <View
+        style={{
+          width: 580,
+          maxHeight: '90vh',
+          backgroundColor: theme.modalBackground,
+          border: `1px solid ${theme.modalBorder}`,
+          borderRadius: 10,
+          boxShadow: '0 16px 60px rgba(0,0,0,.35)',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Header */}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '14px 18px 10px',
+            borderBottom: `1px solid ${theme.tableBorder}`,
+          }}
+        >
+          <Text style={{ fontSize: 15, fontWeight: 700 }}>
+            <Trans>Kündigungsschreiben</Trans>
+          </Text>
+          <Button variant="bare" onPress={onClose} style={{ fontSize: 18, padding: '2px 8px' }}>
+            ×
+          </Button>
+        </View>
+
+        {/* Sender inputs */}
+        <View style={{ padding: '12px 18px', gap: 8, borderBottom: `1px solid ${theme.tableBorder}` }}>
+          <Text style={{ fontSize: 11, color: theme.pageTextSubdued, fontWeight: 600, textTransform: 'uppercase' }}>
+            <Trans>Your details (sender)</Trans>
+          </Text>
+          <input
+            value={senderName}
+            onChange={e => setSenderName(e.target.value)}
+            placeholder={t('Full name')}
+            style={{
+              width: '100%',
+              padding: '7px 10px',
+              borderRadius: 4,
+              border: `1px solid ${theme.tableBorder}`,
+              backgroundColor: theme.formInputBackground,
+              color: theme.formInputText,
+              fontSize: 13,
+              fontFamily: 'inherit',
+              boxSizing: 'border-box',
+            }}
+          />
+          <input
+            value={senderAddress}
+            onChange={e => setSenderAddress(e.target.value)}
+            placeholder={t('Street, City, ZIP')}
+            style={{
+              width: '100%',
+              padding: '7px 10px',
+              borderRadius: 4,
+              border: `1px solid ${theme.tableBorder}`,
+              backgroundColor: theme.formInputBackground,
+              color: theme.formInputText,
+              fontSize: 13,
+              fontFamily: 'inherit',
+              boxSizing: 'border-box',
+            }}
+          />
+        </View>
+
+        {/* Notice period & earliest cancellation info */}
+        {(contract.notice_period_months || contract.cancellation_deadline) && (
+          <View
+            style={{
+              padding: '10px 18px',
+              backgroundColor: `${theme.tableBackground}`,
+              borderBottom: `1px solid ${theme.tableBorder}`,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 11,
+                color: theme.pageTextSubdued,
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                marginBottom: 6,
+              }}
+            >
+              <Trans>Cancellation details</Trans>
+            </Text>
+            {contract.notice_period_months != null && (
+              <Text style={{ fontSize: 12, color: theme.pageText, marginBottom: 3 }}>
+                {t('Notice period: {{n}} month(s)', { n: contract.notice_period_months })}
+              </Text>
+            )}
+            {contract.cancellation_deadline && (
+              <Text style={{ fontSize: 12, color: theme.pageText }}>
+                {t('Earliest cancellation date: {{date}}', {
+                  date: new Date(contract.cancellation_deadline).toLocaleDateString('de-DE', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                  }),
+                })}
+                {(() => {
+                  const days = daysUntil(contract.cancellation_deadline);
+                  if (days !== null && days >= 0) {
+                    return ` (${t('{{n}} days left', { n: days })})`;
+                  }
+                  if (days !== null && days < 0) {
+                    return ` (${t('passed')})`;
+                  }
+                  return '';
+                })()}
+              </Text>
+            )}
+          </View>
+        )}
+
+        {/* Letter preview */}
+        <View style={{ flex: 1, overflow: 'auto', padding: '12px 18px' }}>
+          <pre
+            style={{
+              margin: 0,
+              fontSize: 13,
+              fontFamily: '"Courier New", monospace',
+              lineHeight: 1.7,
+              whiteSpace: 'pre-wrap',
+              color: theme.pageText,
+            }}
+          >
+            {letterText}
+          </pre>
+        </View>
+
+        {/* Footer */}
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'flex-end',
+            gap: 8,
+            padding: '10px 18px',
+            borderTop: `1px solid ${theme.tableBorder}`,
+          }}
+        >
+          <Button variant="bare" onPress={onClose}>
+            <Trans>Close</Trans>
+          </Button>
+          <Button
+            variant="primary"
+            onPress={handleCopy}
+          >
+            {copied ? <Trans>Copied!</Trans> : <Trans>Copy to clipboard</Trans>}
+          </Button>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export function ContractDetailPage() {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
@@ -153,6 +428,7 @@ export function ContractDetailPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [isEditing, setIsEditing] = useState(isNew);
+  const [showKuendigung, setShowKuendigung] = useState(false);
 
   const loadContract = useCallback(async () => {
     if (isNew || !id) return;
@@ -247,7 +523,11 @@ export function ContractDetailPage() {
   const handleDelete = useCallback(async () => {
     if (!id || isNew) return;
     if (!window.confirm(t('Are you sure you want to delete this contract?'))) return;
-    await (send as Function)('contract-delete', { id });
+    const result = await (send as Function)('contract-delete', { id });
+    if (result && 'error' in result) {
+      setSaveError(result.error);
+      return;
+    }
     navigate('/contracts');
   }, [id, isNew, navigate, t]);
 
@@ -258,7 +538,9 @@ export function ContractDetailPage() {
       id,
       data: { status: 'cancelled' },
     });
-    if (result && !('error' in result)) {
+    if (result && 'error' in result) {
+      setSaveError(result.error);
+    } else if (result) {
       setContract(result as ContractEntity);
     }
   }, [id, isNew, t]);
@@ -367,6 +649,12 @@ export function ContractDetailPage() {
 
   return (
     <Page header={contract.name}>
+      {showKuendigung && (
+        <KuendigungsschreibenModal
+          contract={contract}
+          onClose={() => setShowKuendigung(false)}
+        />
+      )}
       {/* Header row with health, status, actions */}
       <View
         style={{
@@ -391,6 +679,9 @@ export function ContractDetailPage() {
           <ContractHealthBadge health={contract.health} />
         )}
         <View style={{ flex: 1 }} />
+        <Button onPress={() => setShowKuendigung(true)}>
+          <Trans>Kündigungsschreiben</Trans>
+        </Button>
         <Button onPress={() => setIsEditing(true)}>
           <Trans>Edit</Trans>
         </Button>

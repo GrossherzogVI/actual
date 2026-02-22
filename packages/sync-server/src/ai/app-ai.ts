@@ -7,7 +7,12 @@ import {
   validateSessionMiddleware,
 } from '../util/middlewares.js';
 
-import { classifyBatch, classifyTransaction } from './classifier.js';
+import {
+  classifyBatch,
+  classifyTransaction,
+  getCachedClassification,
+  clearClassificationCache,
+} from './classifier.js';
 import { isOllamaEnabled } from './ollama-client.js';
 
 const app = express();
@@ -176,15 +181,32 @@ app.post('/classify', async (req, res) => {
   try {
     const result = await classifyTransaction(transaction, categories);
 
-    // Store result and optionally queue for review
-    const classId = uuidv4();
+    // Store in ai_classifications for learning + auto-pin tracking
+    const classificationId = uuidv4();
+    const normalizedPayee = (transaction.payee ?? '').toLowerCase().trim();
     db.mutate(
-      `INSERT OR REPLACE INTO smart_match_rules
-         (id, payee_pattern, match_type, category_id, tier, confidence, match_count, correct_count, created_by)
-       VALUES (?, ?, 'contains', ?, 'ai_low', ?, 1, ?, 'ai')
-       ON CONFLICT DO NOTHING`,
+      `INSERT INTO ai_classifications
+         (id, transaction_id, original_payee, normalized_payee, suggested_category_id, confidence, model_version, classified_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
       [
-        classId,
+        classificationId,
+        transaction.id,
+        transaction.payee ?? '',
+        normalizedPayee,
+        result.categoryId,
+        result.confidence,
+        'ollama',
+      ],
+    );
+
+    // Store/update smart match rule
+    const ruleId = uuidv4();
+    db.mutate(
+      `INSERT OR IGNORE INTO smart_match_rules
+         (id, payee_pattern, match_type, category_id, tier, confidence, match_count, correct_count, created_by)
+       VALUES (?, ?, 'contains', ?, 'ai_low', ?, 1, ?, 'ai')`,
+      [
+        ruleId,
         transaction.payee,
         result.categoryId,
         result.confidence,
@@ -256,6 +278,24 @@ app.post('/classify-batch', async (req, res) => {
       const tier = result.confidence >= HIGH_CONFIDENCE_THRESHOLD ? 'ai_high' : 'ai_low';
       results.push({ ...result, tier, source: 'ollama' });
 
+      // Store in ai_classifications for learning + auto-pin tracking
+      const classificationId = uuidv4();
+      const normalizedPayee = (transaction.payee ?? '').toLowerCase().trim();
+      db.mutate(
+        `INSERT INTO ai_classifications
+           (id, transaction_id, original_payee, normalized_payee, suggested_category_id, confidence, model_version, classified_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+        [
+          classificationId,
+          transaction.id,
+          transaction.payee ?? '',
+          normalizedPayee,
+          result.categoryId,
+          result.confidence,
+          'ollama',
+        ],
+      );
+
       if (result.confidence < HIGH_CONFIDENCE_THRESHOLD) {
         const reviewId = uuidv4();
         db.mutate(
@@ -278,9 +318,49 @@ app.post('/classify-batch', async (req, res) => {
     }
   }
 
+  // After classification, check if any payees now qualify for auto-pin promotion
+  const promotions: Array<{ payee: string; category_id: string }> = [];
+  if (ollamaHigh > 0) {
+    const AUTO_PIN_MIN = 5;
+    for (const transaction of transactions) {
+      const payee = transaction.payee ?? '';
+      if (!payee) continue;
+
+      // Check if this payee now has enough consistent categorizations
+      const consistency = db.first(
+        `SELECT suggested_category_id, COUNT(*) as cnt
+         FROM ai_classifications
+         WHERE normalized_payee = ?
+         GROUP BY suggested_category_id
+         ORDER BY cnt DESC
+         LIMIT 1`,
+        [payee.toLowerCase().trim()],
+      ) as { suggested_category_id: string; cnt: number } | undefined;
+
+      if (consistency && consistency.cnt >= AUTO_PIN_MIN) {
+        // Check not already pinned
+        const alreadyPinned = db.first(
+          `SELECT id FROM smart_match_rules
+           WHERE tier = 'pinned' AND payee_pattern = ? AND category_id = ?`,
+          [payee, consistency.suggested_category_id],
+        );
+        if (!alreadyPinned) {
+          promotions.push({
+            payee,
+            category_id: consistency.suggested_category_id,
+          });
+        }
+      }
+    }
+  }
+
   res.json({
     status: 'ok',
-    data: { results, summary: { ruleMatched, ollamaHigh, ollamaLow, failed } },
+    data: {
+      results,
+      summary: { ruleMatched, ollamaHigh, ollamaLow, failed },
+      promotionCandidates: promotions,
+    },
   });
 });
 
@@ -421,4 +501,111 @@ app.get('/stats', (_req, res) => {
       avg_accuracy: accuracyRow.avg_accuracy ?? 0,
     },
   });
+});
+
+// ─── Auto-Pin Promotion ───────────────────────────────────────────────────
+
+const AUTO_PIN_MIN_CONSISTENT = 5;
+
+/**
+ * POST /ai/auto-pin-check — find payees with 5+ consistent categorizations
+ * that qualify for promotion to pinned rules.
+ */
+app.post('/auto-pin-check', (_req, res) => {
+  const db = getAccountDb();
+
+  // Find payees with 5+ classifications all mapping to the same category
+  const candidates = db.all(
+    `SELECT
+       normalized_payee,
+       suggested_category_id,
+       COUNT(*) as classification_count
+     FROM ai_classifications
+     GROUP BY normalized_payee, suggested_category_id
+     HAVING COUNT(*) >= ?`,
+    [AUTO_PIN_MIN_CONSISTENT],
+  ) as Array<{
+    normalized_payee: string;
+    suggested_category_id: string;
+    classification_count: number;
+  }>;
+
+  // Filter out payees that already have a pinned rule
+  const promotable = candidates.filter(c => {
+    const existing = db.first(
+      `SELECT id FROM smart_match_rules
+       WHERE tier = 'pinned' AND payee_pattern = ? AND category_id = ?`,
+      [c.normalized_payee, c.suggested_category_id],
+    );
+    return !existing;
+  });
+
+  res.json({
+    status: 'ok',
+    data: {
+      candidates: promotable.map(c => ({
+        payee: c.normalized_payee,
+        category_id: c.suggested_category_id,
+        count: c.classification_count,
+      })),
+    },
+  });
+});
+
+/**
+ * POST /ai/promote-to-pinned — promote a payee+category to a pinned rule.
+ * Body: { payee_pattern, category_id, match_type? }
+ */
+app.post('/promote-to-pinned', (req, res) => {
+  const { payee_pattern, category_id, match_type } = req.body ?? {};
+
+  if (!payee_pattern || !category_id) {
+    res.status(400).json({ status: 'error', reason: 'missing-fields' });
+    return;
+  }
+
+  const db = getAccountDb();
+
+  // Check if a pinned rule already exists
+  const existing = db.first(
+    `SELECT id FROM smart_match_rules
+     WHERE tier = 'pinned' AND payee_pattern = ? AND category_id = ?`,
+    [payee_pattern, category_id],
+  ) as Record<string, unknown> | undefined;
+
+  if (existing) {
+    res.json({ status: 'ok', data: { promoted: false, reason: 'already-pinned', id: existing.id } });
+    return;
+  }
+
+  // Upsert: if there's an ai_low/ai_high rule for this payee+category, upgrade it
+  const aiRule = db.first(
+    `SELECT id FROM smart_match_rules
+     WHERE payee_pattern = ? AND category_id = ? AND tier IN ('ai_low', 'ai_high')`,
+    [payee_pattern, category_id],
+  ) as Record<string, unknown> | undefined;
+
+  if (aiRule) {
+    db.mutate(
+      `UPDATE smart_match_rules
+       SET tier = 'pinned', confidence = 1.0, updated_at = datetime('now')
+       WHERE id = ?`,
+      [aiRule.id],
+    );
+    const updated = db.first('SELECT * FROM smart_match_rules WHERE id = ?', [aiRule.id]);
+    res.json({ status: 'ok', data: { promoted: true, rule: updated } });
+    return;
+  }
+
+  // Create new pinned rule
+  const id = uuidv4();
+  db.mutate(
+    `INSERT INTO smart_match_rules
+       (id, payee_pattern, match_type, category_id, tier, confidence, match_count, correct_count, created_by)
+     VALUES (?, ?, ?, ?, 'pinned', 1.0, 0, 0, 'auto_promote')`,
+    [id, payee_pattern, match_type ?? 'contains', category_id],
+  );
+
+  const created = db.first('SELECT * FROM smart_match_rules WHERE id = ?', [id]);
+  res.json({ status: 'ok', data: { promoted: true, rule: created } });
 });

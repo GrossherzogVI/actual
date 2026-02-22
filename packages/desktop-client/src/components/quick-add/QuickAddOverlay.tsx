@@ -67,6 +67,8 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
   const [trainTotal, setTrainTotal] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [parkFeedback, setParkFeedback] = useState(false);
+  // 8.6: amount placeholder from mode of recent transactions for selected category
+  const [amountPlaceholder, setAmountPlaceholder] = useState<string>('');
 
   const amountInputRef = useRef<HTMLInputElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -110,6 +112,59 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
       // Recent templates unavailable — graceful degradation
     });
   }, [isOpen]);
+
+  // 8.6: When category changes (and amount is empty), fetch last 10 transactions
+  // for that category and compute the modal (most frequent) amount as placeholder.
+  useEffect(() => {
+    if (!form.categoryId || form.amount !== '') {
+      setAmountPlaceholder('');
+      return;
+    }
+
+    void (send as Function)('transactions-get', {
+      categoryId: form.categoryId,
+      limit: 10,
+    }).then((result: unknown) => {
+      const list = Array.isArray(result)
+        ? result
+        : Array.isArray((result as any)?.transactions)
+          ? (result as any).transactions
+          : [];
+
+      if (list.length === 0) {
+        setAmountPlaceholder('');
+        return;
+      }
+
+      // Compute mode (most frequent absolute amount)
+      const freq = new Map<number, number>();
+      for (const tx of list) {
+        const abs = Math.abs(tx.amount ?? 0);
+        if (abs > 0) freq.set(abs, (freq.get(abs) ?? 0) + 1);
+      }
+
+      let modeAmount = 0;
+      let modeCount = 0;
+      for (const [amt, cnt] of freq) {
+        if (cnt > modeCount || (cnt === modeCount && amt > modeAmount)) {
+          modeAmount = amt;
+          modeCount = cnt;
+        }
+      }
+
+      if (modeAmount > 0) {
+        setAmountPlaceholder(
+          new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(
+            modeAmount / 100,
+          ),
+        );
+      } else {
+        setAmountPlaceholder('');
+      }
+    }).catch(() => {
+      setAmountPlaceholder('');
+    });
+  }, [form.categoryId, form.amount]);
 
   // Re-evaluate amount whenever raw input changes
   useEffect(() => {
@@ -359,6 +414,7 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
               evaluatedAmount={form.evaluatedAmount}
               autoFocus
               isIncome={isIncome}
+              suggestedPlaceholder={amountPlaceholder}
               data-quick-add-amount
             />
           </View>

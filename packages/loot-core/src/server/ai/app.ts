@@ -36,6 +36,8 @@ export type AIHandlers = {
   'ai-rules-delete': typeof aiRulesDelete;
   'ai-learn': typeof aiLearn;
   'ai-stats': typeof aiStats;
+  'ai-auto-pin-check': typeof aiAutoPinCheck;
+  'ai-promote-to-pinned': typeof aiPromoteToPinned;
 };
 
 export const app = createApp<AIHandlers>();
@@ -47,6 +49,8 @@ app.method('ai-rules-create', aiRulesCreate);
 app.method('ai-rules-delete', aiRulesDelete);
 app.method('ai-learn', aiLearn);
 app.method('ai-stats', aiStats);
+app.method('ai-auto-pin-check', aiAutoPinCheck);
+app.method('ai-promote-to-pinned', aiPromoteToPinned);
 
 async function aiClassify(args: {
   transaction: unknown;
@@ -203,4 +207,45 @@ async function aiStats(): Promise<AIStats | { error: string }> {
     return { error: err.message || 'network-failure' };
   }
   return { error: 'no-response' };
+}
+
+async function aiAutoPinCheck(): Promise<
+  | { candidates: Array<{ payee: string; category_id: string; count: number }> }
+  | { error: string }
+> {
+  const userToken = await asyncStorage.getItem('user-token');
+  if (!userToken) return { error: 'not-logged-in' };
+
+  try {
+    const result = await post(
+      getServer().BASE_SERVER + '/ai/auto-pin-check',
+      {},
+      { 'X-ACTUAL-TOKEN': userToken },
+    );
+    return result as {
+      candidates: Array<{ payee: string; category_id: string; count: number }>;
+    };
+  } catch (err) {
+    return { error: err.reason || err.message || 'unknown' };
+  }
+}
+
+async function aiPromoteToPinned(args: {
+  payee_pattern: string;
+  category_id: string;
+  match_type?: 'exact' | 'contains' | 'regex' | 'iban';
+}): Promise<{ promoted: boolean; rule?: SmartMatchRule } | { error: string }> {
+  const userToken = await asyncStorage.getItem('user-token');
+  if (!userToken) return { error: 'not-logged-in' };
+
+  try {
+    const result = await post(
+      getServer().BASE_SERVER + '/ai/promote-to-pinned',
+      args,
+      { 'X-ACTUAL-TOKEN': userToken },
+    );
+    return result as { promoted: boolean; rule?: SmartMatchRule };
+  } catch (err) {
+    return { error: err.reason || err.message || 'unknown' };
+  }
 }

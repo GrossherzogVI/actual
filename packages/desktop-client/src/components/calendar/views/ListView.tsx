@@ -15,6 +15,7 @@ interface Props {
   allEntries: CalendarEntry[];
   loading: boolean;
   error: string | null;
+  balanceThreshold?: number | null;
 }
 
 function formatCurrency(cents: number): string {
@@ -23,7 +24,7 @@ function formatCurrency(cents: number): string {
   return cents < 0 ? `-€${formatted}` : `€${formatted}`;
 }
 
-export function ListView({ weeks, allEntries, loading, error }: Props) {
+export function ListView({ weeks, allEntries, loading, error, balanceThreshold }: Props) {
   const { t } = useTranslation();
 
   const summary = useMemo(() => {
@@ -73,7 +74,7 @@ export function ListView({ weeks, allEntries, loading, error }: Props) {
       >
         <View>
           <Text style={{ fontSize: 11, color: theme.pageTextSubdued, marginBottom: 2 }}>
-            <Trans>Total due (30 days)</Trans>
+            <Trans>Total due</Trans>
           </Text>
           <Text style={{ fontSize: 15, fontWeight: 600, color: theme.errorText }}>
             {formatCurrency(summary.totalDue)}
@@ -110,7 +111,7 @@ export function ListView({ weeks, allEntries, loading, error }: Props) {
           }}
         >
           <Text style={{ color: theme.pageTextSubdued, fontSize: 14 }}>
-            <Trans>No upcoming payments in the next 30 days.</Trans>
+            <Trans>No upcoming payments.</Trans>
           </Text>
           <Text
             style={{
@@ -123,7 +124,9 @@ export function ListView({ weeks, allEntries, loading, error }: Props) {
           </Text>
         </View>
       ) : (
-        weeks.map(week => <WeekGroup key={week.weekStart} week={week} />)
+        weeks.map(week => (
+          <WeekGroup key={week.weekStart} week={week} balanceThreshold={balanceThreshold} />
+        ))
       )}
     </View>
   );

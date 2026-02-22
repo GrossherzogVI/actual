@@ -2,6 +2,47 @@ import type { ClassificationResult } from './types.js';
 
 import { ollamaChat } from './ollama-client.js';
 
+// ─── In-memory classification cache by normalized payee ────────────────────
+
+type CacheEntry = {
+  result: ClassificationResult;
+  cachedAt: number;
+};
+
+const classificationCache = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+function normalizePayee(payee: string): string {
+  return payee.toLowerCase().trim().replace(/\s+/g, ' ');
+}
+
+export function getCachedClassification(
+  payee: string,
+): ClassificationResult | null {
+  const key = normalizePayee(payee);
+  const entry = classificationCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.cachedAt > CACHE_TTL_MS) {
+    classificationCache.delete(key);
+    return null;
+  }
+  return entry.result;
+}
+
+function cacheClassification(
+  payee: string,
+  result: ClassificationResult,
+): void {
+  const key = normalizePayee(payee);
+  classificationCache.set(key, { result, cachedAt: Date.now() });
+}
+
+export function clearClassificationCache(): void {
+  classificationCache.clear();
+}
+
+// ─── Types ─────────────────────────────────────────────────────────────────
+
 export type TransactionInput = {
   id: string;
   payee: string;
@@ -75,6 +116,16 @@ export async function classifyTransaction(
   categories: CategoryInfo[],
   existingRules?: string[],
 ): Promise<ClassificationResult> {
+  // Check cache by normalized payee
+  const payee = transaction.payee ?? '';
+  if (payee) {
+    const cached = getCachedClassification(payee);
+    if (cached) {
+      // Return a copy with the current transaction's ID
+      return { ...cached, transactionId: transaction.id };
+    }
+  }
+
   const { system, user } = buildClassificationPrompt(
     transaction,
     categories,
@@ -108,6 +159,11 @@ export async function classifyTransaction(
       matchField: parsed.rule_suggestion.match_field,
       matchOp: parsed.rule_suggestion.match_op,
     };
+  }
+
+  // Cache by payee for subsequent transactions with the same payee
+  if (payee) {
+    cacheClassification(payee, result);
   }
 
   return result;

@@ -10,11 +10,15 @@ interface Props {
   balance: number; // cents
   /** Monthly income estimate (cents) — used to determine "yellow zone" threshold */
   monthlyIncome?: number;
+  /** User-configured minimum balance threshold in cents (from balanceThreshold pref).
+   *  When provided: bar turns red below this value. Also renders a threshold marker. */
+  threshold?: number | null;
 }
 
-function getBarColor(balance: number, threshold: number): string {
+function getBarColor(balance: number, redThreshold: number | null, yellowThreshold: number): string {
   if (balance < 0) return theme.errorText;
-  if (balance < threshold) return theme.warningText;
+  if (redThreshold !== null && balance < redThreshold) return theme.errorText;
+  if (balance < yellowThreshold) return theme.warningText;
   return '#10b981'; // green
 }
 
@@ -24,24 +28,38 @@ function formatBalance(cents: number): string {
   return cents < 0 ? `-€${formatted}` : `€${formatted}`;
 }
 
-export function BalanceProjectionLine({ balance, monthlyIncome = 300000 }: Props) {
+export function BalanceProjectionLine({
+  balance,
+  monthlyIncome = 300000,
+  threshold = null,
+}: Props) {
   const { t } = useTranslation();
 
-  // Yellow zone = less than 30% of monthly income
+  // Yellow zone = less than 30% of monthly income (original behavior)
   const yellowThreshold = Math.round(monthlyIncome * 0.3);
-  const barColor = getBarColor(balance, yellowThreshold);
+  const barColor = getBarColor(balance, threshold, yellowThreshold);
 
   // Bar fill: clamp to [0, 100]% relative to 2x monthly income
   const maxDisplay = monthlyIncome * 2;
   const fillPct =
     balance <= 0 ? 0 : Math.min(100, Math.round((balance / maxDisplay) * 100));
 
+  // Threshold marker position as percentage of maxDisplay
+  const thresholdPct =
+    threshold !== null && threshold > 0
+      ? Math.min(100, Math.round((threshold / maxDisplay) * 100))
+      : null;
+
+  const isBelowThreshold = threshold !== null && balance < threshold;
+
   const label =
     balance < 0
       ? t('Overdrawn')
-      : balance < yellowThreshold
-        ? t('Low balance')
-        : t('Healthy');
+      : isBelowThreshold
+        ? t('Below minimum')
+        : balance < yellowThreshold
+          ? t('Low balance')
+          : t('Healthy');
 
   return (
     <View
@@ -63,15 +81,18 @@ export function BalanceProjectionLine({ balance, monthlyIncome = 300000 }: Props
         {t('Balance')}
       </Text>
 
+      {/* Bar track */}
       <View
         style={{
           flex: 1,
           height: 6,
           borderRadius: 3,
           backgroundColor: theme.tableBorder,
-          overflow: 'hidden',
+          overflow: 'visible',
+          position: 'relative',
         }}
       >
+        {/* Fill */}
         <View
           style={{
             width: `${fillPct}%`,
@@ -81,6 +102,22 @@ export function BalanceProjectionLine({ balance, monthlyIncome = 300000 }: Props
             transition: 'width 0.3s ease',
           }}
         />
+
+        {/* Threshold marker line */}
+        {thresholdPct !== null && (
+          <View
+            style={{
+              position: 'absolute',
+              left: `${thresholdPct}%`,
+              top: -3,
+              bottom: -3,
+              width: 2,
+              backgroundColor: theme.errorText,
+              borderRadius: 1,
+              opacity: 0.7,
+            }}
+          />
+        )}
       </View>
 
       <Text
