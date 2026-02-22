@@ -41,6 +41,7 @@ export type ReviewHandlers = {
   'review-batch': typeof reviewBatch;
   'review-apply': typeof reviewApply;
   'review-dismiss': typeof reviewDismiss;
+  'review-create': typeof reviewCreate;
 };
 
 export const app = createApp<ReviewHandlers>();
@@ -51,6 +52,7 @@ app.method('review-update', reviewUpdate);
 app.method('review-batch', reviewBatch);
 app.method('review-apply', reviewApply);
 app.method('review-dismiss', reviewDismiss);
+app.method('review-create', reviewCreate);
 
 async function reviewList(args?: {
   type?: string;
@@ -123,6 +125,12 @@ async function reviewUpdate(args: {
   }
 }
 
+const ACTION_TO_STATUS: Record<string, string> = {
+  accept: 'accepted',
+  reject: 'rejected',
+  dismiss: 'dismissed',
+};
+
 async function reviewBatch(args: {
   ids: string[];
   action: 'accept' | 'reject' | 'dismiss';
@@ -133,7 +141,7 @@ async function reviewBatch(args: {
   try {
     const result = await post(
       getServer().BASE_SERVER + '/review/batch',
-      args,
+      { ids: args.ids, status: ACTION_TO_STATUS[args.action] ?? args.action },
       { 'X-ACTUAL-TOKEN': userToken },
     );
     return result as { updated: number };
@@ -174,6 +182,28 @@ async function reviewDismiss(args: {
       { 'X-ACTUAL-TOKEN': userToken },
     );
     return result as { deleted: boolean };
+  } catch (err) {
+    return { error: err.reason || err.message || 'unknown' };
+  }
+}
+
+async function reviewCreate(args: {
+  type: ReviewItem['type'];
+  priority: ReviewItem['priority'];
+  amount?: number;
+  category_id?: string;
+  notes?: string;
+}): Promise<ReviewItem | { error: string }> {
+  const userToken = await asyncStorage.getItem('user-token');
+  if (!userToken) return { error: 'not-logged-in' };
+
+  try {
+    const result = await post(
+      getServer().BASE_SERVER + '/review',
+      args,
+      { 'X-ACTUAL-TOKEN': userToken },
+    );
+    return result as ReviewItem;
   } catch (err) {
     return { error: err.reason || err.message || 'unknown' };
   }

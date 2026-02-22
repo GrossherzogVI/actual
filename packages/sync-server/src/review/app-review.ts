@@ -33,6 +33,41 @@ const VALID_TYPES = [
 
 const VALID_PRIORITIES = ['urgent', 'review', 'suggestion'] as const;
 
+/** POST /review — create a new review item (e.g. parked expense from Quick Add) */
+app.post('/', (req, res) => {
+  const { type, priority, amount, category_id, notes } = req.body ?? {};
+
+  if (!type || !VALID_TYPES.includes(type)) {
+    res.status(400).json({ status: 'error', reason: 'invalid-type' });
+    return;
+  }
+
+  if (!priority || !VALID_PRIORITIES.includes(priority)) {
+    res.status(400).json({ status: 'error', reason: 'invalid-priority' });
+    return;
+  }
+
+  const db = getAccountDb();
+  const id = uuidv4();
+
+  const aiSuggestion = (amount != null || notes)
+    ? JSON.stringify({ amount, category_id, notes: notes ?? undefined })
+    : null;
+
+  db.mutate(
+    `INSERT INTO review_queue
+       (id, type, priority, transaction_id, contract_id, schedule_id,
+        ai_suggestion, ai_confidence, status, snoozed_until, resolved_at,
+        resolved_action, created_at, updated_at)
+     VALUES (?, ?, ?, NULL, NULL, NULL, ?, NULL, 'pending', NULL, NULL, NULL,
+             datetime('now'), datetime('now'))`,
+    [id, type, priority, aiSuggestion],
+  );
+
+  const created = db.first('SELECT * FROM review_queue WHERE id = ?', [id]);
+  res.status(201).json({ status: 'ok', data: created });
+});
+
 /** GET /review/count — counts by priority */
 app.get('/count', (_req, res) => {
   const db = getAccountDb();
@@ -228,5 +263,5 @@ app.delete('/:id', (req, res) => {
     [req.params.id],
   );
 
-  res.json({ status: 'ok', data: { dismissed: true } });
+  res.json({ status: 'ok', data: { deleted: true } });
 });

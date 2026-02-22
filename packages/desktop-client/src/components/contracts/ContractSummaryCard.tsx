@@ -1,3 +1,4 @@
+// @ts-strict-ignore
 import React from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
@@ -7,6 +8,7 @@ import { View } from '@actual-app/components/view';
 
 import { useContractSummary } from './hooks/useContractSummary';
 import { CONTRACT_STATUS_COLORS, CONTRACT_TYPE_COLORS, formatAmountEur } from './types';
+import type { CostView } from './ContractsPage';
 
 function StatBlock({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
@@ -98,7 +100,7 @@ function PillGroup({
   );
 }
 
-export function ContractSummaryCard() {
+export function ContractSummaryCard({ costView = 'monthly' }: { costView?: CostView }) {
   const { t } = useTranslation();
   const { summary, loading } = useContractSummary();
 
@@ -148,13 +150,13 @@ export function ContractSummaryCard() {
 
       <View style={{ flexDirection: 'row', gap: 32, flexWrap: 'wrap' }}>
         <StatBlock
-          label={t('Monthly cost')}
-          value={`€${formatAmountEur(summary.total_monthly)}`}
+          label={costView === 'monthly' ? t('Monthly cost') : t('Annual cost')}
+          value={`€${formatAmountEur(costView === 'monthly' ? summary.total_monthly : summary.total_annual)}`}
           color={theme.pageTextDark}
         />
         <StatBlock
-          label={t('Annual cost')}
-          value={`€${formatAmountEur(summary.total_annual)}`}
+          label={costView === 'monthly' ? t('Annual cost') : t('Monthly cost')}
+          value={`€${formatAmountEur(costView === 'monthly' ? summary.total_annual : summary.total_monthly)}`}
         />
       </View>
 

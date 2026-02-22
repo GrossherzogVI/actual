@@ -16,6 +16,7 @@ import { useNavigate } from '@desktop-client/hooks/useNavigate';
 import { groupByWeek, useCalendarData } from './hooks/useCalendarData';
 import type { CalendarEntry, CalendarView } from './types';
 import { ListView } from './views/ListView';
+import { MonthGridView } from './MonthGridView';
 
 export function CalendarPage() {
   const { t } = useTranslation();
@@ -91,8 +92,9 @@ export function CalendarPage() {
         {/* Income toggle + Source badges + Reload */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           {/* Income toggle */}
-          <button
-            onClick={() => setShowIncome(prev => !prev)}
+          <Button
+            variant="bare"
+            onPress={() => setShowIncome(prev => !prev)}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -104,8 +106,6 @@ export function CalendarPage() {
               borderRadius: 12,
               backgroundColor: showIncome ? '#10b98118' : 'transparent',
               color: showIncome ? '#10b981' : theme.pageTextSubdued,
-              cursor: 'pointer',
-              outline: 'none',
             }}
           >
             <View
@@ -118,7 +118,7 @@ export function CalendarPage() {
               }}
             />
             {t('Income')}
-          </button>
+          </Button>
 
           <SourceBadges entries={rawAllEntries} />
           <Button variant="bare" onPress={reload}>
@@ -159,7 +159,7 @@ export function CalendarPage() {
           error={error}
         />
       ) : (
-        <MonthGridPlaceholder />
+        <MonthGridView allEntries={allEntries} loading={loading} />
       )}
     </Page>
   );
@@ -179,22 +179,21 @@ function ViewToggleButton({
   onPress: () => void;
 }) {
   return (
-    <button
-      onClick={onPress}
+    <Button
+      variant="bare"
+      onPress={onPress}
       style={{
         padding: '5px 14px',
         fontSize: 12,
         fontWeight: active ? 600 : 400,
-        border: 'none',
         borderRight: `1px solid ${theme.tableBorder}`,
         backgroundColor: active ? theme.buttonPrimaryBackground : theme.tableBackground,
         color: active ? theme.buttonPrimaryText : theme.pageText,
-        cursor: 'pointer',
-        outline: 'none',
+        borderRadius: 0,
       }}
     >
       {label}
-    </button>
+    </Button>
   );
 }
 
@@ -259,28 +258,3 @@ function SourceBadges({ entries }: { entries: CalendarEntry[] }) {
   );
 }
 
-function MonthGridPlaceholder() {
-  return (
-    <View
-      style={{
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 40,
-        backgroundColor: theme.tableBackground,
-        borderRadius: 6,
-        border: `1px solid ${theme.tableBorder}`,
-      }}
-    >
-      <SvgCalendar
-        style={{ width: 40, height: 40, color: theme.pageTextSubdued, marginBottom: 14 }}
-      />
-      <Text style={{ fontSize: 16, fontWeight: 600, color: theme.pageText, marginBottom: 6 }}>
-        <Trans>Month Grid</Trans>
-      </Text>
-      <Text style={{ fontSize: 13, color: theme.pageTextSubdued, textAlign: 'center' }}>
-        <Trans>Coming soon. Use List view for now.</Trans>
-      </Text>
-    </View>
-  );
-}

@@ -1,5 +1,5 @@
 // @ts-strict-ignore
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
 import { Button, ButtonWithLoading } from '@actual-app/components/button';
@@ -19,6 +19,253 @@ import {
   EMPTY_CONTRACT_FORM,
 } from './types';
 import type { ContractEntity, ContractFormData } from './types';
+import { SUGGESTED_TAGS } from './ContractsPage';
+
+// ─── Contract templates ───────────────────────────────────────────────────────
+
+type ContractTemplate = {
+  id: string;
+  label: string;
+  emoji: string;
+  data: Partial<ContractFormData>;
+};
+
+const CONTRACT_TEMPLATES: ContractTemplate[] = [
+  {
+    id: 'mietvertrag',
+    label: 'Mietvertrag',
+    emoji: '🏠',
+    data: {
+      type: 'rent',
+      interval: 'monthly',
+      notice_period_months: '3',
+      auto_renewal: false,
+    },
+  },
+  {
+    id: 'handyvertrag',
+    label: 'Handyvertrag',
+    emoji: '📱',
+    data: {
+      type: 'subscription',
+      interval: 'monthly',
+      notice_period_months: '1',
+      auto_renewal: true,
+    },
+  },
+  {
+    id: 'stromvertrag',
+    label: 'Stromvertrag',
+    emoji: '⚡',
+    data: {
+      type: 'utility',
+      interval: 'monthly',
+      notice_period_months: '1',
+      auto_renewal: true,
+    },
+  },
+  {
+    id: 'versicherung',
+    label: 'Versicherung',
+    emoji: '🛡️',
+    data: {
+      type: 'insurance',
+      interval: 'monthly',
+      notice_period_months: '1',
+      auto_renewal: true,
+    },
+  },
+  {
+    id: 'streaming',
+    label: 'Streaming',
+    emoji: '🎬',
+    data: {
+      type: 'subscription',
+      interval: 'monthly',
+      notice_period_months: '1',
+      auto_renewal: true,
+    },
+  },
+  {
+    id: 'fitnessstudio',
+    label: 'Fitnessstudio',
+    emoji: '💪',
+    data: {
+      type: 'membership',
+      interval: 'monthly',
+      notice_period_months: '3',
+      auto_renewal: true,
+    },
+  },
+];
+
+function TemplatePicker({ onSelect }: { onSelect: (data: Partial<ContractFormData>) => void }) {
+  const { t } = useTranslation();
+  return (
+    <View style={{ marginBottom: 20 }}>
+      <Text
+        style={{
+          fontSize: 12,
+          fontWeight: 500,
+          color: theme.pageTextSubdued,
+          marginBottom: 8,
+        }}
+      >
+        {t('Start from a template')}
+      </Text>
+      <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+        {CONTRACT_TEMPLATES.map(tmpl => (
+          <Button
+            key={tmpl.id}
+            variant="bare"
+            onPress={() => onSelect(tmpl.data)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 12px',
+              border: `1px solid ${theme.tableBorder}`,
+              borderRadius: 20,
+              backgroundColor: theme.tableBackground,
+              color: theme.pageText,
+              fontSize: 12,
+            }}
+          >
+            <span>{tmpl.emoji}</span>
+            <span>{tmpl.label}</span>
+          </Button>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+// ─── Tags input ───────────────────────────────────────────────────────────────
+
+function TagsInput({
+  value,
+  onChange,
+}: {
+  value: string[];
+  onChange: (tags: string[]) => void;
+}) {
+  const { t } = useTranslation();
+  const [inputValue, setInputValue] = useState('');
+
+  const addTag = useCallback(
+    (tag: string) => {
+      const trimmed = tag.trim();
+      if (!trimmed || value.includes(trimmed)) return;
+      onChange([...value, trimmed]);
+    },
+    [value, onChange],
+  );
+
+  const removeTag = useCallback(
+    (tag: string) => {
+      onChange(value.filter(t => t !== tag));
+    },
+    [value, onChange],
+  );
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      addTag(inputValue);
+      setInputValue('');
+    } else if (e.key === 'Backspace' && inputValue === '' && value.length > 0) {
+      removeTag(value[value.length - 1]);
+    }
+  };
+
+  return (
+    <View style={{ gap: 6 }}>
+      {/* Chip display */}
+      <View
+        style={{
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: 6,
+          minHeight: 34,
+          padding: '4px 8px',
+          border: `1px solid ${theme.tableBorder}`,
+          borderRadius: 4,
+          backgroundColor: theme.tableBackground,
+          alignItems: 'center',
+        }}
+      >
+        {value.map(tag => (
+          <View
+            key={tag}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 4,
+              padding: '2px 8px',
+              borderRadius: 12,
+              backgroundColor: `${theme.buttonPrimaryBackground}20`,
+            }}
+          >
+            <Text style={{ fontSize: 12, color: theme.pageText }}>{tag}</Text>
+            <Button
+              variant="bare"
+              onPress={() => removeTag(tag)}
+              style={{
+                color: theme.pageTextSubdued,
+                padding: '0 2px',
+                fontSize: 14,
+                lineHeight: 1,
+              }}
+            >
+              ×
+            </Button>
+          </View>
+        ))}
+        <input
+          value={inputValue}
+          onChange={e => setInputValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={value.length === 0 ? t('Add tags…') : ''}
+          style={{
+            border: 'none',
+            outline: 'none',
+            backgroundColor: 'transparent',
+            color: theme.pageText,
+            fontSize: 12,
+            minWidth: 80,
+            flex: 1,
+          }}
+        />
+      </View>
+
+      {/* Suggested tags */}
+      <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+        <Text style={{ fontSize: 11, color: theme.pageTextSubdued, alignSelf: 'center' }}>
+          {t('Suggestions:')}
+        </Text>
+        {SUGGESTED_TAGS.filter(s => !value.includes(s)).map(s => (
+          <Button
+            key={s}
+            variant="bare"
+            onPress={() => addTag(s)}
+            style={{
+              border: `1px solid ${theme.tableBorder}`,
+              borderRadius: 10,
+              backgroundColor: 'transparent',
+              color: theme.pageTextSubdued,
+              fontSize: 11,
+              padding: '1px 8px',
+            }}
+          >
+            {s}
+          </Button>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+// ─── Form ─────────────────────────────────────────────────────────────────────
 
 type ContractFormProps = {
   initialData?: Partial<ContractFormData>;
@@ -63,12 +310,10 @@ function FormField({
 }
 
 const TYPE_SELECT_OPTIONS: [string, string][] = [
-  ['', 'Select type…'],
   ...CONTRACT_TYPE_OPTIONS,
 ];
 
 const INTERVAL_SELECT_OPTIONS: [string, string][] = [
-  ['', 'Select interval…'],
   ...CONTRACT_INTERVAL_OPTIONS,
 ];
 
@@ -108,6 +353,12 @@ export function ContractForm({
     ...initialData,
   });
 
+  // tags are stored separately as string[] but ContractFormData uses string fields
+  // We manage them as a derived state from form.tags (which we add to the type below)
+  const [tags, setTags] = useState<string[]>(
+    (initialData as any)?.tags ?? (contract?.tags ?? []),
+  );
+
   const updateField = useCallback(
     <K extends keyof ContractFormData>(field: K, value: ContractFormData[K]) => {
       setForm(prev => ({ ...prev, [field]: value }));
@@ -115,9 +366,13 @@ export function ContractForm({
     [],
   );
 
+  const applyTemplate = useCallback((data: Partial<ContractFormData>) => {
+    setForm(prev => ({ ...prev, ...data }));
+  }, []);
+
   const handleSave = useCallback(() => {
-    onSave(form);
-  }, [form, onSave]);
+    onSave({ ...form, tags } as any);
+  }, [form, tags, onSave]);
 
   return (
     <View style={{ maxWidth: 640 }}>
@@ -135,6 +390,9 @@ export function ContractForm({
           <Text style={{ color: theme.errorText, fontSize: 13 }}>{error}</Text>
         </View>
       )}
+
+      {/* Template picker — only show for new contracts */}
+      {isNew && <TemplatePicker onSelect={applyTemplate} />}
 
       {/* Status indicator for existing contracts */}
       {!isNew && contract && (
@@ -306,6 +564,11 @@ export function ContractForm({
         </FormField>
       </View>
 
+      {/* Tags */}
+      <FormField label={t('Tags')}>
+        <TagsInput value={tags} onChange={setTags} />
+      </FormField>
+
       {/* Notes */}
       <FormField label={t('Notes')}>
         <textarea
@@ -357,7 +620,7 @@ export function ContractForm({
 
         {/* Primary actions on the right */}
         <View style={{ flexDirection: 'row', gap: 10 }}>
-          <Button onPress={() => navigate('/contracts')}>
+          <Button variant="normal" onPress={() => navigate('/contracts')}>
             <Trans>Back</Trans>
           </Button>
           <ButtonWithLoading

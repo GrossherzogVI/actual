@@ -22,32 +22,53 @@ import { useCalculator } from './hooks/useCalculator';
 import { useFrecency } from './hooks/useFrecency';
 import { usePresets } from './hooks/usePresets';
 import { useQuickAdd } from './hooks/useQuickAdd';
-import type { Category } from './types';
+import { useToast } from '../common/Toast';
+import type { Category, RecentTemplate } from './types';
 
 type QuickAddOverlayProps = {
   isOpen: boolean;
   onClose: () => void;
 };
 
+function formatEur(cents: number): string {
+  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(
+    Math.abs(cents) / 100,
+  );
+}
+
 export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
   const { t } = useTranslation();
+  const toast = useToast();
 
   // Default account: first on-budget account
   const { data: onBudgetAccounts = [] } = useQuery(accountQueries.listOnBudget());
   const defaultAccountId = onBudgetAccounts[0]?.id;
 
-  const { form, setField, resetForm, prefill, submitTransaction } = useQuickAdd(defaultAccountId);
+  const {
+    form,
+    isIncome,
+    setIsIncome,
+    setField,
+    resetForm,
+    resetAmountOnly,
+    prefill,
+    submitTransaction,
+  } = useQuickAdd(defaultAccountId);
+
   const { evaluate } = useCalculator();
   const { presets } = usePresets();
   const { frecency } = useFrecency();
 
   const [categories, setCategories] = useState<Category[]>([]);
+  const [recentTemplates, setRecentTemplates] = useState<RecentTemplate[]>([]);
   const [showMore, setShowMore] = useState(false);
   const [trainMode, setTrainMode] = useState(false);
   const [trainCount, setTrainCount] = useState(0);
   const [trainTotal, setTrainTotal] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [parkFeedback, setParkFeedback] = useState(false);
 
+  const amountInputRef = useRef<HTMLInputElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
 
   // Load categories once on mount
@@ -63,6 +84,32 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
       // Category loading failed — user can still submit without category
     });
   }, []);
+
+  // Load 5 most recent transactions for Recent Templates (6.6)
+  useEffect(() => {
+    if (!isOpen) return;
+    void (send as Function)('transactions-get', {
+      accountId: null,
+      options: { limit: 5, sort: [{ field: 'date', order: 'desc' }] },
+    }).then((result: unknown) => {
+      const list = Array.isArray(result)
+        ? result
+        : Array.isArray((result as any)?.transactions)
+          ? (result as any).transactions
+          : [];
+      const templates: RecentTemplate[] = list.slice(0, 5).map((tx: any) => ({
+        payee: tx.payee_name ?? tx.payee ?? '',
+        amount: Math.abs(tx.amount ?? 0),
+        categoryId: tx.category ?? '',
+        categoryName: tx.category_name ?? '',
+        accountId: tx.account ?? '',
+        date: tx.date ?? new Date().toISOString().slice(0, 10),
+      }));
+      setRecentTemplates(templates);
+    }).catch(() => {
+      // Recent templates unavailable — graceful degradation
+    });
+  }, [isOpen]);
 
   // Re-evaluate amount whenever raw input changes
   useEffect(() => {
@@ -80,6 +127,15 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
     return () => document.removeEventListener('keydown', handler);
   }, [isOpen, onClose]);
 
+  const focusAmount = useCallback(() => {
+    // Small timeout so React can flush state updates first
+    setTimeout(() => {
+      const el = document.querySelector<HTMLInputElement>('[data-quick-add-amount]');
+      el?.focus();
+      el?.select();
+    }, 30);
+  }, []);
+
   const handleBackdropClick = useCallback(
     (e: React.MouseEvent) => {
       if (e.target === backdropRef.current) onClose();
@@ -87,32 +143,127 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
     [onClose],
   );
 
-  const handleSubmit = useCallback(async () => {
+  // Save and close (default submit)
+  const handleSubmitAndClose = useCallback(async () => {
     if (submitting) return;
     setSubmitting(true);
-    const ok = await submitTransaction();
-    if (ok) {
+    const txId = await submitTransaction();
+    if (txId) {
       const amount = form.evaluatedAmount ?? 0;
       if (trainMode) {
         setTrainCount(c => c + 1);
         setTrainTotal(prev => prev + amount);
         resetForm();
+        focusAmount();
       } else {
+        toast.show(t('Saved: {{amount}}', { amount: formatEur(amount) }), {
+          type: 'success',
+          duration: 10000,
+          action: {
+            label: t('Undo'),
+            onPress: () => {
+              void send('transaction-delete', { id: txId });
+            },
+          },
+        });
         resetForm();
         onClose();
       }
     }
     setSubmitting(false);
-  }, [submitting, submitTransaction, form.evaluatedAmount, trainMode, resetForm, onClose]);
+  }, [submitting, submitTransaction, form.evaluatedAmount, trainMode, resetForm, onClose, toast, t, focusAmount]);
+
+  // 6.1: Save + New — reset form, keep overlay open, focus amount
+  const handleSubmitAndNew = useCallback(async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    const txId = await submitTransaction();
+    if (txId) {
+      const amount = form.evaluatedAmount ?? 0;
+      toast.show(t('Saved: {{amount}}', { amount: formatEur(amount) }), {
+        type: 'success',
+        duration: 10000,
+        action: {
+          label: t('Undo'),
+          onPress: () => {
+            void send('transaction-delete', { id: txId });
+          },
+        },
+      });
+      resetForm();
+      focusAmount();
+    }
+    setSubmitting(false);
+  }, [submitting, submitTransaction, form.evaluatedAmount, resetForm, toast, t, focusAmount]);
+
+  // 6.2: Save + Duplicate — reset amount only, keep category/payee/account
+  const handleSubmitAndDuplicate = useCallback(async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    const txId = await submitTransaction();
+    if (txId) {
+      const amount = form.evaluatedAmount ?? 0;
+      toast.show(t('Saved: {{amount}}', { amount: formatEur(amount) }), {
+        type: 'success',
+        duration: 10000,
+        action: {
+          label: t('Undo'),
+          onPress: () => {
+            void send('transaction-delete', { id: txId });
+          },
+        },
+      });
+      resetAmountOnly();
+      focusAmount();
+    }
+    setSubmitting(false);
+  }, [submitting, submitTransaction, form.evaluatedAmount, resetAmountOnly, toast, t, focusAmount]);
+
+  // 6.3: Park for Later — save as draft to review queue
+  const handlePark = useCallback(async () => {
+    if (submitting || form.evaluatedAmount == null) return;
+    setSubmitting(true);
+    try {
+      await (send as Function)('review-create', {
+        type: 'parked_expense',
+        priority: 'review',
+        amount: form.evaluatedAmount,
+        category_id: form.categoryId || undefined,
+        notes: 'Parked from Quick Add',
+      });
+      setParkFeedback(true);
+      setTimeout(() => setParkFeedback(false), 2000);
+      resetForm();
+      focusAmount();
+    } catch {
+      // Park failed silently
+    }
+    setSubmitting(false);
+  }, [submitting, form.evaluatedAmount, form.categoryId, resetForm, focusAmount]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      const meta = e.metaKey || e.ctrlKey;
+
+      // 6.3: Cmd+P — Park for later
+      if (meta && e.key === 'p') {
         e.preventDefault();
-        void handleSubmit();
+        void handlePark();
+        return;
+      }
+
+      if (e.key === 'Enter' && meta) {
+        e.preventDefault();
+        if (e.shiftKey) {
+          // 6.2: Cmd+Shift+Enter — Save + Duplicate
+          void handleSubmitAndDuplicate();
+        } else {
+          // 6.1: Cmd+Enter — Save + New (keep overlay open)
+          void handleSubmitAndNew();
+        }
       }
     },
-    [handleSubmit],
+    [handlePark, handleSubmitAndNew, handleSubmitAndDuplicate],
   );
 
   if (!isOpen) return null;
@@ -170,13 +321,48 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
         {/* Preset bar */}
         <PresetBar presets={presets} onSelect={prefill} />
 
-        {/* Amount (auto-focused) */}
-        <AmountInput
-          value={form.amount}
-          onChange={v => setField('amount', v)}
-          evaluatedAmount={form.evaluatedAmount}
-          autoFocus
-        />
+        {/* Amount row with +/- income toggle (6.5) */}
+        <View style={{ position: 'relative' }}>
+          {/* Income/Expense toggle */}
+          <Button
+            variant="bare"
+            onPress={() => setIsIncome(v => !v)}
+            style={{
+              position: 'absolute',
+              left: 16,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              zIndex: 1,
+              fontSize: 18,
+              fontWeight: 700,
+              width: 32,
+              height: 32,
+              borderRadius: '50%',
+              border: `2px solid ${isIncome ? '#10b981' : theme.formInputBorder}`,
+              color: isIncome ? '#10b981' : theme.pageTextSubdued,
+              backgroundColor: 'transparent',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 0,
+            }}
+            aria-label={isIncome ? t('Switch to expense') : t('Switch to income')}
+          >
+            {isIncome ? '+' : '−'}
+          </Button>
+
+          {/* Amount input — left-padded to make room for toggle */}
+          <View style={{ paddingLeft: 56 }}>
+            <AmountInput
+              value={form.amount}
+              onChange={v => setField('amount', v)}
+              evaluatedAmount={form.evaluatedAmount}
+              autoFocus
+              isIncome={isIncome}
+              data-quick-add-amount
+            />
+          </View>
+        </View>
 
         {/* Category + Payee row */}
         <View style={{ flexDirection: 'row', gap: 8, padding: '0 16px 10px' }}>
@@ -248,8 +434,8 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
           )}
         </View>
 
-        {/* Recent templates */}
-        <RecentTemplates templates={[]} onSelect={tpl => {
+        {/* Recent templates (6.6) */}
+        <RecentTemplates templates={recentTemplates} onSelect={tpl => {
           setField('payee', tpl.payee);
           setField('amount', String(tpl.amount / 100));
           setField('categoryId', tpl.categoryId);
@@ -276,15 +462,33 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
             borderTop: `1px solid ${theme.tableBorderSeparator}`,
           }}
         >
-          <Text style={{ fontSize: 11, color: theme.pageTextSubdued, flex: 1 }}>
-            <Trans>⌘↵ to submit</Trans>
-          </Text>
+          {/* Keyboard shortcut hints */}
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={{ fontSize: 10, color: theme.pageTextSubdued }}>
+              <Trans>⌘↵ new · ⌘⇧↵ dup · ⌘P park</Trans>
+            </Text>
+          </View>
+
+          {/* 6.3: Park for later button */}
+          <Button
+            variant="bare"
+            onPress={handlePark}
+            isDisabled={!canSubmit || submitting}
+            style={{
+              fontSize: 12,
+              color: parkFeedback ? '#10b981' : theme.pageTextSubdued,
+              padding: '4px 8px',
+            }}
+          >
+            {parkFeedback ? <Trans>Parked!</Trans> : <Trans>Park</Trans>}
+          </Button>
+
           <Button variant="bare" onPress={onClose}>
             <Trans>Cancel</Trans>
           </Button>
           <Button
             variant="primary"
-            onPress={handleSubmit}
+            onPress={handleSubmitAndClose}
             isDisabled={!canSubmit || submitting}
           >
             {trainMode ? <Trans>Add &amp; next</Trans> : <Trans>Add</Trans>}
