@@ -1,4 +1,11 @@
-import React, { useEffect, useEffectEvent, useRef, useState } from 'react';
+import React, {
+  lazy,
+  Suspense,
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+} from 'react';
 import type { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, Route, Routes, useHref, useLocation } from 'react-router';
@@ -10,7 +17,6 @@ import { useQuery } from '@tanstack/react-query';
 
 import * as undo from 'loot-core/platform/client/undo';
 
-import { UserAccessPage } from './admin/UserAccess/UserAccessPage';
 import { BankSyncStatus } from './BankSyncStatus';
 import { CommandBar } from './CommandBar';
 import { GlobalKeys } from './GlobalKeys';
@@ -18,24 +24,59 @@ import { MobileBankSyncAccountEditPage } from './mobile/banksync/MobileBankSyncA
 import { MobileNavTabs } from './mobile/MobileNavTabs';
 import { TransactionEdit } from './mobile/transactions/TransactionEdit';
 import { Notifications } from './Notifications';
-import { Reports } from './reports';
 import { LoadingIndicator } from './reports/LoadingIndicator';
 import { NarrowAlternate, WideComponent } from './responsive';
-import { UserDirectoryPage } from './responsive/wide';
 import { useMultiuserEnabled } from './ServerContext';
-import { Settings } from './settings';
 import { FloatableSidebar } from './sidebar';
-import { ManageTagsPage } from './tags/ManageTagsPage';
-import { CalendarPage } from './calendar/CalendarPage';
 import { ToastProvider } from './common/Toast';
-import { ContractDetailPage } from './contracts/ContractDetailPage';
-import { ContractsPage } from './contracts/ContractsPage';
-import { DashboardPage } from './dashboard/DashboardPage';
-import { ImportPage } from './import/ImportPage';
 import { QuickAddOverlay } from './quick-add/QuickAddOverlay';
-import { ReviewQueuePage } from './review/ReviewQueuePage';
-import { AnalyticsPage } from './analytics/AnalyticsPage';
 import { Titlebar } from './Titlebar';
+
+// Lazy-loaded routes (code-split for smaller initial bundle)
+const AnalyticsPage = lazy(() =>
+  import('./analytics/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })),
+);
+const CalendarPage = lazy(() =>
+  import('./calendar/CalendarPage').then(m => ({ default: m.CalendarPage })),
+);
+const ContractsPage = lazy(() =>
+  import('./contracts/ContractsPage').then(m => ({ default: m.ContractsPage })),
+);
+const ContractDetailPage = lazy(() =>
+  import('./contracts/ContractDetailPage').then(m => ({
+    default: m.ContractDetailPage,
+  })),
+);
+const DashboardPage = lazy(() =>
+  import('./dashboard/DashboardPage').then(m => ({ default: m.DashboardPage })),
+);
+const ImportPage = lazy(() =>
+  import('./import/ImportPage').then(m => ({ default: m.ImportPage })),
+);
+const ManageTagsPage = lazy(() =>
+  import('./tags/ManageTagsPage').then(m => ({ default: m.ManageTagsPage })),
+);
+const Reports = lazy(() =>
+  import('./reports').then(m => ({ default: m.Reports })),
+);
+const ReviewQueuePage = lazy(() =>
+  import('./review/ReviewQueuePage').then(m => ({
+    default: m.ReviewQueuePage,
+  })),
+);
+const Settings = lazy(() =>
+  import('./settings').then(m => ({ default: m.Settings })),
+);
+const UserAccessPage = lazy(() =>
+  import('./admin/UserAccess/UserAccessPage').then(m => ({
+    default: m.UserAccessPage,
+  })),
+);
+const UserDirectoryPage = lazy(() =>
+  import('./admin/UserDirectory/UserDirectoryPage').then(m => ({
+    default: m.UserDirectoryPage,
+  })),
+);
 
 import { accountQueries } from '@desktop-client/accounts';
 import { getLatestAppVersion, sync } from '@desktop-client/app/appSlice';
@@ -286,7 +327,7 @@ export function FinancesApp() {
                   }
                 />
 
-                <Route path="/reports/*" element={<Reports />} />
+                <Route path="/reports/*" element={<Suspense fallback={<LoadingIndicator />}><Reports /></Suspense>} />
 
                 <Route
                   path="/budget"
@@ -338,8 +379,8 @@ export function FinancesApp() {
                     </WideNotSupported>
                   }
                 />
-                <Route path="/tags" element={<ManageTagsPage />} />
-                <Route path="/settings" element={<Settings />} />
+                <Route path="/tags" element={<Suspense fallback={<LoadingIndicator />}><ManageTagsPage /></Suspense>} />
+                <Route path="/settings" element={<Suspense fallback={<LoadingIndicator />}><Settings /></Suspense>} />
 
                 <Route
                   path="/gocardless/link"
@@ -377,10 +418,12 @@ export function FinancesApp() {
                   <Route
                     path="/user-directory"
                     element={
-                      <ProtectedRoute
-                        permission={Permissions.ADMINISTRATOR}
-                        element={<UserDirectoryPage />}
-                      />
+                      <Suspense fallback={<LoadingIndicator />}>
+                        <ProtectedRoute
+                          permission={Permissions.ADMINISTRATOR}
+                          element={<UserDirectoryPage />}
+                        />
+                      </Suspense>
                     }
                   />
                 )}
@@ -388,22 +431,24 @@ export function FinancesApp() {
                   <Route
                     path="/user-access"
                     element={
-                      <ProtectedRoute
-                        permission={Permissions.ADMINISTRATOR}
-                        validateOwner
-                        element={<UserAccessPage />}
-                      />
+                      <Suspense fallback={<LoadingIndicator />}>
+                        <ProtectedRoute
+                          permission={Permissions.ADMINISTRATOR}
+                          validateOwner
+                          element={<UserAccessPage />}
+                        />
+                      </Suspense>
                     }
                   />
                 )}
-                <Route path="/dashboard" element={<DashboardPage />} />
-                <Route path="/contracts" element={<ContractsPage />} />
-                <Route path="/contracts/:id" element={<ContractDetailPage />} />
-                <Route path="/calendar" element={<CalendarPage />} />
-                <Route path="/review" element={<ReviewQueuePage />} />
-                <Route path="/analytics" element={<AnalyticsPage />} />
-                <Route path="/import" element={<ImportPage />} />
-                <Route path="/import/:type" element={<ImportPage />} />
+                <Route path="/dashboard" element={<Suspense fallback={<LoadingIndicator />}><DashboardPage /></Suspense>} />
+                <Route path="/contracts" element={<Suspense fallback={<LoadingIndicator />}><ContractsPage /></Suspense>} />
+                <Route path="/contracts/:id" element={<Suspense fallback={<LoadingIndicator />}><ContractDetailPage /></Suspense>} />
+                <Route path="/calendar" element={<Suspense fallback={<LoadingIndicator />}><CalendarPage /></Suspense>} />
+                <Route path="/review" element={<Suspense fallback={<LoadingIndicator />}><ReviewQueuePage /></Suspense>} />
+                <Route path="/analytics" element={<Suspense fallback={<LoadingIndicator />}><AnalyticsPage /></Suspense>} />
+                <Route path="/import" element={<Suspense fallback={<LoadingIndicator />}><ImportPage /></Suspense>} />
+                <Route path="/import/:type" element={<Suspense fallback={<LoadingIndicator />}><ImportPage /></Suspense>} />
                 {/* redirect all other traffic to the budget page */}
                 <Route path="/*" element={<Navigate to={financeOS ? '/dashboard' : '/budget'} replace />} />
               </Routes>

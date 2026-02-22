@@ -112,8 +112,11 @@ export default defineConfig(async ({ mode }) => {
     envPrefix: 'REACT_APP_',
     build: {
       terserOptions: {
-        compress: false,
-        mangle: false,
+        compress: {
+          drop_console: false,
+          passes: 2,
+        },
+        mangle: true,
       },
       target: 'es2022',
       sourcemap: true,
@@ -136,6 +139,11 @@ export default defineConfig(async ({ mode }) => {
           },
           chunkFileNames: 'static/js/[name].[hash].chunk.js',
           entryFileNames: 'static/js/[name].[hash].js',
+          manualChunks: {
+            'recharts': ['recharts'],
+            'react-vendor': ['react', 'react-dom', 'react-router'],
+            'date-fns': ['date-fns'],
+          },
         },
       },
     },
