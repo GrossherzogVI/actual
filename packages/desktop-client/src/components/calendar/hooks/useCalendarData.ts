@@ -157,25 +157,10 @@ interface UseCalendarDataResult {
   startingBalance: number;
 }
 
-/** Resolve a display name for a schedule: prefer schedule.name, fall back to payee name. */
-function getScheduleName(
-  schedule: ScheduleEntity,
-  payeesById: Map<string, { name: string }>,
-): string {
-  if (schedule.name) return schedule.name;
-  const payee = payeesById.get(schedule._payee);
-  if (payee) return payee.name;
-  return 'Scheduled payment';
-}
-
-/** Derive a human-readable interval label from a schedule's _date config. */
-function getScheduleInterval(schedule: ScheduleEntity): string {
-  const dateConfig = schedule._date;
-  if (typeof dateConfig === 'object' && dateConfig !== null) {
-    return dateConfig.frequency ?? 'unknown';
-  }
-  return 'once';
-}
+import {
+  getScheduleInterval,
+  getScheduleName,
+} from '@desktop-client/utils/schedule-helpers';
 
 export function useCalendarData(): UseCalendarDataResult {
   const [budgetId] = useMetadataPref('id');

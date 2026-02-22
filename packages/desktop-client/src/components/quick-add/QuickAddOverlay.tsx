@@ -59,6 +59,8 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
           raw.map(c => ({ id: c.id, name: c.name, group_id: c.group_id })),
         );
       }
+    }).catch(() => {
+      // Category loading failed — user can still submit without category
     });
   }, []);
 
@@ -93,7 +95,7 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
       const amount = form.evaluatedAmount ?? 0;
       if (trainMode) {
         setTrainCount(c => c + 1);
-        setTrainTotal(t => t + amount);
+        setTrainTotal(prev => prev + amount);
         resetForm();
       } else {
         resetForm();
@@ -115,7 +117,7 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
 
   if (!isOpen) return null;
 
-  const canSubmit = !!(form.evaluatedAmount || form.amount.trim());
+  const canSubmit = form.evaluatedAmount != null;
 
   return (
     <View

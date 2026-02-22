@@ -10,14 +10,8 @@ import { useSheetValue } from '@desktop-client/hooks/useSheetValue';
 import { allAccountBalance } from '@desktop-client/spreadsheet/bindings';
 
 import type { UpcomingPayment } from '../types';
+import { formatEur } from '../utils';
 import { WidgetCard } from './WidgetCard';
-
-function formatEur(cents: number | null): string {
-  if (cents == null) return '--';
-  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(
-    cents / 100,
-  );
-}
 
 type Props = {
   upcomingPayments?: UpcomingPayment[];

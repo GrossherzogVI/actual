@@ -57,7 +57,7 @@ export function useQuickAdd(defaultAccountId?: string): UseQuickAddReturn {
 
   const submitTransaction = useCallback(async (): Promise<boolean> => {
     const amount = form.evaluatedAmount;
-    if (!amount) return false;
+    if (amount == null) return false;
 
     const accountId = form.accountId || defaultAccountId;
     if (!accountId) return false;

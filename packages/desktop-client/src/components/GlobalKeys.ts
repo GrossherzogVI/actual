@@ -12,7 +12,7 @@ export function GlobalKeys() {
   useEffect(() => {
     const handleKeys = (e: KeyboardEvent) => {
       // ⌘N: Quick Add — must work in browser mode, so handle before the isBrowser gate
-      if (financeOS && e.metaKey && e.key === 'n') {
+      if (financeOS && (e.metaKey || e.ctrlKey) && e.key === 'n') {
         e.preventDefault();
         document.dispatchEvent(new CustomEvent('quick-add-open'));
         return;
@@ -45,8 +45,7 @@ export function GlobalKeys() {
               void navigate('/reports');
               break;
             case '7':
-              // Import placeholder — navigates to /settings until Import page exists
-              void navigate('/settings');
+              void navigate('/import');
               break;
             case '8':
               void navigate('/review');

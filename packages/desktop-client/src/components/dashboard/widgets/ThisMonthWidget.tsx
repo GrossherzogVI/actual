@@ -10,19 +10,13 @@ import { useSheetValue } from '@desktop-client/hooks/useSheetValue';
 import { envelopeBudget } from '@desktop-client/spreadsheet/bindings';
 
 import type { ContractSummary } from '../types';
+import { formatEur } from '../utils';
 import { WidgetCard } from './WidgetCard';
-
-function formatEur(cents: number | null): string {
-  if (cents == null) return '—';
-  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(
-    cents / 100,
-  );
-}
 
 type RowProps = {
   label: string;
   value: string;
-  valueStyle?: object;
+  valueStyle?: React.CSSProperties;
 };
 
 function Row({ label, value, valueStyle }: RowProps) {
@@ -74,7 +68,7 @@ export function ThisMonthWidget({ summary, loading }: Props) {
           <Row
             label={t('Income')}
             value={formatEur(incomeCents)}
-            valueStyle={{ color: '#10b981' }}
+            valueStyle={{ color: theme.noticeText }}
           />
           <Row label={t('Fixed costs')} value={formatEur(fixedMonthlyCents)} />
           <Row label={t('Variable spent')} value={formatEur(spentCents)} />

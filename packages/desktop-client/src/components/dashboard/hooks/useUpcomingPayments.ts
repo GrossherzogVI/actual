@@ -73,25 +73,10 @@ function toDateString(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
-/** Resolve a display name for a schedule. */
-function getScheduleName(
-  schedule: ScheduleEntity,
-  payeesById: Map<string, { name: string }>,
-): string {
-  if (schedule.name) return schedule.name;
-  const payee = payeesById.get(schedule._payee);
-  if (payee) return payee.name;
-  return 'Scheduled payment';
-}
-
-/** Derive a human-readable interval label from a schedule's _date config. */
-function getScheduleInterval(schedule: ScheduleEntity): string {
-  const dateConfig = schedule._date;
-  if (typeof dateConfig === 'object' && dateConfig !== null) {
-    return dateConfig.frequency ?? 'unknown';
-  }
-  return 'once';
-}
+import {
+  getScheduleInterval,
+  getScheduleName,
+} from '@desktop-client/utils/schedule-helpers';
 
 export function useUpcomingPayments(withinDays = 14): {
   payments: UpcomingPayment[];
@@ -129,9 +114,17 @@ export function useUpcomingPayments(withinDays = 14): {
     setContractsLoading(true);
     setError(null);
 
-    const result = await (send as Function)('contract-list', { status: 'active' });
-    if (result && 'error' in result) {
-      setError(result.error as string);
+    let result: unknown;
+    try {
+      result = await (send as Function)('contract-list', { status: 'active' });
+    } catch (err) {
+      setError(String(err));
+      setContractPayments([]);
+      setContractsLoading(false);
+      return;
+    }
+    if (result && typeof result === 'object' && 'error' in result) {
+      setError((result as { error: string }).error);
       setContractPayments([]);
       setContractsLoading(false);
       return;
