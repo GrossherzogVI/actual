@@ -227,22 +227,5 @@ export async function get(url, opts?) {
 
   throwIfNot200(res, text);
 
-  let responseData;
-  try {
-    responseData = JSON.parse(text);
-  } catch {
-    throw new PostError('parse-json', { meta: text });
-  }
-
-  if (responseData && responseData.status !== 'ok') {
-    logger.log(
-      'API call failed: ' +
-      url +
-      '\nResponse: ' +
-      JSON.stringify(responseData, null, 2),
-    );
-    throw new PostError(responseData.description || responseData.reason || 'unknown');
-  }
-
-  return responseData ? responseData.data : null;
+  return text;
 }

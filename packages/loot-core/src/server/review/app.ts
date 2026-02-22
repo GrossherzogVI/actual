@@ -78,11 +78,12 @@ async function reviewList(args?: {
   if (args?.offset) params.set('offset', String(args.offset));
 
   try {
-    const data = await get(
+    const res = await get(
       getServer().BASE_SERVER + `/review?${params.toString()}`,
       { headers: { 'X-ACTUAL-TOKEN': userToken } },
     );
-    return data;
+    const parsed = JSON.parse(res);
+    return parsed?.data;
   } catch (err) {
     return { error: err.reason || err.message || 'network-failure' };
   }
@@ -93,11 +94,12 @@ async function reviewCount(): Promise<ReviewCount | { error: string }> {
   if (!userToken) return { error: 'not-logged-in' };
 
   try {
-    const data = await get(
+    const res = await get(
       getServer().BASE_SERVER + '/review/count',
       { headers: { 'X-ACTUAL-TOKEN': userToken } },
     );
-    return data;
+    const parsed = JSON.parse(res);
+    return parsed?.data;
   } catch (err) {
     return { error: err.reason || err.message || 'network-failure' };
   }
