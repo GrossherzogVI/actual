@@ -150,7 +150,12 @@ export function isDeadlineSoon(dateStr: string | null, thresholdDays = 30): bool
   return days !== null && days >= 0 && days <= thresholdDays;
 }
 
+const _EUR_FORMATTER = new Intl.NumberFormat('de-DE', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
 export function formatAmountEur(cents: number | null): string {
   if (cents == null) return '-';
-  return (cents / 100).toFixed(2);
+  return _EUR_FORMATTER.format(cents / 100);
 }
