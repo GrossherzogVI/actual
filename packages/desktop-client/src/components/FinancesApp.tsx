@@ -34,6 +34,7 @@ import { DashboardPage } from './dashboard/DashboardPage';
 import { ImportPage } from './import/ImportPage';
 import { QuickAddOverlay } from './quick-add/QuickAddOverlay';
 import { ReviewQueuePage } from './review/ReviewQueuePage';
+import { AnalyticsPage } from './analytics/AnalyticsPage';
 import { Titlebar } from './Titlebar';
 
 import { accountQueries } from '@desktop-client/accounts';
@@ -400,6 +401,7 @@ export function FinancesApp() {
                 <Route path="/contracts/:id" element={<ContractDetailPage />} />
                 <Route path="/calendar" element={<CalendarPage />} />
                 <Route path="/review" element={<ReviewQueuePage />} />
+                <Route path="/analytics" element={<AnalyticsPage />} />
                 <Route path="/import" element={<ImportPage />} />
                 <Route path="/import/:type" element={<ImportPage />} />
                 {/* redirect all other traffic to the budget page */}

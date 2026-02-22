@@ -80,6 +80,7 @@ export function PrimaryButtons() {
         <Item title={t('Reports')} Icon={SvgReports} to="/reports" />
         <Item title={t('Contracts')} Icon={SvgCreditCard} to="/contracts" />
         <Item title={t('Calendar')} Icon={SvgCalendar3} to="/calendar" />
+        <Item title={t('Analytics')} Icon={SvgReports} to="/analytics" />
         <Item
           title={t('More')}
           Icon={isOpen ? SvgCheveronDown : SvgCheveronRight}
