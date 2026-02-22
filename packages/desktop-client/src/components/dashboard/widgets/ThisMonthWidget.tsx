@@ -6,6 +6,9 @@ import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
 import { View } from '@actual-app/components/view';
 
+import { useSheetValue } from '@desktop-client/hooks/useSheetValue';
+import { envelopeBudget } from '@desktop-client/spreadsheet/bindings';
+
 import type { ContractSummary } from '../types';
 import { WidgetCard } from './WidgetCard';
 
@@ -47,9 +50,15 @@ export function ThisMonthWidget({ summary, loading }: Props) {
   const { t } = useTranslation();
 
   const fixedMonthlyCents = summary?.total_monthly ?? null;
-  // Income and variable spent are placeholders until account data is wired
-  const incomeCents = null;
-  const spentCents = null;
+
+  // Read income and spending from Actual's envelope budget spreadsheet.
+  // Requires <SheetNameProvider> wrapping this component (set in DashboardPage).
+  const incomeCents = useSheetValue<'envelope-budget', 'total-income'>(
+    envelopeBudget.totalIncome,
+  );
+  const spentCents = useSheetValue<'envelope-budget', 'total-spent'>(
+    envelopeBudget.totalSpent,
+  );
 
   const availableCents =
     incomeCents !== null && fixedMonthlyCents !== null

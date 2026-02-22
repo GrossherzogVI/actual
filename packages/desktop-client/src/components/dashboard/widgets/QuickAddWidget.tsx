@@ -2,36 +2,32 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { Button } from '@actual-app/components/button';
 import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
 import { View } from '@actual-app/components/view';
 
 import { WidgetCard } from './WidgetCard';
 
-export function QuickAddWidget() {
+type Props = {
+  onOpenQuickAdd?: () => void;
+};
+
+export function QuickAddWidget({ onOpenQuickAdd }: Props) {
   const { t } = useTranslation();
 
   return (
     <WidgetCard title={t('Quick Add')}>
-      <View style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 8 }}>
-        <Text style={{ color: theme.pageTextSubdued, fontSize: 13, textAlign: 'center' }}>
-          {t('Use')}
-        </Text>
-        <View
-          style={{
-            backgroundColor: theme.tableHeaderBackground,
-            borderRadius: 4,
-            padding: '4px 10px',
-            marginTop: 8,
-            marginBottom: 8,
-          }}
+      <View style={{ alignItems: 'center', paddingTop: 8, paddingBottom: 4 }}>
+        <Button
+          variant="primary"
+          onPress={() => onOpenQuickAdd?.()}
+          style={{ width: '100%', marginBottom: 8 }}
         >
-          <Text style={{ fontFamily: 'monospace', fontSize: 13, color: theme.pageText }}>
-            ⌘ N
-          </Text>
-        </View>
-        <Text style={{ color: theme.pageTextSubdued, fontSize: 13, textAlign: 'center' }}>
-          {t('to open the Quick Add overlay')}
+          {t('Add Expense')}
+        </Button>
+        <Text style={{ color: theme.pageTextSubdued, fontSize: 11, textAlign: 'center' }}>
+          {t('or press {{shortcut}} anywhere', { shortcut: '\u2318N' })}
         </Text>
       </View>
     </WidgetCard>

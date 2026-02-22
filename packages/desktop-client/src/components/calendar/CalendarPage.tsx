@@ -1,5 +1,5 @@
 // @ts-strict-ignore
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
 import { Button } from '@actual-app/components/button';
@@ -14,7 +14,7 @@ import { useFeatureFlag } from '@desktop-client/hooks/useFeatureFlag';
 import { useNavigate } from '@desktop-client/hooks/useNavigate';
 
 import { useCalendarData } from './hooks/useCalendarData';
-import type { CalendarView } from './types';
+import type { CalendarEntry, CalendarView } from './types';
 import { ListView } from './views/ListView';
 
 export function CalendarPage() {
@@ -76,15 +76,18 @@ export function CalendarPage() {
           />
         </View>
 
-        {/* Reload button */}
-        <Button variant="bare" onPress={reload}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-            <SvgCalendar style={{ width: 13, height: 13, color: theme.pageTextSubdued }} />
-            <Text style={{ fontSize: 12, color: theme.pageTextSubdued }}>
-              <Trans>Refresh</Trans>
-            </Text>
-          </View>
-        </Button>
+        {/* Source badges + Reload */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <SourceBadges entries={allEntries} />
+          <Button variant="bare" onPress={reload}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <SvgCalendar style={{ width: 13, height: 13, color: theme.pageTextSubdued }} />
+              <Text style={{ fontSize: 12, color: theme.pageTextSubdued }}>
+                <Trans>Refresh</Trans>
+              </Text>
+            </View>
+          </Button>
+        </View>
       </View>
 
       {/* Content */}
@@ -150,6 +153,69 @@ function ViewToggleButton({
     >
       {label}
     </button>
+  );
+}
+
+function SourceBadges({ entries }: { entries: CalendarEntry[] }) {
+  const { t } = useTranslation();
+  const counts = useMemo(() => {
+    let schedules = 0;
+    let contracts = 0;
+    for (const e of entries) {
+      if (e.type === 'schedule') schedules++;
+      else if (e.type === 'contract') contracts++;
+    }
+    return { schedules, contracts };
+  }, [entries]);
+
+  if (counts.schedules === 0 && counts.contracts === 0) return null;
+
+  return (
+    <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+      {counts.schedules > 0 && (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+            padding: '2px 8px',
+            borderRadius: 10,
+            backgroundColor: `${theme.pageTextSubdued}15`,
+          }}
+        >
+          <SvgCalendar style={{ width: 10, height: 10, color: theme.pageTextSubdued }} />
+          <Text style={{ fontSize: 10, color: theme.pageTextSubdued }}>
+            {t('{{count}} Schedule', { count: counts.schedules })}
+            {counts.schedules !== 1 ? 's' : ''}
+          </Text>
+        </View>
+      )}
+      {counts.contracts > 0 && (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+            padding: '2px 8px',
+            borderRadius: 10,
+            backgroundColor: `${theme.pageTextSubdued}15`,
+          }}
+        >
+          <View
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              backgroundColor: theme.pageTextSubdued,
+            }}
+          />
+          <Text style={{ fontSize: 10, color: theme.pageTextSubdued }}>
+            {t('{{count}} Contract', { count: counts.contracts })}
+            {counts.contracts !== 1 ? 's' : ''}
+          </Text>
+        </View>
+      )}
+    </View>
   );
 }
 

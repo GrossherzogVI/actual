@@ -17,9 +17,10 @@ export function WidgetCard({ title, children, style }: Props) {
     <View
       style={{
         backgroundColor: theme.tableBackground,
-        borderRadius: 8,
+        borderRadius: 10,
         border: `1px solid ${theme.tableBorder}`,
         padding: 16,
+        boxShadow: '0 1px 3px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.06)',
         ...style,
       }}
     >

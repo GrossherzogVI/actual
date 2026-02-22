@@ -17,8 +17,6 @@ import {
 import { SvgCalendar3 } from '@actual-app/components/icons/v2';
 import { View } from '@actual-app/components/view';
 
-import { send } from 'loot-core/platform/client/connection';
-
 import { Item } from './Item';
 import { SecondaryItem } from './SecondaryItem';
 
@@ -36,34 +34,6 @@ export function PrimaryButtons() {
   const isTestEnv = useIsTestEnv();
   const isUsingServer = syncServerStatus !== 'no-server' || isTestEnv;
   const financeOS = useFeatureFlag('financeOS');
-
-  // Progressive disclosure: track whether contracts/review data exists
-  const [hasContracts, setHasContracts] = useState(false);
-  const [hasReviewItems, setHasReviewItems] = useState(false);
-
-  useEffect(() => {
-    if (!financeOS) return;
-    void (async () => {
-      try {
-        const [contractsResult, reviewResult] = await Promise.all([
-          (send as Function)('contract-list', {}),
-          (send as Function)('review-count'),
-        ]);
-        if (Array.isArray(contractsResult) && contractsResult.length > 0) {
-          setHasContracts(true);
-        }
-        if (reviewResult && typeof reviewResult === 'object' && !('error' in reviewResult)) {
-          const total = Object.values(reviewResult as Record<string, number>).reduce(
-            (s, v) => s + (typeof v === 'number' ? v : 0),
-            0,
-          );
-          setHasReviewItems(total > 0);
-        }
-      } catch {
-        // Silently ignore — items stay dimmed
-      }
-    })();
-  }, [financeOS]);
 
   // Routes that trigger the More menu to auto-open in default mode
   const defaultMoreRoutes = [
@@ -108,20 +78,8 @@ export function PrimaryButtons() {
         <Item title={t('Accounts')} Icon={SvgCreditCard} to="/accounts" />
         <Item title={t('Budget')} Icon={SvgWallet} to="/budget" />
         <Item title={t('Reports')} Icon={SvgReports} to="/reports" />
-        {/* Contracts — dimmed until data exists */}
-        <View
-          style={{ opacity: hasContracts ? 1 : 0.4, pointerEvents: hasContracts ? 'auto' : 'none' }}
-          title={hasContracts ? undefined : t('Import data to unlock')}
-        >
-          <Item title={t('Contracts')} Icon={SvgCreditCard} to="/contracts" />
-        </View>
-        {/* Calendar — dimmed until contracts exist */}
-        <View
-          style={{ opacity: hasContracts ? 1 : 0.4, pointerEvents: hasContracts ? 'auto' : 'none' }}
-          title={hasContracts ? undefined : t('Import data to unlock')}
-        >
-          <Item title={t('Calendar')} Icon={SvgCalendar3} to="/calendar" />
-        </View>
+        <Item title={t('Contracts')} Icon={SvgCreditCard} to="/contracts" />
+        <Item title={t('Calendar')} Icon={SvgCalendar3} to="/calendar" />
         <Item
           title={t('More')}
           Icon={isOpen ? SvgCheveronDown : SvgCheveronRight}
@@ -137,21 +95,12 @@ export function PrimaryButtons() {
               to="/import"
               indent={15}
             />
-            {/* Review — dimmed until AI populates it */}
-            <View
-              style={{
-                opacity: hasReviewItems ? 1 : 0.4,
-                pointerEvents: hasReviewItems ? 'auto' : 'none',
-              }}
-              title={hasReviewItems ? undefined : t('AI will populate this')}
-            >
-              <SecondaryItem
-                title={t('Review')}
-                Icon={SvgCheckmark}
-                to="/review"
-                indent={15}
-              />
-            </View>
+            <SecondaryItem
+              title={t('Review')}
+              Icon={SvgCheckmark}
+              to="/review"
+              indent={15}
+            />
             <SecondaryItem
               title={t('Settings')}
               Icon={SvgCog}

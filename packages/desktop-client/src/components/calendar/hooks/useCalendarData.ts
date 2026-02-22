@@ -2,8 +2,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { send } from 'loot-core/platform/client/connection';
+import { q } from 'loot-core/shared/query';
+import { getScheduledAmount } from 'loot-core/shared/schedules';
+import type { ScheduleEntity } from 'loot-core/types/models';
 
 import { useMetadataPref } from '@desktop-client/hooks/useMetadataPref';
+import { usePayees } from '@desktop-client/hooks/usePayees';
+import { useSchedules } from '@desktop-client/hooks/useSchedules';
 
 import type { CalendarEntry, WeekData } from '../types';
 
@@ -152,18 +157,60 @@ interface UseCalendarDataResult {
   startingBalance: number;
 }
 
+/** Resolve a display name for a schedule: prefer schedule.name, fall back to payee name. */
+function getScheduleName(
+  schedule: ScheduleEntity,
+  payeesById: Map<string, { name: string }>,
+): string {
+  if (schedule.name) return schedule.name;
+  const payee = payeesById.get(schedule._payee);
+  if (payee) return payee.name;
+  return 'Scheduled payment';
+}
+
+/** Derive a human-readable interval label from a schedule's _date config. */
+function getScheduleInterval(schedule: ScheduleEntity): string {
+  const dateConfig = schedule._date;
+  if (typeof dateConfig === 'object' && dateConfig !== null) {
+    return dateConfig.frequency ?? 'unknown';
+  }
+  return 'once';
+}
+
 export function useCalendarData(): UseCalendarDataResult {
   const [budgetId] = useMetadataPref('id');
   const [contracts, setContracts] = useState<ContractRaw[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [contractsLoading, setContractsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Fetch schedules from Actual's schedule engine
+  const schedulesQuery = useMemo(
+    () => q('schedules').select('*').filter({ '_account.closed': false }),
+    [],
+  );
+  const {
+    schedules,
+    isLoading: schedulesLoading,
+  } = useSchedules({ query: schedulesQuery });
+
+  // Fetch payees for schedule name resolution
+  const { data: payees } = usePayees();
+  const payeesById = useMemo(() => {
+    const map = new Map<string, { name: string }>();
+    for (const p of payees ?? []) {
+      map.set(p.id, { name: p.name });
+    }
+    return map;
+  }, [payees]);
 
   // We use 0 as a placeholder — real balance would come from account data.
   // For the MVP we show relative projections from 0 so the shape is visible.
   const startingBalance = 0;
 
+  const loading = contractsLoading || schedulesLoading;
+
   const load = useCallback(async () => {
-    setLoading(true);
+    setContractsLoading(true);
     setError(null);
     try {
       const result = await (send as Function)('contract-list', {
@@ -178,7 +225,7 @@ export function useCalendarData(): UseCalendarDataResult {
     } catch (e) {
       setError('Failed to load calendar data');
     } finally {
-      setLoading(false);
+      setContractsLoading(false);
     }
   }, [budgetId]);
 
@@ -196,6 +243,7 @@ export function useCalendarData(): UseCalendarDataResult {
 
     const entries: CalendarEntry[] = [];
 
+    // --- Contract entries (hand-rolled date math) ---
     for (const contract of contracts) {
       if (!contract.amount || !contract.interval) continue;
 
@@ -204,7 +252,7 @@ export function useCalendarData(): UseCalendarDataResult {
 
       for (const date of dates) {
         entries.push({
-          id: `${contract.id}-${date}`,
+          id: `contract-${contract.id}-${date}`,
           date,
           name: contract.name,
           // Contracts are expenses (negative)
@@ -217,10 +265,30 @@ export function useCalendarData(): UseCalendarDataResult {
       }
     }
 
+    // --- Schedule entries (from Actual's schedule engine) ---
+    for (const schedule of schedules) {
+      if (schedule.completed || !schedule.next_date) continue;
+
+      const nextDate = schedule.next_date;
+      // Only include schedules whose next_date falls within our 30-day window
+      if (nextDate >= fromDate && nextDate <= toDate) {
+        const amount = getScheduledAmount(schedule._amount);
+        entries.push({
+          id: `schedule-${schedule.id}`,
+          date: nextDate,
+          name: getScheduleName(schedule, payeesById),
+          amount,
+          type: 'schedule',
+          sourceId: schedule.id,
+          interval: getScheduleInterval(schedule),
+        });
+      }
+    }
+
     // Sort chronologically
     entries.sort((a, b) => a.date.localeCompare(b.date));
     return entries;
-  }, [contracts]);
+  }, [contracts, schedules, payeesById]);
 
   const weeks = useMemo(
     () => groupByWeek(allEntries, startingBalance),

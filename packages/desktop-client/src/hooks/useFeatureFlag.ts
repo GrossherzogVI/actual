@@ -11,14 +11,14 @@ const DEFAULT_FEATURE_FLAG_STATE: Record<FeatureFlag, boolean> = {
   crossoverReport: false,
   customThemes: false,
   budgetAnalysisReport: false,
-  contractManagement: false,
-  financeOS: false,
+  contractManagement: true,
+  financeOS: true,
   aiSmartMatching: false,
   reviewQueue: false,
-  quickAdd: false,
-  paymentCalendar: false,
+  quickAdd: true,
+  paymentCalendar: true,
   germanCategories: false,
-  extendedCommandBar: false,
+  extendedCommandBar: true,
 };
 
 export function useFeatureFlag(name: FeatureFlag): boolean {

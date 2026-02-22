@@ -11,6 +11,13 @@ export function GlobalKeys() {
 
   useEffect(() => {
     const handleKeys = (e: KeyboardEvent) => {
+      // ⌘N: Quick Add — must work in browser mode, so handle before the isBrowser gate
+      if (financeOS && e.metaKey && e.key === 'n') {
+        e.preventDefault();
+        document.dispatchEvent(new CustomEvent('quick-add-open'));
+        return;
+      }
+
       if (Platform.isBrowser) {
         return;
       }

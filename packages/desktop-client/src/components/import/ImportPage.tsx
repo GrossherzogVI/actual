@@ -11,7 +11,6 @@ import { View } from '@actual-app/components/view';
 import { send } from 'loot-core/platform/client/connection';
 
 import { Page } from '@desktop-client/components/Page';
-import { useFeatureFlag } from '@desktop-client/hooks/useFeatureFlag';
 import { useNavigate } from '@desktop-client/hooks/useNavigate';
 
 import { CsvImportWizard } from './CsvImportWizard';
@@ -126,6 +125,50 @@ function CategorySetupCard() {
   );
 }
 
+// ---- Create account card ----
+
+function CreateAccountCard() {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+
+  return (
+    <View
+      style={{
+        flex: 1,
+        minWidth: 220,
+        maxWidth: 300,
+        padding: 24,
+        backgroundColor: theme.tableBackground,
+        border: `1px solid ${theme.tableBorder}`,
+        borderRadius: 10,
+        gap: 12,
+        alignItems: 'center',
+        textAlign: 'center',
+      }}
+    >
+      <Text style={{ fontSize: 36 }}>💰</Text>
+      <Text style={{ fontSize: 15, fontWeight: 600, color: theme.pageText }}>
+        <Trans>Create Cash Account</Trans>
+      </Text>
+      <Text
+        style={{
+          fontSize: 13,
+          color: theme.pageTextSubdued,
+          lineHeight: '1.5',
+          flex: 1,
+        }}
+      >
+        {t(
+          'Add a local cash or manual account to track spending that isn\'t connected to a bank.',
+        )}
+      </Text>
+      <Button variant="normal" onPress={() => void navigate('/accounts')}>
+        <Trans>Add Account</Trans>
+      </Button>
+    </View>
+  );
+}
+
 // ---- Main page ----
 
 export function ImportPage() {
@@ -134,22 +177,6 @@ export function ImportPage() {
   // Sub-route from URL: /import/finanzguru or /import/csv
   const params = useParams<{ type?: string }>();
   const subRoute = params.type as SubRoute;
-
-  const enabled = useFeatureFlag('germanCategories');
-
-  if (!enabled) {
-    return (
-      <Page header={t('Import')}>
-        <View style={{ padding: 20 }}>
-          <Text style={{ color: theme.pageTextSubdued }}>
-            <Trans>
-              Import is not enabled. Enable it in Settings &gt; Feature Flags.
-            </Trans>
-          </Text>
-        </View>
-      </Page>
-    );
-  }
 
   // Show sub-wizard when navigating to /import/finanzguru or /import/csv
   if (subRoute === 'finanzguru') {
@@ -203,6 +230,7 @@ export function ImportPage() {
             )}
             onStart={() => void navigate('/import/csv')}
           />
+          <CreateAccountCard />
           <CategorySetupCard />
         </View>
 

@@ -8,7 +8,10 @@ import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
 import { View } from '@actual-app/components/view';
 
+import { useQuery } from '@tanstack/react-query';
 import { send } from 'loot-core/platform/client/connection';
+
+import { accountQueries } from '@desktop-client/accounts';
 
 import { AmountInput } from './AmountInput';
 import { CategorySelect } from './CategorySelect';
@@ -28,7 +31,12 @@ type QuickAddOverlayProps = {
 
 export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
   const { t } = useTranslation();
-  const { form, setField, resetForm, prefill, submitTransaction } = useQuickAdd();
+
+  // Default account: first on-budget account
+  const { data: onBudgetAccounts = [] } = useQuery(accountQueries.listOnBudget());
+  const defaultAccountId = onBudgetAccounts[0]?.id;
+
+  const { form, setField, resetForm, prefill, submitTransaction } = useQuickAdd(defaultAccountId);
   const { evaluate } = useCalculator();
   const { presets } = usePresets();
   const { frecency } = useFrecency();

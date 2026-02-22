@@ -1,6 +1,10 @@
 // @ts-strict-ignore
 import { useCallback, useState } from 'react';
 
+import { v4 as uuidv4 } from 'uuid';
+
+import { send } from 'loot-core/platform/client/connection';
+
 import type { Preset, QuickAddFormData } from '../types';
 
 function todayISO(): string {
@@ -26,7 +30,7 @@ type UseQuickAddReturn = {
   submitTransaction: () => Promise<boolean>;
 };
 
-export function useQuickAdd(): UseQuickAddReturn {
+export function useQuickAdd(defaultAccountId?: string): UseQuickAddReturn {
   const [form, setForm] = useState<QuickAddFormData>({ ...EMPTY_FORM, date: todayISO() });
 
   const setField = useCallback(
@@ -52,11 +56,45 @@ export function useQuickAdd(): UseQuickAddReturn {
   }, []);
 
   const submitTransaction = useCallback(async (): Promise<boolean> => {
-    if (!form.evaluatedAmount && !form.amount) return false;
-    // Log for now — actual submission requires existing Actual transaction handlers
-    console.log('[QuickAdd] Submit transaction:', form);
+    const amount = form.evaluatedAmount;
+    if (!amount) return false;
+
+    const accountId = form.accountId || defaultAccountId;
+    if (!accountId) return false;
+
+    // Resolve payee name to ID (find existing or create new)
+    let payeeId: string | undefined;
+    if (form.payee.trim()) {
+      try {
+        const payees = await send('payees-get');
+        const match = payees.find(
+          (p) => p.name.toLowerCase() === form.payee.trim().toLowerCase(),
+        );
+        if (match) {
+          payeeId = match.id;
+        } else {
+          payeeId = await send('payee-create', {
+            name: form.payee.trim(),
+          });
+        }
+      } catch {
+        // payee resolution failed — proceed without payee
+      }
+    }
+
+    const transaction = {
+      id: uuidv4(),
+      date: form.date,
+      amount: -Math.abs(amount), // negative = expense
+      account: accountId,
+      category: form.categoryId || undefined,
+      payee: payeeId || undefined,
+      notes: form.notes || undefined,
+    };
+
+    await send('transaction-add', transaction);
     return true;
-  }, [form]);
+  }, [form, defaultAccountId]);
 
   return { form, setField, resetForm, prefill, submitTransaction };
 }

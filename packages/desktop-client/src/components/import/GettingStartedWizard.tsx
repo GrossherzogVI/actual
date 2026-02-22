@@ -3,15 +3,18 @@ import React, { useCallback, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
 import { Button } from '@actual-app/components/button';
+import { Input } from '@actual-app/components/input';
 import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
 import { View } from '@actual-app/components/view';
 
 import { send } from 'loot-core/platform/client/connection';
 
+import { useCreateAccountMutation } from '@desktop-client/accounts';
+import { Checkbox } from '@desktop-client/components/forms';
 import { useNavigate } from '@desktop-client/hooks/useNavigate';
 
-type Step = 1 | 2 | 3 | 4 | 5;
+type Step = 1 | 2 | 3 | 4 | 5 | 6;
 type Language = 'de' | 'en';
 type ImportChoice = 'finanzguru' | 'csv' | 'skip';
 
@@ -25,6 +28,15 @@ export function GettingStartedWizard() {
   const [categorySetupError, setCategorySetupError] = useState<string | null>(null);
   const [importChoice, setImportChoice] = useState<ImportChoice | null>(null);
 
+  // Account creation state (Step 2)
+  const [accountName, setAccountName] = useState('Bargeld');
+  const [accountBalance, setAccountBalance] = useState('0');
+  const [accountOffBudget, setAccountOffBudget] = useState(false);
+  const [accountCreated, setAccountCreated] = useState(false);
+  const [accountCreating, setAccountCreating] = useState(false);
+  const [accountError, setAccountError] = useState<string | null>(null);
+  const createAccount = useCreateAccountMutation();
+
   const handleSetupGermanCategories = useCallback(async () => {
     setCategorySetupLoading(true);
     setCategorySetupError(null);
@@ -37,8 +49,41 @@ export function GettingStartedWizard() {
     setCategorySetupLoading(false);
   }, []);
 
+  const handleCreateAccount = useCallback(() => {
+    const trimmedName = accountName.trim();
+    if (!trimmedName) {
+      setAccountError(t('Account name is required.'));
+      return;
+    }
+    const balanceNum = parseFloat(accountBalance);
+    if (isNaN(balanceNum)) {
+      setAccountError(t('Balance must be a valid number.'));
+      return;
+    }
+    setAccountCreating(true);
+    setAccountError(null);
+    createAccount.mutate(
+      {
+        name: trimmedName,
+        balance: Math.round(balanceNum * 100),
+        offBudget: accountOffBudget,
+      },
+      {
+        onSuccess: () => {
+          setAccountCreated(true);
+          setAccountCreating(false);
+        },
+        onError: (err: Error) => {
+          setAccountError(err.message || t('Failed to create account.'));
+          setAccountCreating(false);
+        },
+      },
+    );
+  }, [accountName, accountBalance, accountOffBudget, createAccount, t]);
+
   const steps: Array<{ label: string }> = [
     { label: t('Welcome') },
+    { label: t('Account') },
     { label: t('Categories') },
     { label: t('Import') },
     { label: t('Review') },
@@ -135,8 +180,119 @@ export function GettingStartedWizard() {
         </View>
       )}
 
-      {/* ── Step 2: Categories ── */}
+      {/* ── Step 2: Create Account ── */}
       {step === 2 && (
+        <View style={{ gap: 20 }}>
+          <Text style={{ fontSize: 18, fontWeight: 600, color: theme.pageText }}>
+            <Trans>Add a Cash Account</Trans>
+          </Text>
+          <Text style={{ fontSize: 13, color: theme.pageTextSubdued, lineHeight: '1.6' }}>
+            <Trans>
+              Create a cash account to track your everyday spending. You can add
+              bank-synced accounts later.
+            </Trans>
+          </Text>
+
+          {accountCreated ? (
+            <View
+              style={{
+                padding: '14px 18px',
+                backgroundColor: '#10b98110',
+                borderRadius: 6,
+                border: '1px solid #10b981',
+              }}
+            >
+              <Text style={{ fontSize: 13, color: '#10b981' }}>
+                {t('Account "{{name}}" created successfully.', {
+                  name: accountName.trim(),
+                })}
+              </Text>
+            </View>
+          ) : (
+            <View style={{ gap: 14 }}>
+              <View style={{ gap: 6 }}>
+                <Text style={{ fontSize: 13, fontWeight: 500, color: theme.pageText }}>
+                  <Trans>Account name</Trans>
+                </Text>
+                <Input
+                  value={accountName}
+                  onChangeValue={setAccountName}
+                  placeholder={t('e.g. Bargeld, Cash Wallet')}
+                  style={{ width: '100%' }}
+                />
+              </View>
+
+              <View style={{ gap: 6 }}>
+                <Text style={{ fontSize: 13, fontWeight: 500, color: theme.pageText }}>
+                  <Trans>Starting balance (EUR)</Trans>
+                </Text>
+                <Input
+                  value={accountBalance}
+                  onChangeValue={setAccountBalance}
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  style={{ width: '100%' }}
+                />
+              </View>
+
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+              >
+                <Checkbox
+                  id="wizard-offbudget"
+                  name="offbudget"
+                  checked={accountOffBudget}
+                  onChange={() => setAccountOffBudget(!accountOffBudget)}
+                />
+                <label
+                  htmlFor="wizard-offbudget"
+                  style={{ fontSize: 13, color: theme.pageText, userSelect: 'none' }}
+                >
+                  <Trans>Off budget</Trans>
+                </label>
+              </View>
+
+              {accountError && (
+                <Text style={{ fontSize: 12, color: '#ef4444' }}>
+                  {accountError}
+                </Text>
+              )}
+
+              <Button
+                variant="primary"
+                onPress={handleCreateAccount}
+                isDisabled={accountCreating}
+              >
+                {accountCreating ? (
+                  <Trans>Creating...</Trans>
+                ) : (
+                  <Trans>Create Account</Trans>
+                )}
+              </Button>
+            </View>
+          )}
+
+          <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'flex-end' }}>
+            <Button variant="bare" onPress={() => setStep(1)}>
+              <Trans>Back</Trans>
+            </Button>
+            <Button variant="normal" onPress={() => setStep(3)}>
+              {accountCreated ? (
+                <Trans>Next</Trans>
+              ) : (
+                <Trans>I'll connect a bank later</Trans>
+              )}
+            </Button>
+          </View>
+        </View>
+      )}
+
+      {/* ── Step 3: Categories ── */}
+      {step === 3 && (
         <View style={{ gap: 20 }}>
           <Text style={{ fontSize: 18, fontWeight: 600, color: theme.pageText }}>
             <Trans>Set Up Categories</Trans>
@@ -185,18 +341,18 @@ export function GettingStartedWizard() {
           )}
 
           <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'flex-end' }}>
-            <Button variant="bare" onPress={() => setStep(1)}>
+            <Button variant="bare" onPress={() => setStep(2)}>
               <Trans>Back</Trans>
             </Button>
-            <Button variant="normal" onPress={() => setStep(3)}>
+            <Button variant="normal" onPress={() => setStep(4)}>
               {categorySetupDone ? <Trans>Next</Trans> : <Trans>Skip for now</Trans>}
             </Button>
           </View>
         </View>
       )}
 
-      {/* ── Step 3: Import choice ── */}
-      {step === 3 && (
+      {/* ── Step 4: Import choice ── */}
+      {step === 4 && (
         <View style={{ gap: 20 }}>
           <Text style={{ fontSize: 18, fontWeight: 600, color: theme.pageText }}>
             <Trans>Import Your Transactions</Trans>
@@ -269,7 +425,7 @@ export function GettingStartedWizard() {
           </View>
 
           <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'flex-end' }}>
-            <Button variant="bare" onPress={() => setStep(2)}>
+            <Button variant="bare" onPress={() => setStep(3)}>
               <Trans>Back</Trans>
             </Button>
             <Button
@@ -280,7 +436,7 @@ export function GettingStartedWizard() {
                 } else if (importChoice === 'csv') {
                   void navigate('/import/csv');
                 } else {
-                  setStep(4);
+                  setStep(5);
                 }
               }}
               isDisabled={!importChoice}
@@ -291,8 +447,8 @@ export function GettingStartedWizard() {
         </View>
       )}
 
-      {/* ── Step 4: Review AI suggestions ── */}
-      {step === 4 && (
+      {/* ── Step 5: Review AI suggestions ── */}
+      {step === 5 && (
         <View style={{ gap: 20, alignItems: 'center', textAlign: 'center' }}>
           <Text style={{ fontSize: 32 }}>🤖</Text>
           <Text style={{ fontSize: 18, fontWeight: 600, color: theme.pageText }}>
@@ -312,18 +468,18 @@ export function GettingStartedWizard() {
             </Trans>
           </Text>
           <View style={{ flexDirection: 'row', gap: 10 }}>
-            <Button variant="bare" onPress={() => setStep(3)}>
+            <Button variant="bare" onPress={() => setStep(4)}>
               <Trans>Back</Trans>
             </Button>
-            <Button variant="primary" onPress={() => setStep(5)}>
+            <Button variant="primary" onPress={() => setStep(6)}>
               <Trans>Next</Trans>
             </Button>
           </View>
         </View>
       )}
 
-      {/* ── Step 5: Done ── */}
-      {step === 5 && (
+      {/* ── Step 6: Done ── */}
+      {step === 6 && (
         <View style={{ gap: 24, alignItems: 'center', textAlign: 'center' }}>
           <Text style={{ fontSize: 48 }}>🎉</Text>
           <Text style={{ fontSize: 22, fontWeight: 700, color: theme.pageText }}>

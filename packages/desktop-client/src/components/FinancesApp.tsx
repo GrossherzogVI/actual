@@ -1,4 +1,4 @@
-import React, { useEffect, useEffectEvent, useRef } from 'react';
+import React, { useEffect, useEffectEvent, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, Route, Routes, useHref, useLocation } from 'react-router';
@@ -32,6 +32,7 @@ import { ContractDetailPage } from './contracts/ContractDetailPage';
 import { ContractsPage } from './contracts/ContractsPage';
 import { DashboardPage } from './dashboard/DashboardPage';
 import { ImportPage } from './import/ImportPage';
+import { QuickAddOverlay } from './quick-add/QuickAddOverlay';
 import { ReviewQueuePage } from './review/ReviewQueuePage';
 import { Titlebar } from './Titlebar';
 
@@ -39,6 +40,7 @@ import { accountQueries } from '@desktop-client/accounts';
 import { getLatestAppVersion, sync } from '@desktop-client/app/appSlice';
 import { ProtectedRoute } from '@desktop-client/auth/ProtectedRoute';
 import { Permissions } from '@desktop-client/auth/types';
+import { useFeatureFlag } from '@desktop-client/hooks/useFeatureFlag';
 import { useGlobalPref } from '@desktop-client/hooks/useGlobalPref';
 import { useLocalPref } from '@desktop-client/hooks/useLocalPref';
 import { useMetaThemeColor } from '@desktop-client/hooks/useMetaThemeColor';
@@ -198,6 +200,18 @@ export function FinancesApp() {
     versionInfo,
   ]);
 
+  // Feature flags
+  const financeOS = useFeatureFlag('financeOS');
+  const quickAddEnabled = useFeatureFlag('quickAdd');
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+
+  useEffect(() => {
+    if (!quickAddEnabled) return;
+    const handler = () => setQuickAddOpen(true);
+    document.addEventListener('quick-add-open', handler);
+    return () => document.removeEventListener('quick-add-open', handler);
+  }, [quickAddEnabled]);
+
   const scrollableRef = useRef<HTMLDivElement>(null);
 
   return (
@@ -206,6 +220,12 @@ export function FinancesApp() {
       <RouterBehaviors />
       <GlobalKeys />
       <CommandBar />
+      {quickAddEnabled && (
+        <QuickAddOverlay
+          isOpen={quickAddOpen}
+          onClose={() => setQuickAddOpen(false)}
+        />
+      )}
       <View
         style={{
           flexDirection: 'row',
@@ -256,7 +276,7 @@ export function FinancesApp() {
                     isAccountsFetching || !accounts ? (
                       <LoadingIndicator />
                     ) : accounts.length > 0 ? (
-                      <Navigate to="/budget" replace />
+                      <Navigate to={financeOS ? '/dashboard' : '/budget'} replace />
                     ) : (
                       // If there are no accounts, we want to redirect the user to
                       // the All Accounts screen which will prompt them to add an account
@@ -383,7 +403,7 @@ export function FinancesApp() {
                 <Route path="/import" element={<ImportPage />} />
                 <Route path="/import/:type" element={<ImportPage />} />
                 {/* redirect all other traffic to the budget page */}
-                <Route path="/*" element={<Navigate to="/budget" replace />} />
+                <Route path="/*" element={<Navigate to={financeOS ? '/dashboard' : '/budget'} replace />} />
               </Routes>
             </View>
 
