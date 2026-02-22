@@ -12,7 +12,7 @@ import { useSchedules } from '@desktop-client/hooks/useSchedules';
 import { useSheetValue } from '@desktop-client/hooks/useSheetValue';
 import { allAccountBalance } from '@desktop-client/spreadsheet/bindings';
 
-import type { CalendarEntry, WeekData } from '../types';
+import type { CalendarEntry, CrunchDay, WeekData } from '../types';
 
 // ---------------------------------------------------------------------------
 // Date helpers
@@ -102,6 +102,9 @@ function advanceByInterval(d: Date, interval: ContractInterval): Date {
 // Group entries by week
 // ---------------------------------------------------------------------------
 
+const CRUNCH_PAYMENT_COUNT = 3;
+const CRUNCH_AMOUNT_CENTS = 50000; // €500
+
 export function groupByWeek(entries: CalendarEntry[], startingBalance: number): WeekData[] {
   if (entries.length === 0) return [];
 
@@ -126,12 +129,31 @@ export function groupByWeek(entries: CalendarEntry[], startingBalance: number): 
     // Sunday of this week = weekStart + 6 days
     const weekEnd = addDays(weekStart, 6);
 
+    // Compute per-day aggregates and identify crunch days
+    const byDay = new Map<string, { count: number; total: number }>();
+    for (const entry of weekEntries) {
+      const prev = byDay.get(entry.date) ?? { count: 0, total: 0 };
+      byDay.set(entry.date, {
+        count: prev.count + 1,
+        total: prev.total + entry.amount,
+      });
+    }
+
+    const crunchDays: CrunchDay[] = [];
+    for (const [date, day] of byDay) {
+      if (day.count >= CRUNCH_PAYMENT_COUNT || Math.abs(day.total) >= CRUNCH_AMOUNT_CENTS) {
+        crunchDays.push({ date, count: day.count, total: day.total });
+      }
+    }
+    crunchDays.sort((a, b) => a.date.localeCompare(b.date));
+
     return {
       weekStart,
       weekEnd,
       entries: weekEntries,
       totalAmount,
       runningBalance,
+      crunchDays,
     };
   });
 }

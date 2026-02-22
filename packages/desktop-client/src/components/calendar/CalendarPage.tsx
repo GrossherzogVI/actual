@@ -13,7 +13,7 @@ import { EmptyState } from '@desktop-client/components/common/EmptyState';
 import { useFeatureFlag } from '@desktop-client/hooks/useFeatureFlag';
 import { useNavigate } from '@desktop-client/hooks/useNavigate';
 
-import { useCalendarData } from './hooks/useCalendarData';
+import { groupByWeek, useCalendarData } from './hooks/useCalendarData';
 import type { CalendarEntry, CalendarView } from './types';
 import { ListView } from './views/ListView';
 
@@ -22,12 +22,24 @@ export function CalendarPage() {
   const enabled = useFeatureFlag('paymentCalendar');
   const navigate = useNavigate();
   const [view, setView] = useState<CalendarView>('list');
+  const [showIncome, setShowIncome] = useState(true);
 
-  const { weeks, allEntries, loading, error, reload } = useCalendarData();
+  const { weeks: rawWeeks, allEntries: rawAllEntries, loading, error, reload, startingBalance } = useCalendarData();
 
   const handleToggleView = useCallback((v: CalendarView) => {
     setView(v);
   }, []);
+
+  // Apply income filter
+  const allEntries = useMemo(
+    () => showIncome ? rawAllEntries : rawAllEntries.filter(e => e.amount <= 0),
+    [rawAllEntries, showIncome],
+  );
+
+  const weeks = useMemo(
+    () => showIncome ? rawWeeks : groupByWeek(allEntries, startingBalance),
+    [showIncome, rawWeeks, allEntries, startingBalance],
+  );
 
   if (!enabled) {
     return (
@@ -76,9 +88,39 @@ export function CalendarPage() {
           />
         </View>
 
-        {/* Source badges + Reload */}
+        {/* Income toggle + Source badges + Reload */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <SourceBadges entries={allEntries} />
+          {/* Income toggle */}
+          <button
+            onClick={() => setShowIncome(prev => !prev)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              padding: '4px 10px',
+              fontSize: 12,
+              fontWeight: showIncome ? 600 : 400,
+              border: `1px solid ${showIncome ? '#10b981' : theme.tableBorder}`,
+              borderRadius: 12,
+              backgroundColor: showIncome ? '#10b98118' : 'transparent',
+              color: showIncome ? '#10b981' : theme.pageTextSubdued,
+              cursor: 'pointer',
+              outline: 'none',
+            }}
+          >
+            <View
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: '50%',
+                backgroundColor: showIncome ? '#10b981' : theme.pageTextSubdued,
+                flexShrink: 0,
+              }}
+            />
+            {t('Income')}
+          </button>
+
+          <SourceBadges entries={rawAllEntries} />
           <Button variant="bare" onPress={reload}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
               <SvgCalendar style={{ width: 13, height: 13, color: theme.pageTextSubdued }} />

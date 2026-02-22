@@ -114,6 +114,26 @@ export function ContractListItem({ contract }: ContractListItemProps) {
             /{contract.interval}
           </Text>
         )}
+        {contract.amount != null && contract.interval && (() => {
+          const DAYS_BY_INTERVAL: Record<string, number> = {
+            weekly: 7,
+            monthly: 30,
+            quarterly: 90,
+            'semi-annual': 182,
+            annual: 365,
+          };
+          const costPerDay =
+            contract.cost_per_day ??
+            (DAYS_BY_INTERVAL[contract.interval] != null
+              ? contract.amount / DAYS_BY_INTERVAL[contract.interval]
+              : null);
+          if (costPerDay == null) return null;
+          return (
+            <Text style={{ fontSize: 11, color: theme.pageTextSubdued }}>
+              {`€${formatAmountEur(costPerDay)}/${t('day')}`}
+            </Text>
+          );
+        })()}
       </View>
 
       {/* Status badge (flex: 1) */}

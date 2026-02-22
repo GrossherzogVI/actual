@@ -27,6 +27,7 @@ import { CashRunwayWidget } from './widgets/CashRunwayWidget';
 import { QuickAddWidget } from './widgets/QuickAddWidget';
 import { QuickAddOverlay } from '../quick-add/QuickAddOverlay';
 import { ThisMonthWidget } from './widgets/ThisMonthWidget';
+import { AvailableToSpendWidget } from './widgets/AvailableToSpendWidget';
 import { UpcomingPaymentsWidget } from './widgets/UpcomingPaymentsWidget';
 
 export function DashboardPage() {
@@ -35,7 +36,15 @@ export function DashboardPage() {
   const navigate = useNavigate();
 
   const { contractSummary, reviewCounts, loading, error } = useDashboardData();
-  const { grouped, loading: paymentsLoading, error: paymentsError } = useUpcomingPayments(30);
+
+  // Days remaining in the current month (inclusive of today)
+  const daysLeftInMonth = (() => {
+    const now = new Date();
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return lastDay.getDate() - now.getDate() + 1;
+  })();
+
+  const { grouped, loading: paymentsLoading, error: paymentsError } = useUpcomingPayments(daysLeftInMonth);
   const upcomingFlat = Array.from(grouped.values()).flat();
 
   // Account data for empty-state detection
@@ -91,29 +100,23 @@ export function DashboardPage() {
         style={{
           padding: 16,
           display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
+          gridTemplateColumns: '1fr 1fr 1fr',
           gap: 16,
           alignItems: 'start',
         }}
       >
         {isInitialLoading ? (
           <>
-            {/* Skeleton placeholders matching the dashboard layout */}
+            {/* Skeleton placeholders matching the 3-column dashboard layout */}
             <View style={{ gridColumn: '1 / -1' }}>
               <SkeletonCard height={72} />
             </View>
             <SkeletonCard height={140} />
             <SkeletonCard height={140} />
-            <View style={{ gridColumn: '1 / -1' }}>
+            <SkeletonCard height={140} />
+            <View style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <SkeletonCard height={160} />
-            </View>
-            <SkeletonCard height={120} />
-            <SkeletonCard height={120} />
-            <View style={{ gridColumn: '1 / -1' }}>
-              <SkeletonCard height={200} />
-            </View>
-            <View style={{ gridColumn: '1 / -1' }}>
-              <SkeletonCard height={120} />
+              <SkeletonCard height={160} />
             </View>
           </>
         ) : hasNoData ? (
@@ -140,31 +143,48 @@ export function DashboardPage() {
           </View>
         ) : (
           <>
-            {/* Full-width dismissible brief */}
+            {/* Top bar: MoneyPulse (full width) */}
             <MoneyPulse upcomingPayments={upcomingFlat} />
 
-            {/* Row 1: This Month (needs SheetNameProvider for budget bindings) + Cash Runway */}
-            <SheetNameProvider name={currentSheetName}>
-              <ThisMonthWidget summary={contractSummary} loading={loading} />
-            </SheetNameProvider>
-            <CashRunwayWidget summary={contractSummary} loading={loading} />
+            {/* Column 1: AccountBalances + ThisMonth */}
+            <View style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <AccountBalancesWidget />
+              <SheetNameProvider name={currentSheetName}>
+                <ThisMonthWidget summary={contractSummary} loading={loading} />
+              </SheetNameProvider>
+            </View>
 
-            {/* Row 2: Upcoming payments (full width) */}
-            <UpcomingPaymentsWidget
-              grouped={grouped}
-              loading={paymentsLoading}
-              error={paymentsError}
-            />
+            {/* Column 2: UpcomingPayments + AvailableToSpend */}
+            <View style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <UpcomingPaymentsWidget
+                grouped={grouped}
+                loading={paymentsLoading}
+                error={paymentsError}
+              />
+              <AvailableToSpendWidget
+                upcomingPayments={upcomingFlat}
+                loading={paymentsLoading}
+              />
+            </View>
 
-            {/* Row 3: Attention Queue + Quick Add */}
-            <AttentionQueueWidget counts={reviewCounts} loading={loading} />
-            <QuickAddWidget onOpenQuickAdd={handleOpenQuickAdd} />
+            {/* Column 3: QuickAdd + AttentionQueue */}
+            <View style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <QuickAddWidget onOpenQuickAdd={handleOpenQuickAdd} />
+              <AttentionQueueWidget counts={reviewCounts} loading={loading} />
+            </View>
 
-            {/* Row 4: Balance Projection (full width) */}
-            <BalanceProjectionWidget upcomingPayments={upcomingFlat} />
-
-            {/* Row 5: Account Balances */}
-            <AccountBalancesWidget />
+            {/* Bottom row: BalanceProjection + CashRunway side by side, spanning full width */}
+            <View
+              style={{
+                gridColumn: '1 / -1',
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: 16,
+              }}
+            >
+              <BalanceProjectionWidget upcomingPayments={upcomingFlat} />
+              <CashRunwayWidget summary={contractSummary} loading={loading} />
+            </View>
           </>
         )}
       </View>
