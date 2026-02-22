@@ -9,14 +9,18 @@ import { Text } from '@actual-app/components/text';
 import { View } from '@actual-app/components/view';
 
 import { send } from 'loot-core/platform/client/connection';
+import { PAYMENT_METHOD_LABELS } from 'loot-core/shared/deadlines';
+import type { DeadlineResult } from 'loot-core/shared/deadlines';
 
 import { Page } from '@desktop-client/components/Page';
 import { useFeatureFlag } from '@desktop-client/hooks/useFeatureFlag';
 import { useNavigate } from '@desktop-client/hooks/useNavigate';
+import { useSyncedPref } from '@desktop-client/hooks/useSyncedPref';
 
 import { CancellationInfo } from './CancellationInfo';
 import { ContractForm } from './ContractForm';
 import { ContractHealthBadge } from './ContractHealthBadge';
+import { DeadlineBadge } from './DeadlineBadge';
 import { PriceHistoryTimeline } from './PriceHistoryTimeline';
 import {
   CONTRACT_STATUS_COLORS,
@@ -414,6 +418,216 @@ function KuendigungsschreibenModal({
   );
 }
 
+// ─── Payment Deadlines Section ───────────────────────────────────────────────
+
+interface DeadlineApiResult {
+  deadlines: DeadlineResult;
+  paymentMethod: string;
+  gracePeriodDays: number;
+  showHardDeadline: boolean;
+}
+
+function formatDate(dateStr: string): string {
+  return new Date(dateStr + 'T00:00:00').toLocaleDateString('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+}
+
+function daysFromToday(dateStr: string): number {
+  const target = new Date(dateStr + 'T00:00:00');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.round((target.getTime() - today.getTime()) / 86400000);
+}
+
+function DeadlineRow({ label, date, days, color }: {
+  label: string;
+  date: string;
+  days: number;
+  color?: string;
+}) {
+  const { t } = useTranslation();
+  const countdownText = days === 0
+    ? t('heute')
+    : days > 0
+      ? t('in {{n}} Tag(en)', { n: days })
+      : t('{{n}} Tag(e) überfällig', { n: Math.abs(days) });
+
+  return (
+    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 6, alignItems: 'baseline' }}>
+      <Text style={{ fontSize: 12, color: theme.pageTextSubdued, minWidth: 160 }}>
+        {label}
+      </Text>
+      <Text style={{ fontSize: 13, fontWeight: 500, color: color ?? theme.pageText }}>
+        {formatDate(date)}
+      </Text>
+      <Text style={{ fontSize: 12, color: color ?? theme.pageTextSubdued }}>
+        — {countdownText}
+      </Text>
+    </View>
+  );
+}
+
+function PaymentDeadlineSection({ contractId }: { contractId: string }) {
+  const { t } = useTranslation();
+  const [globalShowHard] = useSyncedPref('deadlineShowHard');
+  const [result, setResult] = useState<DeadlineApiResult | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    (send as Function)('contract-deadlines', { id: contractId }).then((res: any) => {
+      if (cancelled) return;
+      if (res && 'error' in res) {
+        setError(res.error);
+      } else if (res) {
+        setResult(res as DeadlineApiResult);
+      }
+      setLoading(false);
+    }).catch(() => {
+      if (!cancelled) {
+        setError(t('Fristen konnten nicht geladen werden'));
+        setLoading(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [contractId, t]);
+
+  const showHard = result?.showHardDeadline ?? (globalShowHard === 'true');
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  function getStatus(): 'ok' | 'action_due' | 'soft_passed' | 'hard_passed' {
+    if (!result) return 'ok';
+    const d = result.deadlines;
+    if (today > d.hard) return 'hard_passed';
+    if (today > d.soft) return 'soft_passed';
+    if (today >= d.action) return 'action_due';
+    return 'ok';
+  }
+
+  if (loading) {
+    return (
+      <View style={{ marginTop: 16 }}>
+        <Text style={{ fontSize: 12, color: theme.pageTextSubdued }}>
+          {t('Fristen werden geladen…')}
+        </Text>
+      </View>
+    );
+  }
+
+  if (error || !result) {
+    // Silently omit the section if no deadline data (contract may not have payment_method set)
+    return null;
+  }
+
+  const { deadlines, paymentMethod, gracePeriodDays } = result;
+  const status = getStatus();
+  const actionDays = daysFromToday(deadlines.action);
+  const softDays = daysFromToday(deadlines.soft);
+  const hardDays = daysFromToday(deadlines.hard);
+
+  const softColor = status === 'soft_passed' ? '#f59e0b' : undefined;
+  const hardColor = status === 'hard_passed' ? '#ef4444' : undefined;
+  const actionColor = status === 'action_due' ? '#3b82f6' : undefined;
+
+  const methodLabel =
+    (PAYMENT_METHOD_LABELS as Record<string, string>)[paymentMethod] ?? paymentMethod;
+
+  return (
+    <View
+      style={{
+        marginTop: 16,
+        padding: '12px 16px',
+        backgroundColor: theme.tableBackground,
+        borderRadius: 6,
+        border: `1px solid ${theme.tableBorder}`,
+      }}
+    >
+      {/* Header with badge */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+        <Text
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: theme.pageTextSubdued,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+          }}
+        >
+          <Trans>Zahlungsfristen</Trans>
+        </Text>
+        {status !== 'ok' && (
+          <DeadlineBadge
+            status={status}
+            daysRelative={
+              status === 'action_due' ? actionDays :
+              status === 'soft_passed' ? softDays :
+              hardDays
+            }
+          />
+        )}
+      </View>
+
+      {/* Deadline rows */}
+      <DeadlineRow
+        label={t('Überweise bis')}
+        date={deadlines.action}
+        days={actionDays}
+        color={actionColor}
+      />
+      <DeadlineRow
+        label={t('Fällig am (weich)')}
+        date={deadlines.soft}
+        days={softDays}
+        color={softColor}
+      />
+      {showHard && (
+        <DeadlineRow
+          label={t('Letzte Frist (hart)')}
+          date={deadlines.hard}
+          days={hardDays}
+          color={hardColor}
+        />
+      )}
+
+      {/* Meta row */}
+      <View style={{ flexDirection: 'row', gap: 16, marginTop: 8, flexWrap: 'wrap' }}>
+        <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+          <Text style={{ fontSize: 11, color: theme.pageTextSubdued }}>
+            <Trans>Zahlungsmethode</Trans>:
+          </Text>
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: 500,
+              padding: '1px 8px',
+              borderRadius: 8,
+              backgroundColor: `${theme.tableBorder}`,
+              color: theme.pageText,
+            }}
+          >
+            {methodLabel}
+          </Text>
+        </View>
+        <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+          <Text style={{ fontSize: 11, color: theme.pageTextSubdued }}>
+            <Trans>Kulanzzeit</Trans>:
+          </Text>
+          <Text style={{ fontSize: 11, color: theme.pageText }}>
+            {t('{{n}} Werktage', { n: gracePeriodDays })}
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export function ContractDetailPage() {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
@@ -771,6 +985,7 @@ export function ContractDetailPage() {
       {activeTab === 'overview' && (
         <View style={{ maxWidth: 560 }}>
           <CancellationInfo contract={contract} />
+          <PaymentDeadlineSection contractId={contract.id} />
 
           {(contract.counterparty || contract.iban || contract.payment_account_id) && (
             <View

@@ -58,7 +58,9 @@ export type SyncedPrefs = Partial<
     | `learn-categories`
     | 'dashboardLayout'
     | 'paydayDate'
-    | 'balanceThreshold',
+    | 'balanceThreshold'
+    | 'deadlineShowHard'
+    | 'deadlineBundesland',
     string
   >
 >;

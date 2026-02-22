@@ -113,6 +113,13 @@ export type ContractFormData = {
   iban: string;
   counterparty: string;
   notes: string;
+  // Payment deadline fields
+  payment_method: string;
+  grace_period_days: string;
+  soft_shift: string;
+  hard_shift: string;
+  lead_time_override: string;
+  show_hard_deadline: boolean;
 };
 
 export const EMPTY_CONTRACT_FORM: ContractFormData = {
@@ -131,6 +138,13 @@ export const EMPTY_CONTRACT_FORM: ContractFormData = {
   iban: '',
   counterparty: '',
   notes: '',
+  // Payment deadline fields
+  payment_method: 'manual_sepa',
+  grace_period_days: '5',
+  soft_shift: 'before',
+  hard_shift: 'after',
+  lead_time_override: '',
+  show_hard_deadline: false,
 };
 
 // Utility: days until a date (negative = past)

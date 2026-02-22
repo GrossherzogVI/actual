@@ -19,6 +19,7 @@ import * as syncApp from './app-sync';
 import * as webhooksApp from './app-webhooks';
 import * as aiApp from './ai/app-ai';
 import * as contractsApp from './contracts/app-contracts';
+import { startDeadlineChecker } from './contracts/deadline-checker';
 import * as reviewApp from './review/app-review';
 import * as importApp from './import/app-import';
 import * as categoriesApp from './categories/app-categories';
@@ -206,6 +207,8 @@ export async function run() {
       console.error(err);
     }
   }
+
+  startDeadlineChecker();
 
   if (config.get('https.key') && config.get('https.cert')) {
     const https = await import('node:https');

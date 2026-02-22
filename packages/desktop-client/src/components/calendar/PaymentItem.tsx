@@ -9,6 +9,7 @@ import { SvgCalendar } from '@actual-app/components/icons/v2';
 
 import { useNavigate } from '@desktop-client/hooks/useNavigate';
 
+import { DeadlineBadge } from '../contracts/DeadlineBadge';
 import type { CalendarEntry } from './types';
 
 interface Props {
@@ -35,6 +36,13 @@ function formatAmount(cents: number): string {
 function formatDayShort(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00');
   return d.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric' });
+}
+
+function daysFromToday(dateStr: string): number {
+  const target = new Date(dateStr + 'T00:00:00');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.round((target.getTime() - today.getTime()) / 86400000);
 }
 
 export function PaymentItem({ entry, isLast = false }: Props) {
@@ -148,6 +156,25 @@ export function PaymentItem({ entry, isLast = false }: Props) {
           </Text>
         </View>
       )}
+
+      {/* Deadline badge — shown only for non-ok statuses on contract entries */}
+      {entry.type === 'contract' &&
+        entry.deadlineStatus &&
+        entry.deadlineStatus !== 'ok' && (
+          <DeadlineBadge
+            status={entry.deadlineStatus}
+            compact
+            daysRelative={
+              entry.deadlineStatus === 'action_due' && entry.actionDeadline
+                ? daysFromToday(entry.actionDeadline)
+                : entry.deadlineStatus === 'soft_passed' && entry.softDeadline
+                  ? daysFromToday(entry.softDeadline)
+                  : entry.hardDeadline
+                    ? daysFromToday(entry.hardDeadline)
+                    : undefined
+            }
+          />
+        )}
 
       {/* Amount */}
       <Text

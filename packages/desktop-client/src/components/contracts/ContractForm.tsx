@@ -10,6 +10,9 @@ import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
 import { View } from '@actual-app/components/view';
 
+import { PAYMENT_METHOD_LABELS } from 'loot-core/shared/deadlines';
+import type { PaymentMethod } from 'loot-core/shared/deadlines';
+
 import { useCategories } from '@desktop-client/hooks/useCategories';
 import { useNavigate } from '@desktop-client/hooks/useNavigate';
 
@@ -324,6 +327,15 @@ const CURRENCY_OPTIONS: [string, string][] = [
   ['CHF', 'CHF — Franc'],
 ];
 
+const PAYMENT_METHOD_OPTIONS: [string, string][] = (
+  Object.entries(PAYMENT_METHOD_LABELS) as [PaymentMethod, string][]
+).map(([k, v]) => [k, v]);
+
+const DEADLINE_SHIFT_OPTIONS: [string, string][] = [
+  ['before', 'Vorher (Freitag vor Wochenende)'],
+  ['after', 'Nachher (Montag nach Wochenende)'],
+];
+
 export function ContractForm({
   initialData,
   contract,
@@ -358,6 +370,8 @@ export function ContractForm({
   const [tags, setTags] = useState<string[]>(
     (initialData as any)?.tags ?? (contract?.tags ?? []),
   );
+
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const updateField = useCallback(
     <K extends keyof ContractFormData>(field: K, value: ContractFormData[K]) => {
@@ -568,6 +582,110 @@ export function ContractForm({
       <FormField label={t('Tags')}>
         <TagsInput value={tags} onChange={setTags} />
       </FormField>
+
+      {/* Payment method + Grace period */}
+      <View
+        style={{
+          marginBottom: 14,
+          padding: '10px 12px',
+          backgroundColor: theme.tableBackground,
+          borderRadius: 6,
+          border: `1px solid ${theme.tableBorder}`,
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: theme.pageTextSubdued,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            marginBottom: 10,
+          }}
+        >
+          <Trans>Zahlungsfristen</Trans>
+        </Text>
+        <View style={{ flexDirection: 'row', gap: 16 }}>
+          <FormField label={t('Zahlungsmethode')} style={{ flex: 1, marginBottom: 0 }}>
+            <Select
+              options={PAYMENT_METHOD_OPTIONS}
+              value={form.payment_method}
+              onChange={v => updateField('payment_method', v)}
+              style={{ width: '100%' }}
+            />
+          </FormField>
+          <FormField label={t('Kulanzzeit (Werktage)')} style={{ flex: 1, marginBottom: 0 }}>
+            <Input
+              value={form.grace_period_days}
+              onChangeValue={v => updateField('grace_period_days', v)}
+              type="number"
+              placeholder="5"
+              inputMode="numeric"
+            />
+          </FormField>
+        </View>
+
+        {/* Advanced collapsible */}
+        <Button
+          variant="bare"
+          onPress={() => setAdvancedOpen(prev => !prev)}
+          style={{
+            marginTop: 10,
+            padding: '4px 0',
+            color: theme.pageTextSubdued,
+            fontSize: 12,
+            alignSelf: 'flex-start',
+          }}
+        >
+          {advancedOpen ? t('▲ Erweitert ausblenden') : t('▼ Erweiterte Optionen')}
+        </Button>
+
+        {advancedOpen && (
+          <View style={{ marginTop: 10, gap: 10 }}>
+            <View style={{ flexDirection: 'row', gap: 16 }}>
+              <FormField label={t('Fälligkeitsverschiebung (weich)')} style={{ flex: 1, marginBottom: 0 }}>
+                <Select
+                  options={DEADLINE_SHIFT_OPTIONS}
+                  value={form.soft_shift}
+                  onChange={v => updateField('soft_shift', v)}
+                  style={{ width: '100%' }}
+                />
+              </FormField>
+              <FormField label={t('Fälligkeitsverschiebung (hart)')} style={{ flex: 1, marginBottom: 0 }}>
+                <Select
+                  options={DEADLINE_SHIFT_OPTIONS}
+                  value={form.hard_shift}
+                  onChange={v => updateField('hard_shift', v)}
+                  style={{ width: '100%' }}
+                />
+              </FormField>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 16 }}>
+              <FormField label={t('Vorlaufzeit überschreiben (Werktage)')} style={{ flex: 1, marginBottom: 0 }}>
+                <Input
+                  value={form.lead_time_override}
+                  onChangeValue={v => updateField('lead_time_override', v)}
+                  type="number"
+                  placeholder={t('Standard aus Zahlungsmethode')}
+                  inputMode="numeric"
+                />
+              </FormField>
+              <FormField label={t('Harte Frist anzeigen')} style={{ flex: 1, marginBottom: 0 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 }}>
+                  <Toggle
+                    id="show-hard-deadline-toggle"
+                    isOn={form.show_hard_deadline}
+                    onToggle={isOn => updateField('show_hard_deadline', isOn)}
+                  />
+                  <Text style={{ fontSize: 13, color: theme.pageText }}>
+                    {form.show_hard_deadline ? t('Aktiviert') : t('Deaktiviert')}
+                  </Text>
+                </View>
+              </FormField>
+            </View>
+          </View>
+        )}
+      </View>
 
       {/* Notes */}
       <FormField label={t('Notes')}>

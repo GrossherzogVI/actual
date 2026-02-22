@@ -8,6 +8,10 @@ export interface CalendarEntry {
   accountName?: string;
   contractType?: string;
   interval?: string;
+  softDeadline?: string;
+  hardDeadline?: string;
+  actionDeadline?: string;
+  deadlineStatus?: 'ok' | 'action_due' | 'soft_passed' | 'hard_passed';
 }
 
 export interface CrunchDay {

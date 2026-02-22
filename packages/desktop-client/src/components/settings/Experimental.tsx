@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { Trans } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 
 import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
+
+import { BUNDESLAND_LABELS } from 'loot-core/shared/german-holidays';
+import type { Bundesland } from 'loot-core/shared/german-holidays';
 
 import type { FeatureFlag, ServerPrefs } from 'loot-core/types/prefs';
 
@@ -150,6 +153,95 @@ function ServerFeatureToggle({
   );
 }
 
+const BUNDESLAND_SELECT_OPTIONS: [string, string][] = [
+  ['', 'Nur Bundesfeiertage'],
+  ...(Object.entries(BUNDESLAND_LABELS) as [Bundesland, string][]).map(
+    ([k, v]) => [k, v] as [string, string],
+  ),
+];
+
+function DeadlineSettings() {
+  const { t } = useTranslation();
+  const [bundesland, setBundesland] = useSyncedPref('deadlineBundesland');
+  const [showHard, setShowHard] = useSyncedPref('deadlineShowHard');
+
+  return (
+    <View
+      style={{
+        marginTop: 16,
+        paddingTop: 16,
+        borderTop: `1px solid ${theme.tableBorder}`,
+        gap: 12,
+      }}
+    >
+      <Text
+        style={{
+          fontSize: 11,
+          fontWeight: 600,
+          color: theme.pageTextSubdued,
+          textTransform: 'uppercase',
+          letterSpacing: '0.05em',
+        }}
+      >
+        <Trans>Zahlungsfristen</Trans>
+      </Text>
+
+      {/* Bundesland selector */}
+      <View style={{ gap: 4 }}>
+        <Text style={{ fontSize: 13 }}>
+          <Trans>Bundesland (Feiertage)</Trans>
+        </Text>
+        <Text style={{ fontSize: 12, color: theme.pageTextSubdued }}>
+          <Trans>
+            Bestimmt welche Feiertage bei der Berechnung von Werktagen berücksichtigt werden.
+          </Trans>
+        </Text>
+        <select
+          value={bundesland ?? ''}
+          onChange={e => setBundesland(e.target.value || undefined)}
+          style={{
+            marginTop: 4,
+            padding: '6px 10px',
+            borderRadius: 4,
+            border: `1px solid ${theme.tableBorder}`,
+            backgroundColor: theme.tableBackground,
+            color: theme.pageText,
+            fontSize: 13,
+            fontFamily: 'inherit',
+            maxWidth: 320,
+          }}
+        >
+          {BUNDESLAND_SELECT_OPTIONS.map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </View>
+
+      {/* Show hard deadlines toggle */}
+      <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
+        <input
+          type="checkbox"
+          checked={showHard === 'true'}
+          onChange={e => setShowHard(e.target.checked ? 'true' : 'false')}
+          style={{ marginTop: 3 }}
+        />
+        <View>
+          <Text style={{ fontSize: 13 }}>
+            <Trans>Harte Fristen anzeigen</Trans>
+          </Text>
+          <Text style={{ fontSize: 12, color: theme.pageTextSubdued }}>
+            <Trans>
+              Zeigt das letzte Datum vor Konsequenzen zusätzlich zum Fälligkeitsdatum an.
+            </Trans>
+          </Text>
+        </View>
+      </label>
+    </View>
+  );
+}
+
 export function ExperimentalFeatures() {
   const [expanded, setExpanded] = useState(false);
 
@@ -248,6 +340,8 @@ export function ExperimentalFeatures() {
                 <Trans>Client-Side plugins (soon)</Trans>
               </ServerFeatureToggle>
             )}
+
+            <DeadlineSettings />
           </View>
         ) : (
           <Link

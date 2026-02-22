@@ -3,7 +3,13 @@ import crypto from 'node:crypto';
 import { getAccountDb } from './account-db.js';
 import { config } from './load-config.js';
 
-export type WebhookEventType = 'sync' | 'file-upload' | 'file-delete';
+export type WebhookEventType =
+  | 'sync'
+  | 'file-upload'
+  | 'file-delete'
+  | 'deadline.action_due'
+  | 'deadline.soft_passed'
+  | 'deadline.hard_passed';
 
 export type WebhookEvent = {
   type: WebhookEventType;
@@ -11,6 +17,13 @@ export type WebhookEvent = {
   groupId?: string | null;
   messageCount?: number;
   timestamp: string;
+  // Populated for deadline.* events
+  contractId?: string;
+  contractName?: string;
+  nominalDate?: string;
+  actionDate?: string;
+  softDate?: string;
+  hardDate?: string;
 };
 
 type WebhookConfig = {

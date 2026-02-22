@@ -59,6 +59,14 @@ export type ContractSummary = {
   by_status: Record<string, number>;
 };
 
+export type ContractDeadlineEntry = {
+  date: string;
+  action: string;
+  soft: string;
+  hard: string;
+  status: 'ok' | 'action_due' | 'soft_passed' | 'hard_passed';
+};
+
 export type ContractHandlers = {
   'contract-list': typeof listContracts;
   'contract-get': typeof getContract;
@@ -70,6 +78,7 @@ export type ContractHandlers = {
   'contract-discover': typeof discoverContracts;
   'contract-bulk-import': typeof contractBulkImport;
   'contract-price-change': typeof contractPriceChange;
+  'contract-deadlines': typeof contractDeadlines;
 };
 
 export const app = createApp<ContractHandlers>();
@@ -84,6 +93,7 @@ app.method('contract-expiring', contractExpiring);
 app.method('contract-discover', discoverContracts);
 app.method('contract-bulk-import', contractBulkImport);
 app.method('contract-price-change', contractPriceChange);
+app.method('contract-deadlines', contractDeadlines);
 
 // Maps contract interval to Actual schedule frequency string
 function intervalToFrequency(
@@ -370,4 +380,33 @@ async function contractPriceChange(args: {
   } catch (err) {
     return { error: err.reason || err.message || 'unknown' };
   }
+}
+
+async function contractDeadlines(args: {
+  id: string;
+  count?: number;
+  bundesland?: string;
+}): Promise<ContractDeadlineEntry[] | { error: string }> {
+  const userToken = await asyncStorage.getItem('user-token');
+  if (!userToken) return { error: 'not-logged-in' };
+
+  const params = new URLSearchParams();
+  if (args.count) params.set('count', String(args.count));
+  if (args.bundesland) params.set('bundesland', args.bundesland);
+
+  try {
+    const res = await get(
+      getServer().BASE_SERVER +
+        `/contracts/${args.id}/deadlines?${params.toString()}`,
+      { headers: { 'X-ACTUAL-TOKEN': userToken } },
+    );
+    if (res) {
+      const parsed = JSON.parse(res);
+      if (parsed.status === 'ok') return parsed.data;
+      return { error: parsed.reason || 'unknown' };
+    }
+  } catch (err) {
+    return { error: err.message || 'network-failure' };
+  }
+  return { error: 'no-response' };
 }

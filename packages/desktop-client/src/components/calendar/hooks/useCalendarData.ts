@@ -4,11 +4,18 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { send } from 'loot-core/platform/client/connection';
 import { q } from 'loot-core/shared/query';
 import { getScheduledAmount } from 'loot-core/shared/schedules';
+import {
+  computeDeadlines,
+  deadlineStatus,
+} from 'loot-core/shared/deadlines';
+import type { PaymentMethod, DeadlineShift } from 'loot-core/shared/deadlines';
+import type { Bundesland } from 'loot-core/shared/german-holidays';
 import type { ScheduleEntity } from 'loot-core/types/models';
 
 import { usePayees } from '@desktop-client/hooks/usePayees';
 import { useSchedules } from '@desktop-client/hooks/useSchedules';
 import { useSheetValue } from '@desktop-client/hooks/useSheetValue';
+import { useSyncedPref } from '@desktop-client/hooks/useSyncedPref';
 import { allAccountBalance } from '@desktop-client/spreadsheet/bindings';
 
 import type { CalendarEntry, CrunchDay, WeekData } from '../types';
@@ -170,6 +177,11 @@ interface ContractRaw {
   status: string;
   type: string | null;
   schedule_id: string | null;
+  payment_method: string | null;
+  grace_period_days: number | null;
+  soft_shift: string | null;
+  hard_shift: string | null;
+  lead_time_override: number | null;
 }
 
 interface UseCalendarDataOptions {
@@ -265,6 +277,8 @@ export function useCalendarData(options?: UseCalendarDataOptions): UseCalendarDa
   }, [payees]);
 
   const startingBalance = useSheetValue<'account', 'accounts-balance'>(allAccountBalance()) ?? 0;
+  const [bundeslandPref] = useSyncedPref('deadlineBundesland');
+  const bundesland = (bundeslandPref ?? null) as Bundesland | null;
 
   const loading = contractsLoading || schedulesLoading;
 
@@ -318,6 +332,31 @@ export function useCalendarData(options?: UseCalendarDataOptions): UseCalendarDa
       const dates = getContractDates(startDate, contract.interval, fromDate, toDate);
 
       for (const date of dates) {
+        let softDeadline: string | undefined;
+        let hardDeadline: string | undefined;
+        let actionDeadline: string | undefined;
+        let entryDeadlineStatus: CalendarEntry['deadlineStatus'];
+
+        if (contract.payment_method) {
+          try {
+            const dl = computeDeadlines({
+              nominalDate: date,
+              paymentMethod: (contract.payment_method as PaymentMethod) ?? 'manual_sepa',
+              leadTimeOverride: contract.lead_time_override ?? null,
+              gracePeriodDays: contract.grace_period_days ?? 5,
+              softShift: (contract.soft_shift as DeadlineShift) ?? 'before',
+              hardShift: (contract.hard_shift as DeadlineShift) ?? 'after',
+              bundesland,
+            });
+            softDeadline = dl.soft;
+            hardDeadline = dl.hard;
+            actionDeadline = dl.action;
+            entryDeadlineStatus = deadlineStatus(dl);
+          } catch {
+            // ignore deadline errors — degrade gracefully
+          }
+        }
+
         entries.push({
           id: `contract-${contract.id}-${date}`,
           date,
@@ -328,6 +367,10 @@ export function useCalendarData(options?: UseCalendarDataOptions): UseCalendarDa
           sourceId: contract.id,
           contractType: contract.type ?? undefined,
           interval: contract.interval ?? undefined,
+          softDeadline,
+          hardDeadline,
+          actionDeadline,
+          deadlineStatus: entryDeadlineStatus,
         });
       }
     }
@@ -360,7 +403,7 @@ export function useCalendarData(options?: UseCalendarDataOptions): UseCalendarDa
     // Sort chronologically
     entries.sort((a, b) => a.date.localeCompare(b.date));
     return entries;
-  }, [contracts, schedules, payeesById, windowStart, windowEnd]);
+  }, [contracts, schedules, payeesById, windowStart, windowEnd, bundesland]);
 
   const weeks = useMemo(
     () => groupByWeek(allEntries, startingBalance),

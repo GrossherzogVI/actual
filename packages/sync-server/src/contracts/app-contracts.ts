@@ -6,6 +6,15 @@ import {
   requestLoggerMiddleware,
   validateSessionMiddleware,
 } from '../util/middlewares.js';
+import {
+  computeDeadlines,
+  deadlineStatus,
+  nextPaymentDates,
+  type Bundesland,
+  type DeadlineConfig,
+  type DeadlineResult,
+  type PaymentMethod,
+} from './deadlines.js';
 
 const app = express();
 
@@ -268,6 +277,75 @@ app.get('/', (req, res) => {
   ) as Record<string, unknown>[];
 
   res.json({ status: 'ok', data: rows.map(enrichContract) });
+});
+
+/** GET /contracts/:id/deadlines — compute upcoming payment deadlines */
+app.get('/:id/deadlines', (req, res) => {
+  const db = getAccountDb();
+  const row = db.first(
+    'SELECT * FROM contracts WHERE id = ? AND tombstone = 0',
+    [req.params.id],
+  ) as Record<string, unknown> | undefined;
+
+  if (!row) {
+    res.status(404).json({ status: 'error', reason: 'not-found' });
+    return;
+  }
+
+  // Require a start_date to anchor payment dates
+  if (!row.start_date) {
+    res.json({ status: 'ok', data: [] });
+    return;
+  }
+
+  const count = Math.min(
+    Math.max(1, parseInt(String(req.query.count ?? '6'), 10)),
+    24,
+  );
+
+  const bundesland = (req.query.bundesland as Bundesland | undefined) ?? null;
+
+  const paymentMethod: PaymentMethod =
+    (row.payment_method as PaymentMethod | null) ?? 'manual_sepa';
+  const gracePeriodDays = (row.grace_period_days as number | null) ?? 5;
+  const softShift =
+    (row.soft_deadline_shift as DeadlineConfig['softShift'] | null) ?? 'before';
+  const hardShift =
+    (row.hard_deadline_shift as DeadlineConfig['hardShift'] | null) ?? 'after';
+  const leadTimeOverride =
+    (row.lead_time_override as number | null) ?? null;
+
+  const nominalDates = nextPaymentDates(
+    row.start_date as string,
+    (row.interval as string) ?? 'monthly',
+    (row.custom_interval_days as number | null) ?? null,
+    count,
+  );
+
+  const today = new Date().toISOString().split('T')[0];
+
+  const data = nominalDates.map((date: string) => {
+    const config: DeadlineConfig = {
+      nominalDate: date,
+      paymentMethod,
+      leadTimeOverride,
+      gracePeriodDays,
+      softShift,
+      hardShift,
+      bundesland,
+    };
+    const deadlines: DeadlineResult = computeDeadlines(config);
+    const status = deadlineStatus(deadlines, today);
+    return {
+      date,
+      action: deadlines.action,
+      soft: deadlines.soft,
+      hard: deadlines.hard,
+      status,
+    };
+  });
+
+  res.json({ status: 'ok', data });
 });
 
 /** GET /contracts/:id — get single contract with full details */
