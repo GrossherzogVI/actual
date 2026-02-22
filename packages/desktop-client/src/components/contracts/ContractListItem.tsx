@@ -20,6 +20,23 @@ type ContractListItemProps = {
   contract: ContractEntity;
 };
 
+// Days per billing cycle used for cost-per-day fallback when the server value is absent.
+// Keys match ContractEntity.interval values.
+const DAYS_BY_INTERVAL: Record<string, number> = {
+  weekly: 7,
+  monthly: 30,
+  quarterly: 90,
+  'semi-annual': 182,
+  annual: 365,
+};
+
+function computeCostPerDay(contract: ContractEntity): number | null {
+  if (contract.amount == null || !contract.interval) return null;
+  if (contract.cost_per_day != null) return contract.cost_per_day;
+  const days = DAYS_BY_INTERVAL[contract.interval];
+  return days != null ? contract.amount / days : null;
+}
+
 function Badge({ label, color }: { label: string; color: string }) {
   return (
     <Text
@@ -114,19 +131,8 @@ export function ContractListItem({ contract }: ContractListItemProps) {
             /{contract.interval}
           </Text>
         )}
-        {contract.amount != null && contract.interval && (() => {
-          const DAYS_BY_INTERVAL: Record<string, number> = {
-            weekly: 7,
-            monthly: 30,
-            quarterly: 90,
-            'semi-annual': 182,
-            annual: 365,
-          };
-          const costPerDay =
-            contract.cost_per_day ??
-            (DAYS_BY_INTERVAL[contract.interval] != null
-              ? contract.amount / DAYS_BY_INTERVAL[contract.interval]
-              : null);
+        {(() => {
+          const costPerDay = computeCostPerDay(contract);
           if (costPerDay == null) return null;
           return (
             <Text style={{ fontSize: 11, color: theme.pageTextSubdued }}>

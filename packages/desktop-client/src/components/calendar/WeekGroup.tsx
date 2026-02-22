@@ -18,7 +18,7 @@ interface Props {
 
 function formatWeekHeader(weekStart: string): string {
   const d = new Date(weekStart + 'T00:00:00');
-  return d.toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric' });
+  return d.toLocaleDateString('de-DE', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
 function formatCurrency(cents: number): string {
@@ -54,6 +54,22 @@ export function WeekGroup({ week }: Props) {
     }
     return false;
   }, [byDay]);
+
+  // Pre-compute the worst crunch day stats for the header indicator.
+  const worstCrunchDay = useMemo(() => {
+    if (!hasCrunchDay) return null;
+    let maxCount = 0;
+    let maxTotal = 0;
+    for (const [, day] of byDay) {
+      if (isCrunchDay(day.count, day.total)) {
+        if (day.count > maxCount || Math.abs(day.total) > Math.abs(maxTotal)) {
+          maxCount = day.count;
+          maxTotal = day.total;
+        }
+      }
+    }
+    return { count: maxCount, total: maxTotal };
+  }, [hasCrunchDay, byDay]);
 
   const weekTotalColor = week.totalAmount < 0 ? theme.errorText : '#10b981';
 
@@ -97,25 +113,16 @@ export function WeekGroup({ week }: Props) {
         </Text>
 
         {/* Crunch day indicator */}
-        {hasCrunchDay && (() => {
-          // Find the worst day for the indicator
-          let maxCount = 0;
-          let maxTotal = 0;
-          for (const [, day] of byDay) {
-            if (isCrunchDay(day.count, day.total)) {
-              if (day.count > maxCount || Math.abs(day.total) > Math.abs(maxTotal)) {
-                maxCount = day.count;
-                maxTotal = day.total;
-              }
-            }
-          }
-          return <CrunchDayIndicator paymentCount={maxCount} totalCents={maxTotal} />;
-        })()}
+        {worstCrunchDay && (
+          <CrunchDayIndicator
+            paymentCount={worstCrunchDay.count}
+            totalCents={worstCrunchDay.total}
+          />
+        )}
 
         {/* Entry count */}
         <Text style={{ fontSize: 11, color: theme.pageTextSubdued, flexShrink: 0 }}>
-          {t('{{count}} payment', { count: week.entries.length })}
-          {week.entries.length !== 1 ? 's' : ''}
+          {t('{{count}} payment(s)', { count: week.entries.length })}
         </Text>
 
         {/* Week total */}

@@ -6,7 +6,6 @@ import { q } from 'loot-core/shared/query';
 import { getScheduledAmount } from 'loot-core/shared/schedules';
 import type { ScheduleEntity } from 'loot-core/types/models';
 
-import { useMetadataPref } from '@desktop-client/hooks/useMetadataPref';
 import { usePayees } from '@desktop-client/hooks/usePayees';
 import { useSchedules } from '@desktop-client/hooks/useSchedules';
 import { useSheetValue } from '@desktop-client/hooks/useSheetValue';
@@ -188,7 +187,6 @@ import {
 } from '@desktop-client/utils/schedule-helpers';
 
 export function useCalendarData(): UseCalendarDataResult {
-  const [budgetId] = useMetadataPref('id');
   const [contracts, setContracts] = useState<ContractRaw[]>([]);
   const [contractsLoading, setContractsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -222,7 +220,6 @@ export function useCalendarData(): UseCalendarDataResult {
     setError(null);
     try {
       const result = await (send as Function)('contract-list', {
-        fileId: budgetId,
         status: 'active',
       });
       if (result && !('error' in result)) {
@@ -235,7 +232,7 @@ export function useCalendarData(): UseCalendarDataResult {
     } finally {
       setContractsLoading(false);
     }
-  }, [budgetId]);
+  }, []);
 
   useEffect(() => {
     void load();

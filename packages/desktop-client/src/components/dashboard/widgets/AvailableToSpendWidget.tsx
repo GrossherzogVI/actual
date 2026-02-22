@@ -23,8 +23,12 @@ export function AvailableToSpendWidget({ upcomingPayments, loading }: Props) {
 
   const totalBalance = useSheetValue<'account', 'accounts-balance'>(allAccountBalance());
 
-  // Sum all upcoming committed payments (amounts are in cents, may be negative for outflows)
-  const committedCents = upcomingPayments.reduce((sum, p) => sum + Math.abs(p.amount), 0);
+  // Sum all upcoming committed payments (amounts are in cents, may be negative for outflows).
+  // Skip entries where amount is null — those are schedule placeholders without a known amount.
+  const committedCents = upcomingPayments.reduce(
+    (sum, p) => (p.amount != null ? sum + Math.abs(p.amount) : sum),
+    0,
+  );
 
   const availableCents =
     totalBalance !== null ? totalBalance - committedCents : null;

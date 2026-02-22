@@ -227,8 +227,7 @@ function SourceBadges({ entries }: { entries: CalendarEntry[] }) {
         >
           <SvgCalendar style={{ width: 10, height: 10, color: theme.pageTextSubdued }} />
           <Text style={{ fontSize: 10, color: theme.pageTextSubdued }}>
-            {t('{{count}} Schedule', { count: counts.schedules })}
-            {counts.schedules !== 1 ? 's' : ''}
+            {t('{{count}} Schedule(s)', { count: counts.schedules })}
           </Text>
         </View>
       )}
@@ -252,8 +251,7 @@ function SourceBadges({ entries }: { entries: CalendarEntry[] }) {
             }}
           />
           <Text style={{ fontSize: 10, color: theme.pageTextSubdued }}>
-            {t('{{count}} Contract', { count: counts.contracts })}
-            {counts.contracts !== 1 ? 's' : ''}
+            {t('{{count}} Contract(s)', { count: counts.contracts })}
           </Text>
         </View>
       )}
