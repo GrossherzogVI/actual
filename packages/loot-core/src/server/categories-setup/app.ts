@@ -1,6 +1,7 @@
 // @ts-strict-ignore
 import * as asyncStorage from '../../platform/server/asyncStorage';
 import { createApp } from '../app';
+import * as db from '../db';
 import { get, post } from '../post';
 import { getServer } from '../server-config';
 
@@ -31,6 +32,14 @@ app.method('categories-setup-german-tree', categoriesSetupGermanTree);
 app.method('categories-setup-templates', categoriesSetupTemplates);
 app.method('categories-setup-map', categoriesSetupMap);
 
+type GermanTreeGroup = {
+  name: string;
+  color: string;
+  icon: string;
+  is_income: boolean;
+  categories: string[];
+};
+
 async function categoriesSetupGermanTree(args?: {
   mergeExisting?: boolean;
 }): Promise<
@@ -40,12 +49,64 @@ async function categoriesSetupGermanTree(args?: {
   if (!userToken) return { error: 'not-logged-in' };
 
   try {
+    // Fetch the tree structure from the server
     const result = await post(
       getServer().BASE_SERVER + '/categories-setup/german-tree',
       args || {},
       { 'X-ACTUAL-TOKEN': userToken },
     );
-    return result as { created: number; skipped: number; total: number };
+
+    const groups: GermanTreeGroup[] = (result as any).groups;
+    if (!Array.isArray(groups) || groups.length === 0) {
+      return { error: 'empty-tree' };
+    }
+
+    let created = 0;
+    let skipped = 0;
+    const total = groups.reduce(
+      (sum, g) => sum + g.categories.length,
+      groups.length,
+    );
+
+    for (const group of groups) {
+      let groupId: string;
+      try {
+        groupId = await db.insertCategoryGroup({
+          name: group.name,
+          is_income: group.is_income ? 1 : 0,
+        });
+        created++;
+      } catch {
+        // Group already exists — find its ID if merging
+        if (args?.mergeExisting) {
+          const existing = await db.first<{ id: string }>(
+            `SELECT id FROM category_groups WHERE UPPER(name) = ? AND tombstone = 0 LIMIT 1`,
+            [group.name.toUpperCase()],
+          );
+          if (existing) {
+            groupId = existing.id;
+            skipped++;
+          } else {
+            skipped += 1 + group.categories.length;
+            continue;
+          }
+        } else {
+          skipped += 1 + group.categories.length;
+          continue;
+        }
+      }
+
+      for (const catName of group.categories) {
+        try {
+          await db.insertCategory({ name: catName, cat_group: groupId });
+          created++;
+        } catch {
+          skipped++;
+        }
+      }
+    }
+
+    return { created, skipped, total };
   } catch (err) {
     return { error: err.reason || err.message || 'unknown' };
   }

@@ -75,11 +75,11 @@ export async function post(
   if (responseData.status !== 'ok') {
     logger.log(
       'API call failed: ' +
-        url +
-        '\nData: ' +
-        JSON.stringify(data, null, 2) +
-        '\nResponse: ' +
-        JSON.stringify(res, null, 2),
+      url +
+      '\nData: ' +
+      JSON.stringify(data, null, 2) +
+      '\nResponse: ' +
+      JSON.stringify(res, null, 2),
     );
 
     throw new PostError(
@@ -125,11 +125,11 @@ export async function del(url, data, headers = {}, timeout = null) {
   if (res.status !== 'ok') {
     logger.log(
       'API call failed: ' +
-        url +
-        '\nData: ' +
-        JSON.stringify(data, null, 2) +
-        '\nResponse: ' +
-        JSON.stringify(res, null, 2),
+      url +
+      '\nData: ' +
+      JSON.stringify(data, null, 2) +
+      '\nResponse: ' +
+      JSON.stringify(res, null, 2),
     );
 
     throw new PostError(res.description || res.reason || 'unknown');
@@ -173,11 +173,11 @@ export async function patch(url, data, headers = {}, timeout = null) {
   if (res.status !== 'ok') {
     logger.log(
       'API call failed: ' +
-        url +
-        '\nData: ' +
-        JSON.stringify(data, null, 2) +
-        '\nResponse: ' +
-        JSON.stringify(res, null, 2),
+      url +
+      '\nData: ' +
+      JSON.stringify(data, null, 2) +
+      '\nResponse: ' +
+      JSON.stringify(res, null, 2),
     );
 
     throw new PostError(res.description || res.reason || 'unknown');
@@ -214,6 +214,35 @@ export async function postBinary(url, data, headers) {
   return buffer;
 }
 
-export function get(url, opts?) {
-  return fetch(url, opts).then(res => res.text());
+export async function get(url, opts?) {
+  let text;
+  let res;
+
+  try {
+    res = await fetch(url, opts);
+    text = await res.text();
+  } catch {
+    throw new PostError('network-failure');
+  }
+
+  throwIfNot200(res, text);
+
+  let responseData;
+  try {
+    responseData = JSON.parse(text);
+  } catch {
+    throw new PostError('parse-json', { meta: text });
+  }
+
+  if (responseData && responseData.status !== 'ok') {
+    logger.log(
+      'API call failed: ' +
+      url +
+      '\nResponse: ' +
+      JSON.stringify(responseData, null, 2),
+    );
+    throw new PostError(responseData.description || responseData.reason || 'unknown');
+  }
+
+  return responseData ? responseData.data : null;
 }

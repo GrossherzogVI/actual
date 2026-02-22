@@ -7,12 +7,12 @@ import { getServer } from '../server-config';
 export type ReviewItem = {
   id: string;
   type:
-    | 'uncategorized'
-    | 'low_confidence'
-    | 'recurring_detected'
-    | 'amount_mismatch'
-    | 'budget_suggestion'
-    | 'parked_expense';
+  | 'uncategorized'
+  | 'low_confidence'
+  | 'recurring_detected'
+  | 'amount_mismatch'
+  | 'budget_suggestion'
+  | 'parked_expense';
   priority: 'urgent' | 'review' | 'suggestion';
   transaction_id: string | null;
   contract_id: string | null;
@@ -78,19 +78,14 @@ async function reviewList(args?: {
   if (args?.offset) params.set('offset', String(args.offset));
 
   try {
-    const res = await get(
+    const data = await get(
       getServer().BASE_SERVER + `/review?${params.toString()}`,
       { headers: { 'X-ACTUAL-TOKEN': userToken } },
     );
-    if (res) {
-      const parsed = JSON.parse(res);
-      if (parsed.status === 'ok') return parsed.data;
-      return { error: parsed.reason || 'unknown' };
-    }
+    return data;
   } catch (err) {
-    return { error: err.message || 'network-failure' };
+    return { error: err.reason || err.message || 'network-failure' };
   }
-  return { error: 'no-response' };
 }
 
 async function reviewCount(): Promise<ReviewCount | { error: string }> {
@@ -98,19 +93,14 @@ async function reviewCount(): Promise<ReviewCount | { error: string }> {
   if (!userToken) return { error: 'not-logged-in' };
 
   try {
-    const res = await get(
+    const data = await get(
       getServer().BASE_SERVER + '/review/count',
       { headers: { 'X-ACTUAL-TOKEN': userToken } },
     );
-    if (res) {
-      const parsed = JSON.parse(res);
-      if (parsed.status === 'ok') return parsed.data;
-      return { error: parsed.reason || 'unknown' };
-    }
+    return data;
   } catch (err) {
-    return { error: err.message || 'network-failure' };
+    return { error: err.reason || err.message || 'network-failure' };
   }
-  return { error: 'no-response' };
 }
 
 async function reviewUpdate(args: {

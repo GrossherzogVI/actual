@@ -65,6 +65,7 @@ export function useQuickAdd(defaultAccountId?: string): UseQuickAddReturn {
       amount: preset.amount != null ? String(preset.amount / 100) : '',
       evaluatedAmount: preset.amount ?? null,
       categoryId: preset.categoryId ?? '',
+      categoryName: preset.categoryName ?? '',
       payee: preset.payee ?? '',
       accountId: preset.accountId ?? '',
     }));

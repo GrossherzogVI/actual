@@ -39,6 +39,16 @@ export type DeadlineShift = 'before' | 'after';
 
 // ─── Business day utilities ──────────────────────────────────────────────────
 
+const holidayCache = new Map<string, Set<string>>();
+
+function getCachedHolidays(year: number, bundesland?: Bundesland | null): Set<string> {
+  const key = `${year}-${bundesland || 'ALL'}`;
+  if (!holidayCache.has(key)) {
+    holidayCache.set(key, getHolidays(year, bundesland));
+  }
+  return holidayCache.get(key)!;
+}
+
 /** Check if a date is a weekend (Saturday or Sunday). */
 function isWeekend(d: Date): boolean {
   const day = d.getDay();
@@ -50,7 +60,7 @@ function isWeekend(d: Date): boolean {
  */
 export function isBusinessDay(date: Date, bundesland?: Bundesland | null): boolean {
   if (isWeekend(date)) return false;
-  const holidays = getHolidays(date.getFullYear(), bundesland);
+  const holidays = getCachedHolidays(date.getFullYear(), bundesland);
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
@@ -88,7 +98,10 @@ export function addBusinessDays(
   bundesland?: Bundesland | null,
 ): Date {
   const d = new Date(date);
-  const step = n >= 0 ? 1 : -1;
+  if (n === 0) {
+    return isBusinessDay(d, bundesland) ? d : nextBusinessDay(d, 'after', bundesland);
+  }
+  const step = n > 0 ? 1 : -1;
   let remaining = Math.abs(n);
   while (remaining > 0) {
     d.setDate(d.getDate() + step);

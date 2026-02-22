@@ -122,7 +122,7 @@ export const UserAccessRow = memo(
           <Checkbox
             defaultChecked={marked}
             disabled={access.owner === 1}
-            onClick={handleAccessToggle}
+            onChange={handleAccessToggle}
           />
         </Cell>
         <Cell

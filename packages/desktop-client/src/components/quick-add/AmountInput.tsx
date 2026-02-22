@@ -42,7 +42,7 @@ export function AmountInput({
   const showResult = isExpression(value) && evaluatedAmount !== null;
 
   // Color: income = green, expense = default text
-  const amountColor = isIncome ? '#10b981' : theme.formInputText;
+  const amountColor = isIncome ? theme.noticeTextLight : theme.formInputText;
 
   // Show suggestion hint below when field is empty and a suggestion exists
   const showSuggestion = value === '' && !!suggestedPlaceholder;
@@ -60,7 +60,7 @@ export function AmountInput({
           fontWeight: 600,
           textAlign: 'center',
           border: 'none',
-          borderBottom: `2px solid ${isIncome ? '#10b981' : theme.formInputBorder}`,
+          borderBottom: `2px solid ${isIncome ? theme.noticeTextLight : theme.formInputBorder}`,
           borderRadius: 0,
           backgroundColor: 'transparent',
           color: amountColor,

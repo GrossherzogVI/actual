@@ -397,12 +397,12 @@ function StatusCell({
           ':focus': {
             ...(isPreview
               ? {
-                  boxShadow: 'none',
-                }
+                boxShadow: 'none',
+              }
               : {
-                  border: '1px solid ' + theme.formInputBorderSelected,
-                  boxShadow: '0 1px 2px ' + theme.formInputBorderSelected,
-                }),
+                border: '1px solid ' + theme.formInputBorderSelected,
+                boxShadow: '0 1px 2px ' + theme.formInputBorderSelected,
+              }),
           },
           cursor: isClearedField ? 'pointer' : 'default',
           ...(isChild && { visibility: 'hidden' }),
@@ -545,8 +545,8 @@ function PayeeCell({
           ':hover': isPreview
             ? {}
             : {
-                border: '1px solid ' + theme.buttonNormalBorder,
-              },
+              border: '1px solid ' + theme.buttonNormalBorder,
+            },
         }}
         disabled={isPreview}
         onSelect={() =>
@@ -1276,11 +1276,11 @@ const Transaction = memo(function Transaction({
           value={
             matched
               ? // TODO: this will require changes in table.tsx
-                ((
-                  <SvgHyperlink2
-                    style={{ width: 13, height: 13, color: 'inherit' }}
-                  />
-                ) as unknown as string)
+              ((
+                <SvgHyperlink2
+                  style={{ width: 13, height: 13, color: 'inherit' }}
+                />
+              ) as unknown as string)
               : undefined
           }
         />
@@ -1556,11 +1556,11 @@ const Transaction = memo(function Transaction({
           valueStyle={
             !categoryId
               ? {
-                  // uncategorized transaction
-                  fontStyle: 'italic',
-                  fontWeight: 300,
-                  color: theme.formInputTextHighlight,
-                }
+                // uncategorized transaction
+                fontStyle: 'italic',
+                fontWeight: 300,
+                color: theme.formInputTextHighlight,
+              }
               : valueStyle
           }
           onUpdate={async value => {
@@ -2611,10 +2611,10 @@ export const TransactionTable = forwardRef(
       fields = item?.is_child
         ? ['select', 'payee', 'notes', 'category', 'debit', 'credit']
         : fields.filter(
-            f =>
-              (props.showAccount || f !== 'account') &&
-              (props.showCategory || f !== 'category'),
-          );
+          f =>
+            (props.showAccount || f !== 'account') &&
+            (props.showCategory || f !== 'category'),
+        );
 
       if (item?.id && isPreviewId(item.id)) {
         fields = ['select'];
@@ -2924,9 +2924,9 @@ export const TransactionTable = forwardRef(
           t =>
             t.parent_id &&
             t.parent_id ===
-              (transaction?.is_parent
-                ? transaction?.id
-                : transaction?.parent_id),
+            (transaction?.is_parent
+              ? transaction?.id
+              : transaction?.parent_id),
         );
 
         const emptyTransactions = siblingTransactions.filter(

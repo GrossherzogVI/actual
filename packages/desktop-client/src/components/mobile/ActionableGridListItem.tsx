@@ -120,7 +120,7 @@ export function ActionableGridListItem<T extends object>({
             textAlign: 'left',
             borderRadius: 0,
           }}
-          onClick={handleAction}
+          onPress={handleAction}
         >
           {children}
         </Button>

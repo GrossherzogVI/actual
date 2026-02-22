@@ -480,7 +480,7 @@ export function KeyboardShortcutModal() {
               showingShortcuts ? (
                 <Button
                   variant="bare"
-                  onClick={() => {
+                  onPress={() => {
                     setSearchText('');
                     setSelectedCategoryId(null);
                   }}

@@ -17,6 +17,9 @@ import { useQuery } from '@tanstack/react-query';
 
 import * as undo from 'loot-core/platform/client/undo';
 
+import { ErrorBoundary } from 'react-error-boundary';
+import { FatalError } from './FatalError';
+
 import { BankSyncStatus } from './BankSyncStatus';
 import { CommandBar } from './CommandBar';
 import { GlobalKeys } from './GlobalKeys';
@@ -209,14 +212,14 @@ export function FinancesApp() {
               title: t('A new version of Actual is available!'),
               message:
                 (process.env.REACT_APP_IS_PIKAPODS ?? '').toLowerCase() ===
-                'true'
+                  'true'
                   ? t(
-                      'A new version of Actual is available! Your Pikapods instance will be automatically updated in the next few days - no action needed.',
-                    )
+                    'A new version of Actual is available! Your Pikapods instance will be automatically updated in the next few days - no action needed.',
+                  )
                   : t(
-                      'Version {{latestVersion}} of Actual was recently released.',
-                      { latestVersion: versionInfo.latestVersion },
-                    ),
+                    'Version {{latestVersion}} of Actual was recently released.',
+                    { latestVersion: versionInfo.latestVersion },
+                  ),
               sticky: true,
               id: 'update-notification',
               button: {
@@ -258,218 +261,218 @@ export function FinancesApp() {
 
   return (
     <ToastProvider>
-    <View style={{ height: '100%' }}>
-      <RouterBehaviors />
-      <GlobalKeys />
-      <CommandBar />
-      {quickAddEnabled && (
-        <QuickAddOverlay
-          isOpen={quickAddOpen}
-          onClose={() => setQuickAddOpen(false)}
-        />
-      )}
-      <View
-        style={{
-          flexDirection: 'row',
-          backgroundColor: theme.pageBackground,
-          flex: 1,
-        }}
-      >
-        <FloatableSidebar />
-
+      <View style={{ height: '100%' }}>
+        <RouterBehaviors />
+        <GlobalKeys />
+        <CommandBar />
+        {quickAddEnabled && (
+          <QuickAddOverlay
+            isOpen={quickAddOpen}
+            onClose={() => setQuickAddOpen(false)}
+          />
+        )}
         <View
           style={{
-            color: theme.pageText,
+            flexDirection: 'row',
             backgroundColor: theme.pageBackground,
             flex: 1,
-            overflow: 'hidden',
-            width: '100%',
           }}
         >
-          <ScrollProvider
-            isDisabled={!isNarrowWidth}
-            scrollableRef={scrollableRef}
+          <FloatableSidebar />
+
+          <View
+            style={{
+              color: theme.pageText,
+              backgroundColor: theme.pageBackground,
+              flex: 1,
+              overflow: 'hidden',
+              width: '100%',
+            }}
           >
-            <View
-              ref={scrollableRef}
-              style={{
-                flex: 1,
-                overflow: 'auto',
-                position: 'relative',
-              }}
+            <ScrollProvider
+              isDisabled={!isNarrowWidth}
+              scrollableRef={scrollableRef}
             >
-              <Titlebar
+              <View
+                ref={scrollableRef}
                 style={{
-                  WebkitAppRegion: 'drag',
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  zIndex: 1000,
+                  flex: 1,
+                  overflow: 'auto',
+                  position: 'relative',
                 }}
-              />
-              <Notifications />
-              <BankSyncStatus />
+              >
+                <Titlebar
+                  style={{
+                    WebkitAppRegion: 'drag',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    zIndex: 1000,
+                  }}
+                />
+                <Notifications />
+                <BankSyncStatus />
+
+                <Routes>
+                  <Route
+                    path="/"
+                    element={
+                      isAccountsFetching || !accounts ? (
+                        <LoadingIndicator />
+                      ) : accounts.length > 0 ? (
+                        <Navigate to={financeOS ? '/dashboard' : '/budget'} replace />
+                      ) : (
+                        // If there are no accounts, we want to redirect the user to
+                        // the All Accounts screen which will prompt them to add an account
+                        <Navigate to="/accounts" replace />
+                      )
+                    }
+                  />
+
+                  <Route path="/reports/*" element={<Suspense fallback={<LoadingIndicator />}><Reports /></Suspense>} />
+
+                  <Route
+                    path="/budget"
+                    element={<NarrowAlternate name="Budget" />}
+                  />
+
+                  <Route
+                    path="/schedules"
+                    element={<NarrowAlternate name="Schedules" />}
+                  />
+                  <Route
+                    path="/schedules/:id"
+                    element={
+                      <WideNotSupported>
+                        <NarrowAlternate name="ScheduleEdit" />
+                      </WideNotSupported>
+                    }
+                  />
+
+                  <Route
+                    path="/payees"
+                    element={<NarrowAlternate name="Payees" />}
+                  />
+                  <Route
+                    path="/payees/:id"
+                    element={
+                      <WideNotSupported>
+                        <NarrowAlternate name="PayeeEdit" />
+                      </WideNotSupported>
+                    }
+                  />
+                  <Route
+                    path="/rules"
+                    element={<NarrowAlternate name="Rules" />}
+                  />
+                  <Route
+                    path="/rules/:id"
+                    element={<NarrowAlternate name="RuleEdit" />}
+                  />
+                  <Route
+                    path="/bank-sync"
+                    element={<NarrowAlternate name="BankSync" />}
+                  />
+                  <Route
+                    path="/bank-sync/account/:accountId/edit"
+                    element={
+                      <WideNotSupported redirectTo="/bank-sync">
+                        <MobileBankSyncAccountEditPage />
+                      </WideNotSupported>
+                    }
+                  />
+                  <Route path="/tags" element={<Suspense fallback={<LoadingIndicator />}><ManageTagsPage /></Suspense>} />
+                  <Route path="/settings" element={<Suspense fallback={<LoadingIndicator />}><Settings /></Suspense>} />
+
+                  <Route
+                    path="/gocardless/link"
+                    element={
+                      <NarrowNotSupported>
+                        <WideComponent name="GoCardlessLink" />
+                      </NarrowNotSupported>
+                    }
+                  />
+
+                  <Route
+                    path="/accounts"
+                    element={<NarrowAlternate name="Accounts" />}
+                  />
+
+                  <Route
+                    path="/accounts/:id"
+                    element={<NarrowAlternate name="Account" />}
+                  />
+
+                  <Route
+                    path="/transactions/:transactionId"
+                    element={
+                      <WideNotSupported>
+                        <TransactionEdit />
+                      </WideNotSupported>
+                    }
+                  />
+
+                  <Route
+                    path="/categories/:id"
+                    element={<NarrowAlternate name="Category" />}
+                  />
+                  {multiuserEnabled && (
+                    <Route
+                      path="/user-directory"
+                      element={
+                        <Suspense fallback={<LoadingIndicator />}>
+                          <ProtectedRoute
+                            permission={Permissions.ADMINISTRATOR}
+                            element={<UserDirectoryPage />}
+                          />
+                        </Suspense>
+                      }
+                    />
+                  )}
+                  {multiuserEnabled && (
+                    <Route
+                      path="/user-access"
+                      element={
+                        <Suspense fallback={<LoadingIndicator />}>
+                          <ProtectedRoute
+                            permission={Permissions.ADMINISTRATOR}
+                            validateOwner
+                            element={<UserAccessPage />}
+                          />
+                        </Suspense>
+                      }
+                    />
+                  )}
+                  <Route path="/dashboard" element={<ErrorBoundary FallbackComponent={FatalError}><Suspense fallback={<LoadingIndicator />}><DashboardPage /></Suspense></ErrorBoundary>} />
+                  <Route path="/contracts" element={<ErrorBoundary FallbackComponent={FatalError}><Suspense fallback={<LoadingIndicator />}><ContractsPage /></Suspense></ErrorBoundary>} />
+                  <Route path="/contracts/:id" element={<ErrorBoundary FallbackComponent={FatalError}><Suspense fallback={<LoadingIndicator />}><ContractDetailPage /></Suspense></ErrorBoundary>} />
+                  <Route path="/calendar" element={<ErrorBoundary FallbackComponent={FatalError}><Suspense fallback={<LoadingIndicator />}><CalendarPage /></Suspense></ErrorBoundary>} />
+                  <Route path="/review" element={<ErrorBoundary FallbackComponent={FatalError}><Suspense fallback={<LoadingIndicator />}><ReviewQueuePage /></Suspense></ErrorBoundary>} />
+                  <Route path="/analytics" element={<ErrorBoundary FallbackComponent={FatalError}><Suspense fallback={<LoadingIndicator />}><AnalyticsPage /></Suspense></ErrorBoundary>} />
+                  <Route path="/import" element={<ErrorBoundary FallbackComponent={FatalError}><Suspense fallback={<LoadingIndicator />}><ImportPage /></Suspense></ErrorBoundary>} />
+                  <Route path="/import/:type" element={<ErrorBoundary FallbackComponent={FatalError}><Suspense fallback={<LoadingIndicator />}><ImportPage /></Suspense></ErrorBoundary>} />
+                  {/* redirect all other traffic to the budget page */}
+                  <Route path="/*" element={<Navigate to={financeOS ? '/dashboard' : '/budget'} replace />} />
+                </Routes>
+              </View>
 
               <Routes>
-                <Route
-                  path="/"
-                  element={
-                    isAccountsFetching || !accounts ? (
-                      <LoadingIndicator />
-                    ) : accounts.length > 0 ? (
-                      <Navigate to={financeOS ? '/dashboard' : '/budget'} replace />
-                    ) : (
-                      // If there are no accounts, we want to redirect the user to
-                      // the All Accounts screen which will prompt them to add an account
-                      <Navigate to="/accounts" replace />
-                    )
-                  }
-                />
-
-                <Route path="/reports/*" element={<Suspense fallback={<LoadingIndicator />}><Reports /></Suspense>} />
-
-                <Route
-                  path="/budget"
-                  element={<NarrowAlternate name="Budget" />}
-                />
-
-                <Route
-                  path="/schedules"
-                  element={<NarrowAlternate name="Schedules" />}
-                />
-                <Route
-                  path="/schedules/:id"
-                  element={
-                    <WideNotSupported>
-                      <NarrowAlternate name="ScheduleEdit" />
-                    </WideNotSupported>
-                  }
-                />
-
-                <Route
-                  path="/payees"
-                  element={<NarrowAlternate name="Payees" />}
-                />
-                <Route
-                  path="/payees/:id"
-                  element={
-                    <WideNotSupported>
-                      <NarrowAlternate name="PayeeEdit" />
-                    </WideNotSupported>
-                  }
-                />
-                <Route
-                  path="/rules"
-                  element={<NarrowAlternate name="Rules" />}
-                />
-                <Route
-                  path="/rules/:id"
-                  element={<NarrowAlternate name="RuleEdit" />}
-                />
-                <Route
-                  path="/bank-sync"
-                  element={<NarrowAlternate name="BankSync" />}
-                />
-                <Route
-                  path="/bank-sync/account/:accountId/edit"
-                  element={
-                    <WideNotSupported redirectTo="/bank-sync">
-                      <MobileBankSyncAccountEditPage />
-                    </WideNotSupported>
-                  }
-                />
-                <Route path="/tags" element={<Suspense fallback={<LoadingIndicator />}><ManageTagsPage /></Suspense>} />
-                <Route path="/settings" element={<Suspense fallback={<LoadingIndicator />}><Settings /></Suspense>} />
-
-                <Route
-                  path="/gocardless/link"
-                  element={
-                    <NarrowNotSupported>
-                      <WideComponent name="GoCardlessLink" />
-                    </NarrowNotSupported>
-                  }
-                />
-
-                <Route
-                  path="/accounts"
-                  element={<NarrowAlternate name="Accounts" />}
-                />
-
-                <Route
-                  path="/accounts/:id"
-                  element={<NarrowAlternate name="Account" />}
-                />
-
-                <Route
-                  path="/transactions/:transactionId"
-                  element={
-                    <WideNotSupported>
-                      <TransactionEdit />
-                    </WideNotSupported>
-                  }
-                />
-
-                <Route
-                  path="/categories/:id"
-                  element={<NarrowAlternate name="Category" />}
-                />
-                {multiuserEnabled && (
-                  <Route
-                    path="/user-directory"
-                    element={
-                      <Suspense fallback={<LoadingIndicator />}>
-                        <ProtectedRoute
-                          permission={Permissions.ADMINISTRATOR}
-                          element={<UserDirectoryPage />}
-                        />
-                      </Suspense>
-                    }
-                  />
-                )}
-                {multiuserEnabled && (
-                  <Route
-                    path="/user-access"
-                    element={
-                      <Suspense fallback={<LoadingIndicator />}>
-                        <ProtectedRoute
-                          permission={Permissions.ADMINISTRATOR}
-                          validateOwner
-                          element={<UserAccessPage />}
-                        />
-                      </Suspense>
-                    }
-                  />
-                )}
-                <Route path="/dashboard" element={<Suspense fallback={<LoadingIndicator />}><DashboardPage /></Suspense>} />
-                <Route path="/contracts" element={<Suspense fallback={<LoadingIndicator />}><ContractsPage /></Suspense>} />
-                <Route path="/contracts/:id" element={<Suspense fallback={<LoadingIndicator />}><ContractDetailPage /></Suspense>} />
-                <Route path="/calendar" element={<Suspense fallback={<LoadingIndicator />}><CalendarPage /></Suspense>} />
-                <Route path="/review" element={<Suspense fallback={<LoadingIndicator />}><ReviewQueuePage /></Suspense>} />
-                <Route path="/analytics" element={<Suspense fallback={<LoadingIndicator />}><AnalyticsPage /></Suspense>} />
-                <Route path="/import" element={<Suspense fallback={<LoadingIndicator />}><ImportPage /></Suspense>} />
-                <Route path="/import/:type" element={<Suspense fallback={<LoadingIndicator />}><ImportPage /></Suspense>} />
-                {/* redirect all other traffic to the budget page */}
-                <Route path="/*" element={<Navigate to={financeOS ? '/dashboard' : '/budget'} replace />} />
+                <Route path="/budget" element={<MobileNavTabs />} />
+                <Route path="/accounts" element={<MobileNavTabs />} />
+                <Route path="/settings" element={<MobileNavTabs />} />
+                <Route path="/reports" element={<MobileNavTabs />} />
+                <Route path="/reports/:dashboardId" element={<MobileNavTabs />} />
+                <Route path="/bank-sync" element={<MobileNavTabs />} />
+                <Route path="/rules" element={<MobileNavTabs />} />
+                <Route path="/payees" element={<MobileNavTabs />} />
+                <Route path="/schedules" element={<MobileNavTabs />} />
+                <Route path="*" element={null} />
               </Routes>
-            </View>
-
-            <Routes>
-              <Route path="/budget" element={<MobileNavTabs />} />
-              <Route path="/accounts" element={<MobileNavTabs />} />
-              <Route path="/settings" element={<MobileNavTabs />} />
-              <Route path="/reports" element={<MobileNavTabs />} />
-              <Route path="/reports/:dashboardId" element={<MobileNavTabs />} />
-              <Route path="/bank-sync" element={<MobileNavTabs />} />
-              <Route path="/rules" element={<MobileNavTabs />} />
-              <Route path="/payees" element={<MobileNavTabs />} />
-              <Route path="/schedules" element={<MobileNavTabs />} />
-              <Route path="*" element={null} />
-            </Routes>
-          </ScrollProvider>
+            </ScrollProvider>
+          </View>
         </View>
       </View>
-    </View>
     </ToastProvider>
   );
 }

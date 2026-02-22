@@ -156,7 +156,7 @@ app.get('/deliveries', (req, res) => {
   res.json({
     status: 'ok',
     data: {
-      deliveries: deliveries.map(d => ({
+      deliveries: deliveries.map((d: any) => ({
         id: d.id,
         eventType: d.event_type,
         statusCode: d.status_code,

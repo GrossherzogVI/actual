@@ -17,6 +17,7 @@ export type Preset = {
   icon: string; // emoji or icon name
   amount: number | null; // cents
   categoryId: string | null;
+  categoryName: string | null; // target category name for runtime resolution
   payee: string | null;
   accountId: string | null;
   sortOrder: number;

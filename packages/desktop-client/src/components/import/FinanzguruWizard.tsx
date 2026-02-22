@@ -1,6 +1,7 @@
 // @ts-strict-ignore
 import React, { useCallback, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
+import { useDispatch } from 'react-redux';
 
 import { Button } from '@actual-app/components/button';
 import { theme } from '@actual-app/components/theme';
@@ -9,6 +10,7 @@ import { View } from '@actual-app/components/view';
 
 import { useAccounts } from '@desktop-client/hooks/useAccounts';
 import { useCategories } from '@desktop-client/hooks/useCategories';
+import { replaceModal } from '@desktop-client/modals/modalsSlice';
 
 import { CategoryMapper } from './CategoryMapper';
 import { ImportAdvisor } from './ImportAdvisor';
@@ -61,6 +63,7 @@ function fileToBase64(file: File): Promise<string> {
 
 export function FinanzguruWizard() {
   const { t } = useTranslation();
+  const dispatch = useDispatch();
   const [step, setStep] = useState<Step>(1);
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -242,6 +245,18 @@ export function FinanzguruWizard() {
                 <option key={a.id} value={a.id}>{a.name}</option>
               ))}
             </select>
+            <Button
+              variant="bare"
+              onPress={() => dispatch(replaceModal({ modal: { name: 'add-account', options: {} } }))}
+              style={{
+                fontSize: 12,
+                color: theme.buttonPrimaryBackground,
+                padding: '4px 0',
+                alignSelf: 'flex-start',
+              }}
+            >
+              + Neues Konto erstellen
+            </Button>
           </View>
 
           <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'flex-end' }}>

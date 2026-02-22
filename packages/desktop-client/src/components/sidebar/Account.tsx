@@ -326,7 +326,7 @@ export function Account<FieldName extends SheetFields<'account'>>({
             <Button
               aria-label={t('Toggle balance history')}
               variant="bare"
-              onClick={() =>
+              onPress={() =>
                 setShowBalanceHistory(
                   showBalanceHistory === 'true' ? 'false' : 'true',
                 )

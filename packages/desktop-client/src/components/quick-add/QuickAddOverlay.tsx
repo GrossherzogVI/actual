@@ -55,13 +55,12 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
     submitTransaction,
   } = useQuickAdd(defaultAccountId);
 
+  const [categories, setCategories] = useState<Category[]>([]);
   const { evaluate } = useCalculator();
-  const { presets } = usePresets();
+  const { presets } = usePresets(categories);
   const { frecency } = useFrecency();
 
-  const [categories, setCategories] = useState<Category[]>([]);
   const [recentTemplates, setRecentTemplates] = useState<RecentTemplate[]>([]);
-  const [showMore, setShowMore] = useState(false);
   const [trainMode, setTrainMode] = useState(false);
   const [trainCount, setTrainCount] = useState(0);
   const [trainTotal, setTrainTotal] = useState(0);
@@ -447,47 +446,36 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
           />
         </View>
 
-        {/* More fields (collapsible) */}
-        <View style={{ padding: '0 16px 6px' }}>
-          <Button
-            variant="bare"
-            onPress={() => setShowMore(v => !v)}
-            style={{ fontSize: 12, color: theme.pageTextSubdued, alignSelf: 'flex-start' }}
-          >
-            {showMore ? t('▴ Less') : t('▾ More')}
-          </Button>
-          {showMore && (
-            <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-              <Input
-                type="date"
-                value={form.date}
-                onChange={e => setField('date', e.target.value)}
-                style={{
-                  flex: 1,
-                  fontSize: 13,
-                  padding: '7px 10px',
-                  border: `1px solid ${theme.formInputBorder}`,
-                  borderRadius: 6,
-                  backgroundColor: theme.formInputBackground,
-                  color: theme.formInputText,
-                }}
-              />
-              <Input
-                value={form.notes}
-                onChange={e => setField('notes', e.target.value)}
-                placeholder={t('Notes…')}
-                style={{
-                  flex: 2,
-                  fontSize: 13,
-                  padding: '7px 10px',
-                  border: `1px solid ${theme.formInputBorder}`,
-                  borderRadius: 6,
-                  backgroundColor: theme.formInputBackground,
-                  color: theme.formInputText,
-                }}
-              />
-            </View>
-          )}
+        {/* Date + Notes fields */}
+        <View style={{ flexDirection: 'row', gap: 8, padding: '0 16px 10px' }}>
+          <Input
+            type="date"
+            value={form.date}
+            onChange={e => setField('date', e.target.value)}
+            style={{
+              flex: 1,
+              fontSize: 13,
+              padding: '7px 10px',
+              border: `1px solid ${theme.formInputBorder}`,
+              borderRadius: 6,
+              backgroundColor: theme.formInputBackground,
+              color: theme.formInputText,
+            }}
+          />
+          <Input
+            value={form.notes}
+            onChange={e => setField('notes', e.target.value)}
+            placeholder={t('Notes…')}
+            style={{
+              flex: 2,
+              fontSize: 13,
+              padding: '7px 10px',
+              border: `1px solid ${theme.formInputBorder}`,
+              borderRadius: 6,
+              backgroundColor: theme.formInputBackground,
+              color: theme.formInputText,
+            }}
+          />
         </View>
 
         {/* Recent templates (6.6) */}

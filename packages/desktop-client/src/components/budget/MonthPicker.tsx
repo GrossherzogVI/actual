@@ -94,7 +94,7 @@ export const MonthPicker = ({
         <Link
           variant="button"
           buttonVariant="bare"
-          onPress={() => onSelect(currentMonth)}
+          onClick={() => onSelect(currentMonth)}
           style={{
             padding: '3px 3px',
             marginRight: '12px',
@@ -112,7 +112,7 @@ export const MonthPicker = ({
         <Link
           variant="button"
           buttonVariant="bare"
-          onPress={() => onSelect(monthUtils.prevMonth(startMonth))}
+          onClick={() => onSelect(monthUtils.prevMonth(startMonth))}
           style={{
             padding: '3px 3px',
             marginRight: '12px',
@@ -239,7 +239,7 @@ export const MonthPicker = ({
         <Link
           variant="button"
           buttonVariant="bare"
-          onPress={() => onSelect(monthUtils.nextMonth(startMonth))}
+          onClick={() => onSelect(monthUtils.nextMonth(startMonth))}
           style={{
             padding: '3px 3px',
             marginLeft: '12px',
