@@ -8,8 +8,9 @@ export type RunDetailsSelector =
 
 export type RunDetailsCommandEventDetail = {
   scope: RunDetailsScope;
-  selector: RunDetailsSelector;
-  source: 'palette' | 'shell';
+  selector?: RunDetailsSelector;
+  runId?: string;
+  source: 'palette' | 'shell' | 'provenance';
 };
 
 export const RUN_DETAILS_COMMAND_EVENT = 'financeos.run-details.command';

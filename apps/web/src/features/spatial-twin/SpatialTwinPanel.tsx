@@ -8,6 +8,7 @@ import type {
   ScenarioMutation,
   WorkflowCommandExecution,
 } from '../../core/types';
+import { dispatchRunDetailsCommand } from '../runtime/run-details-commands';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -214,7 +215,11 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
     [commandRunsQuery.data],
   );
 
-  const promotionEntries = useMemo<PromotionEntry[]>(
+  const promotionMutationEntries = useMemo<
+    Array<
+      Omit<PromotionEntry, 'run'>
+    >
+  >(
     () =>
       (mutationsQuery.data || [])
         .filter(mutation => mutation.kind === 'run-promotion-link')
@@ -230,7 +235,6 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
             source: optionalString(mutation.payload.source) || 'manual',
             note: optionalString(mutation.payload.note),
             promotedAtMs,
-            run: runId ? commandRunsById.get(runId) || null : null,
           };
         })
         .sort(
@@ -242,7 +246,50 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
                 ? 1
                 : -1),
         ),
-    [commandRunsById, mutationsQuery.data],
+    [mutationsQuery.data],
+  );
+
+  const missingPromotionRunIds = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          promotionMutationEntries
+            .map(entry => entry.runId)
+            .filter(
+              (runId): runId is string =>
+                !!runId && !commandRunsById.has(runId),
+            ),
+        ),
+      ),
+    [commandRunsById, promotionMutationEntries],
+  );
+
+  const missingPromotionRunsQuery = useQuery({
+    queryKey: [
+      'command-runs-by-ids',
+      selectedBranch?.id,
+      missingPromotionRunIds.join(','),
+    ],
+    enabled: missingPromotionRunIds.length > 0,
+    queryFn: () => apiClient.listCommandRunsByIds(missingPromotionRunIds),
+    refetchInterval: 15_000,
+  });
+
+  const allPromotionRunsById = useMemo(() => {
+    const map = new Map(commandRunsById);
+    for (const run of missingPromotionRunsQuery.data || []) {
+      map.set(run.id, run);
+    }
+    return map;
+  }, [commandRunsById, missingPromotionRunsQuery.data]);
+
+  const promotionEntries = useMemo<PromotionEntry[]>(
+    () =>
+      promotionMutationEntries.map(entry => ({
+        ...entry,
+        run: entry.runId ? allPromotionRunsById.get(entry.runId) || null : null,
+      })),
+    [allPromotionRunsById, promotionMutationEntries],
   );
 
   useEffect(() => {
@@ -1013,6 +1060,24 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
               ) : null}
               {entry.note ? <small>note: {entry.note}</small> : null}
               <div className="fo-row mt-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={!run}
+                  onClick={() => {
+                    if (!run) {
+                      return;
+                    }
+                    onRoute?.('/ops#command-mesh');
+                    dispatchRunDetailsCommand({
+                      scope: 'command',
+                      runId: run.id,
+                      source: 'provenance',
+                    });
+                  }}
+                >
+                  Open run details
+                </Button>
                 <Button
                   size="sm"
                   variant="secondary"

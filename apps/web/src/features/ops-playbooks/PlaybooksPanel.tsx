@@ -264,8 +264,10 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
 
       setRunModeFilter('all');
       setSelectedPlaybookId('');
-      setPendingRunDetailsSelector(detail.selector);
-      onStatus('Resolving playbook run details view...');
+      if (detail.selector) {
+        setPendingRunDetailsSelector(detail.selector);
+        onStatus('Resolving playbook run details view...');
+      }
     };
 
     window.addEventListener(

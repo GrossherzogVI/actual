@@ -49,6 +49,9 @@ import { openAccountCloseModal } from '@desktop-client/modals/modalsSlice';
 import { useDispatch } from '@desktop-client/redux';
 import type { Binding, SheetFields } from '@desktop-client/spreadsheet';
 
+import { SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
+import { useLocation } from 'react-router';
+
 export const accountNameStyle: CSSProperties = {
   marginTop: -2,
   marginBottom: 2,
@@ -97,6 +100,7 @@ export function Account<FieldName extends SheetFields<'account'>>({
 }: AccountProps<FieldName>) {
   const isTestEnv = useIsTestEnv();
   const { t } = useTranslation();
+  const location = useLocation();
   const type = account
     ? account.closed
       ? 'account-closed'
@@ -139,22 +143,34 @@ export function Account<FieldName extends SheetFields<'account'>>({
   const reopenAccount = useReopenAccountMutation();
   const updateAccount = useUpdateAccountMutation();
 
+  const isActive = isExactPathMatch 
+    ? location.pathname === to 
+    : location.pathname.startsWith(to);
+
   const accountRow = (
-    <View
-      innerRef={dropRef}
+    <SidebarMenuItem
+      ref={dropRef as any}
       style={{ flexShrink: 0, ...outerStyle }}
       onContextMenu={needsTooltip ? handleContextMenu : undefined}
     >
       <View innerRef={triggerRef}>
         <DropHighlight pos={dropPos} />
         <View innerRef={handleDragRef}>
+          <SidebarMenuButton
+            asChild
+            isActive={isActive}
+            tooltip={needsTooltip ? name : undefined}
+            className={cx(
+              titleAccount && "border-b-[1.5px] border-white/40 pb-1 rounded-none",
+              updated && "font-bold"
+            )}
+          >
           <Link
             variant="internal"
             to={to}
             isDisabled={isEditing}
             isExactPathMatch={isExactPathMatch}
             style={{
-              ...accountNameStyle,
               ...style,
               position: 'relative',
               borderLeft: '4px solid transparent',
@@ -163,11 +179,6 @@ export function Account<FieldName extends SheetFields<'account'>>({
             activeStyle={{
               borderColor: theme.sidebarItemAccentSelected,
               color: theme.sidebarItemTextSelected,
-              // This is kind of a hack, but we don't ever want the account
-              // that the user is looking at to be "bolded" which means it
-              // has unread transactions. The system does mark is read and
-              // unbolds it, but it still "flashes" bold so this just
-              // ignores it if it's active
               fontWeight: (style && style.fontWeight) || 'normal',
               '& .dot': {
                 backgroundColor: theme.sidebarItemAccentSelected,
@@ -207,12 +218,6 @@ export function Account<FieldName extends SheetFields<'account'>>({
             </View>
 
             <AlignedText
-              style={
-                titleAccount && {
-                  borderBottom: `1.5px solid rgba(255,255,255,0.4)`,
-                  paddingBottom: '3px',
-                }
-              }
               left={
                 isEditing ? (
                   <InitialFocus>
@@ -244,6 +249,7 @@ export function Account<FieldName extends SheetFields<'account'>>({
               right={<CellValue binding={query} type="financial" />}
             />
           </Link>
+          </SidebarMenuButton>
           {account && (
             <Popover
               triggerRef={triggerRef}
@@ -288,7 +294,7 @@ export function Account<FieldName extends SheetFields<'account'>>({
           )}
         </View>
       </View>
-    </View>
+    </SidebarMenuItem>
   );
 
   if (!needsTooltip || isTestEnv) {

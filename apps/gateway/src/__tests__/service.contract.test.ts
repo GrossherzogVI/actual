@@ -1169,6 +1169,34 @@ describe('gateway service contract behavior', () => {
     expect(errorsOnly.every(run => run.errorCount > 0)).toBe(true);
   });
 
+  it('lists command runs by explicit run ids for provenance hydration', async () => {
+    const { service } = await createHarness();
+
+    const runA = await service.executeWorkflowCommandChain({
+      chain: 'triage -> open-review',
+      actorId: 'owner',
+      sourceSurface: 'spatial-twin',
+      options: { executionMode: 'live' },
+    });
+    const runB = await service.executeWorkflowCommandChain({
+      chain: 'triage -> close-weekly',
+      actorId: 'owner',
+      sourceSurface: 'spatial-twin',
+      options: { executionMode: 'dry-run' },
+    });
+
+    const hydrated = await service.listWorkflowCommandRunsByIds([
+      runA.id,
+      runB.id,
+      runA.id,
+      'missing-run-id',
+    ]);
+
+    expect(hydrated.some(run => run.id === runA.id)).toBe(true);
+    expect(hydrated.some(run => run.id === runB.id)).toBe(true);
+    expect(hydrated.every(run => run.id !== 'missing-run-id')).toBe(true);
+  });
+
   it('supports dry-run command chains without mutating queue state', async () => {
     const { service, queue } = await createHarness();
 

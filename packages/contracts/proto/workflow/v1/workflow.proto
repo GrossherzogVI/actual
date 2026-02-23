@@ -20,6 +20,7 @@ service WorkflowService {
   rpc RollbackPlaybookRun(RollbackPlaybookRunRequest) returns (RollbackPlaybookRunResponse);
   rpc RollbackCommandRun(RollbackCommandRunRequest) returns (RollbackCommandRunResponse);
   rpc ListCommandRuns(ListCommandRunsRequest) returns (ListCommandRunsResponse);
+  rpc ListCommandRunsByIds(ListCommandRunsByIdsRequest) returns (ListCommandRunsByIdsResponse);
   rpc ListOpsActivity(ListOpsActivityRequest) returns (ListOpsActivityResponse);
   rpc BackfillOpsActivity(BackfillOpsActivityRequest) returns (BackfillOpsActivityResponse);
   rpc RunOpsActivityMaintenance(RunOpsActivityMaintenanceRequest) returns (RunOpsActivityMaintenanceResponse);
@@ -300,6 +301,14 @@ message ListCommandRunsRequest {
 }
 
 message ListCommandRunsResponse {
+  repeated CommandRun runs = 1;
+}
+
+message ListCommandRunsByIdsRequest {
+  repeated string run_ids = 1;
+}
+
+message ListCommandRunsByIdsResponse {
   repeated CommandRun runs = 1;
 }
 

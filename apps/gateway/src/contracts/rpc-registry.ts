@@ -161,6 +161,14 @@ export const rpcRegistry: RpcRegistryEntry[] = [
   },
   {
     service: 'workflow.v1',
+    rpc: 'ListCommandRunsByIds',
+    method: 'POST',
+    path: '/workflow/v1/list-command-runs-by-ids',
+    requiresEnvelope: false,
+    requestSchema: workflowSchemas.listCommandRunsByIds,
+  },
+  {
+    service: 'workflow.v1',
     rpc: 'ListOpsActivity',
     method: 'POST',
     path: '/workflow/v1/list-ops-activity',

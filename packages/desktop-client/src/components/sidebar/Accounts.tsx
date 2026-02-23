@@ -20,6 +20,8 @@ import { useUpdatedAccounts } from '@desktop-client/hooks/useUpdatedAccounts';
 import { useSelector } from '@desktop-client/redux';
 import * as bindings from '@desktop-client/spreadsheet/bindings';
 
+import { SidebarGroup, SidebarMenu, SidebarSeparator } from '@/components/ui/sidebar';
+
 const fontWeight = 600;
 
 export function Accounts() {
@@ -74,24 +76,10 @@ export function Accounts() {
   };
 
   return (
-    <View
-      style={{
-        flexGrow: 1,
-        '@media screen and (max-height: 480px)': {
-          minHeight: 'auto',
-        },
-      }}
-    >
-      <View
-        style={{
-          height: 1,
-          backgroundColor: theme.sidebarItemBackgroundHover,
-          marginTop: 15,
-          flexShrink: 0,
-        }}
-      />
+    <SidebarGroup className="p-0">
+      <SidebarSeparator className="mt-4 mb-2 opacity-50 mx-2" />
 
-      <View style={{ overflow: 'auto' }}>
+      <SidebarMenu className="px-2">
         <Account
           name={t('All accounts')}
           to="/accounts"
@@ -187,7 +175,7 @@ export function Accounts() {
               onDrop={onReorder}
             />
           ))}
-      </View>
-    </View>
+      </SidebarMenu>
+    </SidebarGroup>
   );
 }

@@ -307,6 +307,27 @@ export const apiClient = {
     );
   },
 
+  listCommandRunsByIds(runIds: string[]) {
+    const normalized = Array.from(
+      new Set(
+        runIds
+          .map(runId => runId.trim())
+          .filter(runId => runId.length > 0),
+      ),
+    ).slice(0, 200);
+
+    if (normalized.length === 0) {
+      return Promise.resolve([]);
+    }
+
+    return request<WorkflowCommandExecution[]>('/workflow/v1/list-command-runs-by-ids', {
+      method: 'POST',
+      body: JSON.stringify({
+        runIds: normalized,
+      }),
+    });
+  },
+
   rollbackPlaybookRun(runId: string, reason?: string) {
     return request<PlaybookRun>('/workflow/v1/rollback-playbook-run', {
       method: 'POST',

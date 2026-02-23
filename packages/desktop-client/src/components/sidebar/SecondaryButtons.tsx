@@ -1,8 +1,6 @@
 import React from 'react';
 import type { ComponentType, SVGProps } from 'react';
 
-import { View } from '@actual-app/components/view';
-
 import { SecondaryItem } from './SecondaryItem';
 
 type SecondaryButtonItems = {
@@ -19,12 +17,7 @@ type SecondaryButtonsProps = {
 
 export function SecondaryButtons({ buttons }: SecondaryButtonsProps) {
   return (
-    <View
-      style={{
-        flexShrink: 0,
-        padding: '5px 0',
-      }}
-    >
+    <>
       {buttons.map(item => (
         <SecondaryItem
           key={item.title}
@@ -33,6 +26,6 @@ export function SecondaryButtons({ buttons }: SecondaryButtonsProps) {
           onClick={item.onClick}
         />
       ))}
-    </View>
+    </>
   );
 }

@@ -901,6 +901,30 @@ export function createGatewayService(
     );
   }
 
+  async function listWorkflowCommandRunsByIds(
+    runIds: string[],
+  ): Promise<WorkflowCommandExecution[]> {
+    const normalized = Array.from(
+      new Set(
+        runIds
+          .map(runId => runId.trim())
+          .filter(runId => runId.length > 0),
+      ),
+    ).slice(0, 200);
+
+    if (normalized.length === 0) {
+      return [];
+    }
+
+    const runs = await Promise.all(
+      normalized.map(runId => repository.getWorkflowCommandRunById(runId)),
+    );
+
+    return runs
+      .filter((run): run is WorkflowCommandExecution => !!run)
+      .sort((a, b) => b.startedAtMs - a.startedAtMs);
+  }
+
   async function createPlaybook(input: {
     name: string;
     description: string;
@@ -4116,6 +4140,7 @@ export function createGatewayService(
     listPlaybooks,
     listPlaybookRuns,
     listWorkflowCommandRuns,
+    listWorkflowCommandRunsByIds,
     createPlaybook,
     runPlaybook,
     replayPlaybookRun,

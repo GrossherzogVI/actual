@@ -106,6 +106,7 @@ function payloadFor(service: string, rpc: string, seeds: RuntimeSeeds) {
     status: 'completed',
     resolvedAction: 'batch-policy',
     chain: 'triage -> close-weekly',
+    runIds: [seeds.commandRunId],
     name: 'Scenario A',
     baseBranchId: seeds.branchId,
     notes: 'runtime-seed',
@@ -485,6 +486,47 @@ describe('gateway HTTP contract/runtime', () => {
     expect(runs.length).toBeGreaterThan(0);
     expect(runs.every(run => run.actorId === 'delegate')).toBe(true);
     expect(runs.every(run => run.executionMode === 'dry-run')).toBe(true);
+  });
+
+  it('hydrates command run history by explicit ids', async () => {
+    const { app } = await createHarness();
+
+    const first = await invoke(app, 'POST', '/workflow/v1/execute-chain', {
+      envelope: envelope(),
+      chain: 'triage -> open-review',
+      executionMode: 'live',
+    });
+    const second = await invoke(app, 'POST', '/workflow/v1/execute-chain', {
+      envelope: envelope(),
+      chain: 'triage -> close-weekly',
+      executionMode: 'dry-run',
+    });
+    expect(first.statusCode).toBe(200);
+    expect(second.statusCode).toBe(200);
+
+    const firstRunId = (first.body as { id?: string }).id;
+    const secondRunId = (second.body as { id?: string }).id;
+    expect(typeof firstRunId).toBe('string');
+    expect(typeof secondRunId).toBe('string');
+    if (typeof firstRunId !== 'string' || typeof secondRunId !== 'string') {
+      return;
+    }
+
+    const hydrated = await invoke(
+      app,
+      'POST',
+      '/workflow/v1/list-command-runs-by-ids',
+      {
+        runIds: [firstRunId, secondRunId, firstRunId, 'missing-run'],
+      },
+    );
+
+    expect(hydrated.statusCode).toBe(200);
+    expect(Array.isArray(hydrated.body)).toBe(true);
+    const runs = hydrated.body as Array<{ id: string }>;
+    expect(runs.some(run => run.id === firstRunId)).toBe(true);
+    expect(runs.some(run => run.id === secondRunId)).toBe(true);
+    expect(runs.some(run => run.id === 'missing-run')).toBe(false);
   });
 
   it('returns paginated ops activity with stable cursor semantics', async () => {

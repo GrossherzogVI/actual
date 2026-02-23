@@ -16,7 +16,6 @@ import {
   SvgWallet,
 } from '@actual-app/components/icons/v1';
 import { SvgCalendar3 } from '@actual-app/components/icons/v2';
-import { View } from '@actual-app/components/view';
 
 import { Item } from './Item';
 import { SecondaryItem } from './SecondaryItem';
@@ -74,7 +73,7 @@ export function PrimaryButtons() {
 
   if (financeOS) {
     return (
-      <View style={{ flexShrink: 0 }}>
+      <>
         <Item title={t('Dashboard')} Icon={SvgWallet} to="/dashboard" />
         <Item title={t('Accounts')} Icon={SvgCreditCard} to="/accounts" />
         <Item title={t('Budget')} Icon={SvgWallet} to="/budget" />
@@ -87,7 +86,6 @@ export function PrimaryButtons() {
           title={t('More')}
           Icon={isOpen ? SvgCheveronDown : SvgCheveronRight}
           onClick={onToggle}
-          style={{ marginBottom: isOpen ? 8 : 0 }}
           forceActive={!isOpen && isActive}
         />
         {isOpen && (
@@ -144,13 +142,13 @@ export function PrimaryButtons() {
             />
           </>
         )}
-      </View>
+      </>
     );
   }
 
   // Default layout — unchanged
   return (
-    <View style={{ flexShrink: 0 }}>
+    <>
       <Item title={t('Budget')} Icon={SvgWallet} to="/budget" />
       <Item title={t('Reports')} Icon={SvgReports} to="/reports" />
       <Item title={t('Schedules')} Icon={SvgCalendar3} to="/schedules" />
@@ -158,7 +156,6 @@ export function PrimaryButtons() {
         title={t('More')}
         Icon={isOpen ? SvgCheveronDown : SvgCheveronRight}
         onClick={onToggle}
-        style={{ marginBottom: isOpen ? 8 : 0 }}
         forceActive={!isOpen && isActive}
       />
       {isOpen && (
@@ -203,6 +200,6 @@ export function PrimaryButtons() {
           />
         </>
       )}
-    </View>
+    </>
   );
 }

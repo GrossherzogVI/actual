@@ -31,7 +31,6 @@ import { Link } from './common/Link';
 import { HelpMenu } from './HelpMenu';
 import { LoggedInUser } from './LoggedInUser';
 import { useServerURL } from './ServerContext';
-import { useSidebar } from './sidebar/SidebarProvider';
 import { ThemeSelector } from './ThemeSelector';
 
 import { sync } from '@desktop-client/app/appSlice';
@@ -43,6 +42,53 @@ import { useSheetValue } from '@desktop-client/hooks/useSheetValue';
 import { useSyncedPref } from '@desktop-client/hooks/useSyncedPref';
 import { useDispatch } from '@desktop-client/redux';
 import * as bindings from '@desktop-client/spreadsheet/bindings';
+
+import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
+import { Separator } from '@/components/ui/separator';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb';
+
+function PageBreadcrumbs() {
+  const location = useLocation();
+  const paths = location.pathname.split('/').filter(Boolean);
+  
+  if (paths.length === 0) return null;
+
+  // We only want to show the first two levels to avoid overly long breadcrumbs
+  // e.g., /accounts/my-bank-id -> Accounts > my-bank-id
+  return (
+    <Breadcrumb>
+      <BreadcrumbList>
+        {paths.slice(0, 2).map((path, index) => {
+          const isLast = index === paths.slice(0, 2).length - 1;
+          const href = `/${paths.slice(0, index + 1).join('/')}`;
+          const title = path.replace(/-/g, ' ');
+          
+          return (
+            <React.Fragment key={path}>
+              <BreadcrumbItem className="hidden md:block">
+                {isLast ? (
+                  <BreadcrumbPage className="capitalize">{title}</BreadcrumbPage>
+                ) : (
+                  <BreadcrumbLink href={href} className="capitalize">
+                    {title}
+                  </BreadcrumbLink>
+                )}
+              </BreadcrumbItem>
+              {!isLast && <BreadcrumbSeparator className="hidden md:block" />}
+            </React.Fragment>
+          );
+        })}
+      </BreadcrumbList>
+    </Breadcrumb>
+  );
+}
 
 function UncategorizedButton() {
   const count: number | null = useSheetValue(bindings.uncategorizedCount());
@@ -274,82 +320,62 @@ export function Titlebar({ style }: TitlebarProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
-  const sidebar = useSidebar();
+  const { isMobile, state } = useSidebar();
   const { isNarrowWidth } = useResponsive();
   const serverURL = useServerURL();
   const [floatingSidebar] = useGlobalPref('floatingSidebar');
   const isTestEnv = useIsTestEnv();
 
   return isNarrowWidth ? null : (
-    <View
+    <header
+      className="flex h-12 shrink-0 items-center justify-between px-4 border-b bg-background"
       style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: '0 10px 0 15px',
-        height: 36,
         pointerEvents: 'none',
-        '& *': {
-          pointerEvents: 'auto',
-        },
-        ...(!Platform.isBrowser && Platform.OS === 'mac' && floatingSidebar
-          ? { paddingLeft: 80 }
-          : {}),
+        WebkitAppRegion: 'drag',
         ...style,
       }}
     >
-      {(floatingSidebar || sidebar.alwaysFloats) && (
-        <Button
-          aria-label={t('Sidebar menu')}
-          variant="bare"
-          style={{ marginRight: 8 }}
-          onHoverStart={e => {
-            if (e.pointerType === 'mouse') {
-              sidebar.setHidden(false);
+      <div 
+        className="flex items-center gap-2" 
+        style={{ pointerEvents: 'auto', WebkitAppRegion: 'no-drag' }}
+      >
+        <SidebarTrigger className="-ml-1" />
+        <Separator orientation="vertical" className="mr-2 h-4" />
+        <PageBreadcrumbs />
+
+        <Routes>
+          <Route
+            path="*"
+            element={
+              location.state?.goBack ? (
+                <Button variant="bare" onPress={() => navigate(-1)}>
+                  <SvgArrowLeft
+                    width={10}
+                    height={10}
+                    style={{ marginRight: 5, color: 'currentColor' }}
+                  />{' '}
+                  <Trans>Back</Trans>
+                </Button>
+              ) : null
             }
-          }}
-          onPress={e => {
-            if (e.pointerType !== 'mouse') {
-              sidebar.setHidden(!sidebar.hidden);
-            }
-          }}
-        >
-          <SvgNavigationMenu
-            className="menu"
-            style={{ width: 15, height: 15, color: theme.pageText, left: 0 }}
           />
-        </Button>
-      )}
 
-      <Routes>
-        <Route
-          path="*"
-          element={
-            location.state?.goBack ? (
-              <Button variant="bare" onPress={() => navigate(-1)}>
-                <SvgArrowLeft
-                  width={10}
-                  height={10}
-                  style={{ marginRight: 5, color: 'currentColor' }}
-                />{' '}
-                <Trans>Back</Trans>
-              </Button>
-            ) : null
-          }
-        />
+          <Route path="/accounts/:id" element={<AccountSyncCheck />} />
+          <Route path="/budget" element={<BudgetTitlebar />} />
+        </Routes>
+      </div>
 
-        <Route path="/accounts/:id" element={<AccountSyncCheck />} />
-
-        <Route path="/budget" element={<BudgetTitlebar />} />
-      </Routes>
-      <View style={{ flex: 1 }} />
-      <SpaceBetween gap={10}>
+      <div 
+        className="flex items-center gap-2"
+        style={{ pointerEvents: 'auto', WebkitAppRegion: 'no-drag' }}
+      >
         <UncategorizedButton />
         {isDevelopmentEnvironment() && !isTestEnv && <ThemeSelector />}
         <PrivacyButton />
         {serverURL ? <SyncButton /> : null}
         <LoggedInUser />
         <HelpMenu />
-      </SpaceBetween>
-    </View>
+      </div>
+    </header>
   );
 }

@@ -10,11 +10,13 @@ import type {
 } from '../../core/types';
 import { SpatialTwinPanel } from './SpatialTwinPanel';
 
+const dispatchRunDetailsCommandMock = vi.hoisted(() => vi.fn());
 const apiClientMock = vi.hoisted(() => ({
   listScenarioBranches: vi.fn(),
   compareScenario: vi.fn(),
   listScenarioMutations: vi.fn(),
   listCommandRuns: vi.fn(),
+  listCommandRunsByIds: vi.fn(),
   getScenarioAdoptionCheck: vi.fn(),
   getScenarioLineage: vi.fn(),
   createScenarioBranch: vi.fn(),
@@ -26,6 +28,10 @@ const apiClientMock = vi.hoisted(() => ({
 
 vi.mock('../../core/api/client', () => ({
   apiClient: apiClientMock,
+}));
+
+vi.mock('../runtime/run-details-commands', () => ({
+  dispatchRunDetailsCommand: dispatchRunDetailsCommandMock,
 }));
 
 function renderPanel() {
@@ -165,6 +171,7 @@ describe('SpatialTwinPanel', () => {
         executedAtMs: now,
       },
     ]);
+    apiClientMock.listCommandRunsByIds.mockResolvedValue([]);
     apiClientMock.getScenarioAdoptionCheck.mockResolvedValue(adoptionCheck);
     apiClientMock.getScenarioLineage.mockResolvedValue(lineage);
     apiClientMock.createScenarioBranch.mockResolvedValue(branch);
@@ -278,9 +285,40 @@ describe('SpatialTwinPanel', () => {
   });
 
   it('rolls back a promoted run from provenance lane', async () => {
+    apiClientMock.listCommandRuns.mockResolvedValue([]);
+    apiClientMock.listCommandRunsByIds.mockResolvedValue([
+      {
+        id: 'run-1',
+        chain: 'triage -> open-review',
+        steps: [],
+        executionMode: 'live',
+        guardrailProfile: 'strict',
+        status: 'completed',
+        startedAtMs: Date.now(),
+        finishedAtMs: Date.now(),
+        rollbackWindowUntilMs: Date.now() + 60_000,
+        rollbackEligible: true,
+        rollbackOfRunId: undefined,
+        statusTimeline: [
+          { status: 'planned', atMs: Date.now() },
+          { status: 'running', atMs: Date.now() + 1 },
+          { status: 'completed', atMs: Date.now() + 2 },
+        ],
+        guardrailResults: [],
+        effectSummaries: [],
+        rollbackOnFailure: false,
+        errorCount: 0,
+        actorId: 'owner',
+        sourceSurface: 'spatial-twin',
+        executedAtMs: Date.now(),
+      },
+    ]);
     renderPanel();
 
     await screen.findByText('Run Provenance');
+    await waitFor(() => {
+      expect(apiClientMock.listCommandRunsByIds).toHaveBeenCalledWith(['run-1']);
+    });
     const rollbackButtons = await screen.findAllByRole('button', {
       name: 'Rollback promoted run',
     });
@@ -297,6 +335,29 @@ describe('SpatialTwinPanel', () => {
         'run-1',
         'spatial-twin-promotion-rollback',
       );
+    });
+  });
+
+  it('opens promoted run details in command mesh context', async () => {
+    const { onRoute } = renderPanel();
+
+    await screen.findByText('Run Provenance');
+    const openButtons = await screen.findAllByRole('button', {
+      name: 'Open run details',
+    });
+    const enabled = openButtons.find(button => !button.hasAttribute('disabled'));
+    expect(enabled).toBeDefined();
+    if (!enabled) {
+      return;
+    }
+
+    fireEvent.click(enabled);
+
+    expect(onRoute).toHaveBeenCalledWith('/ops#command-mesh');
+    expect(dispatchRunDetailsCommandMock).toHaveBeenCalledWith({
+      scope: 'command',
+      runId: 'run-1',
+      source: 'provenance',
     });
   });
 });

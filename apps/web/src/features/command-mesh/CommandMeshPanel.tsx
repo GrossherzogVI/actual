@@ -78,8 +78,12 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
   );
   const [historyActorFilter, setHistoryActorFilter] = useState('');
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+  const [resolvedRunById, setResolvedRunById] =
+    useState<WorkflowCommandExecution | null>(null);
   const [pendingRunDetailsSelector, setPendingRunDetailsSelector] =
     useState<RunDetailsSelector | null>(null);
+  const [pendingRunDetailsRunId, setPendingRunDetailsRunId] =
+    useState<string | null>(null);
 
   const history = useQuery({
     queryKey: [
@@ -114,11 +118,20 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
     [history.data],
   );
   const selectedRun = useMemo<WorkflowCommandExecution | null>(
-    () =>
-      selectedRunId
-        ? (history.data || []).find(run => run.id === selectedRunId) || null
-        : null,
-    [history.data, selectedRunId],
+    () => {
+      if (!selectedRunId) {
+        return null;
+      }
+      const fromHistory = (history.data || []).find(run => run.id === selectedRunId);
+      if (fromHistory) {
+        return fromHistory;
+      }
+      if (resolvedRunById && resolvedRunById.id === selectedRunId) {
+        return resolvedRunById;
+      }
+      return null;
+    },
+    [history.data, resolvedRunById, selectedRunId],
   );
 
   useEffect(() => {
@@ -132,8 +145,19 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
       setHistoryModeFilter('all');
       setHistoryStatusFilter('all');
       setHistoryActorFilter('');
-      setPendingRunDetailsSelector(detail.selector);
-      onStatus('Resolving command run details view...');
+      setResolvedRunById(null);
+      const directRunId = detail.runId?.trim();
+      if (directRunId) {
+        setPendingRunDetailsRunId(directRunId);
+        setPendingRunDetailsSelector(null);
+        onStatus(`Resolving command run ${directRunId} details view...`);
+        return;
+      }
+      if (detail.selector) {
+        setPendingRunDetailsSelector(detail.selector);
+        setPendingRunDetailsRunId(null);
+        onStatus('Resolving command run details view...');
+      }
     };
 
     window.addEventListener(
@@ -146,6 +170,47 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
         onRunDetailsCommand as EventListener,
       );
   }, [onStatus]);
+
+  useEffect(() => {
+    if (!pendingRunDetailsRunId) {
+      return;
+    }
+
+    let cancelled = false;
+    const runId = pendingRunDetailsRunId;
+    const resolve = async () => {
+      try {
+        const runs = await apiClient.listCommandRunsByIds([runId]);
+        if (cancelled) {
+          return;
+        }
+        const found = runs.find(run => run.id === runId) || null;
+        if (!found) {
+          onStatus(`No command run found for id ${runId}.`);
+          setPendingRunDetailsRunId(null);
+          setSelectedRunId(null);
+          setResolvedRunById(null);
+          return;
+        }
+        setResolvedRunById(found);
+        setSelectedRunId(found.id);
+        setPendingRunDetailsRunId(null);
+        onStatus(`Opened details for command run ${found.id} (${found.status}).`);
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+        const message = error instanceof Error ? error.message : String(error);
+        onStatus(`Failed to load command run ${runId}: ${message}`);
+        setPendingRunDetailsRunId(null);
+      }
+    };
+
+    void resolve();
+    return () => {
+      cancelled = true;
+    };
+  }, [onStatus, pendingRunDetailsRunId]);
 
   useEffect(() => {
     if (!pendingRunDetailsSelector) {
@@ -178,6 +243,7 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
       return;
     }
 
+    setResolvedRunById(null);
     setSelectedRunId(candidate.id);
     setPendingRunDetailsSelector(null);
     onStatus(`Opened details for command run ${candidate.id} (${candidate.status}).`);

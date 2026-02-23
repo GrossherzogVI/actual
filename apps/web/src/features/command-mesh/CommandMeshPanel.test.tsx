@@ -8,6 +8,7 @@ import { CommandMeshPanel } from './CommandMeshPanel';
 
 const apiClientMock = vi.hoisted(() => ({
   listCommandRuns: vi.fn(),
+  listCommandRunsByIds: vi.fn(),
   executeCommandChain: vi.fn(),
   rollbackCommandRun: vi.fn(),
   simulateScenarioBranch: vi.fn(),
@@ -120,6 +121,7 @@ describe('CommandMeshPanel', () => {
         status: 'completed',
       }),
     );
+    apiClientMock.listCommandRunsByIds.mockResolvedValue([]);
     apiClientMock.simulateScenarioBranch.mockResolvedValue({
       branch: {
         id: 'cmd-sim-branch',
@@ -343,5 +345,37 @@ describe('CommandMeshPanel', () => {
       await screen.findByRole('dialog', { name: 'Run details drawer' }),
     ).toBeInTheDocument();
     expect(screen.getByText(/event-failed-run/i)).toBeInTheDocument();
+  });
+
+  it('opens command run details by explicit run id from event payload', async () => {
+    apiClientMock.listCommandRuns.mockResolvedValue([]);
+    apiClientMock.listCommandRunsByIds.mockResolvedValue([
+      createCommandRun({
+        id: 'explicit-run',
+        executionMode: 'live',
+        status: 'failed',
+        rollbackEligible: true,
+        rollbackWindowUntilMs: Date.now() + 60_000,
+      }),
+    ]);
+
+    renderPanel();
+
+    dispatchRunDetailsCommand({
+      scope: 'command',
+      runId: 'explicit-run',
+      source: 'provenance',
+    });
+
+    await waitFor(() => {
+      expect(apiClientMock.listCommandRunsByIds).toHaveBeenCalledWith([
+        'explicit-run',
+      ]);
+    });
+
+    expect(
+      await screen.findByRole('dialog', { name: 'Run details drawer' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/explicit-run/i)).toBeInTheDocument();
   });
 });

@@ -150,6 +150,9 @@ export const workflowSchemas = {
     idempotencyKey: z.string().min(8).max(128).optional(),
     hasErrors: z.boolean().optional(),
   }),
+  listCommandRunsByIds: z.object({
+    runIds: z.array(z.string().min(1)).min(1).max(200),
+  }),
   listOpsActivity: z.object({
     limit: z.number().int().min(1).max(250).default(60),
     kinds: z.array(z.enum(opsActivityKinds)).default([]),
@@ -496,6 +499,16 @@ export async function registerWorkflowRoutes(
       idempotencyKey: payload.idempotencyKey,
       hasErrors: payload.hasErrors,
     });
+  });
+
+  app.post('/list-command-runs-by-ids', async (request, reply) => {
+    const payload = parseRequestBody(
+      workflowSchemas.listCommandRunsByIds,
+      (request as RequestLike).body,
+      reply,
+    );
+    if (!payload) return;
+    return service.listWorkflowCommandRunsByIds(payload.runIds);
   });
 
   app.post('/list-ops-activity', async (request, reply) => {
