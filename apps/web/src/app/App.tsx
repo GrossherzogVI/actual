@@ -13,6 +13,7 @@ import { CommandMeshPanel } from '../features/command-mesh/CommandMeshPanel';
 import { DecisionGraphPanel } from '../features/decision-graph/DecisionGraphPanel';
 import { DelegateLanesPanel } from '../features/delegate-lanes/DelegateLanesPanel';
 import { PlaybooksPanel } from '../features/ops-playbooks/PlaybooksPanel';
+import { OpsActivityFeedPanel } from '../features/ops-activity/OpsActivityFeedPanel';
 import { PolicyControlPanel } from '../features/policy/PolicyControlPanel';
 import { SpatialTwinPanel } from '../features/spatial-twin/SpatialTwinPanel';
 
@@ -230,6 +231,7 @@ export function App() {
 
         <aside className="fo-column fo-right-column">
           <AdaptiveFocusRail onRoute={handleRoute} />
+          <OpsActivityFeedPanel onRoute={handleRoute} />
           <DelegateLanesPanel onStatus={setStatus} />
           <PolicyControlPanel onStatus={setStatus} />
         </aside>

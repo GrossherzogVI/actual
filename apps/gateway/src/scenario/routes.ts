@@ -26,11 +26,20 @@ export const scenarioSchemas = {
     branchId: z.string().min(1),
     againstBranchId: z.string().optional(),
   }),
+  adoptionCheck: z.object({
+    branchId: z.string().min(1),
+    againstBranchId: z.string().optional(),
+  }),
   adoptBranch: z.object({
     envelope: commandEnvelopeSchema,
     branchId: z.string().min(1),
+    force: z.boolean().default(false),
+    againstBranchId: z.string().optional(),
   }),
   listMutations: z.object({
+    branchId: z.string().min(1),
+  }),
+  lineage: z.object({
     branchId: z.string().min(1),
   }),
 };
@@ -108,6 +117,52 @@ export async function registerScenarioRoutes(
     return comparison;
   });
 
+  app.get('/adoption-check', async request => {
+    const query = ((request as QueryLike).query || {}) as Record<string, unknown>;
+    const parsed = scenarioSchemas.adoptionCheck.safeParse({
+      branchId: typeof query.branchId === 'string' ? query.branchId : '',
+      againstBranchId:
+        typeof query.againstBranchId === 'string' && query.againstBranchId.trim()
+          ? query.againstBranchId.trim()
+          : undefined,
+    });
+    if (!parsed.success) {
+      return null;
+    }
+    return service.getScenarioAdoptionCheck(parsed.data);
+  });
+
+  app.post('/adoption-check', async (request, reply) => {
+    const payload = parseRequestBody(
+      scenarioSchemas.adoptionCheck,
+      (request as RequestLike).body,
+      reply,
+    );
+    if (!payload) return;
+    return service.getScenarioAdoptionCheck(payload);
+  });
+
+  app.get('/lineage', async request => {
+    const query = ((request as QueryLike).query || {}) as Record<string, unknown>;
+    const parsed = scenarioSchemas.lineage.safeParse({
+      branchId: typeof query.branchId === 'string' ? query.branchId : '',
+    });
+    if (!parsed.success) {
+      return null;
+    }
+    return service.getScenarioLineage(parsed.data.branchId);
+  });
+
+  app.post('/lineage', async (request, reply) => {
+    const payload = parseRequestBody(
+      scenarioSchemas.lineage,
+      (request as RequestLike).body,
+      reply,
+    );
+    if (!payload) return;
+    return service.getScenarioLineage(payload.branchId);
+  });
+
   app.post('/adopt-branch', async (request, reply) => {
     const payload = parseRequestBody(
       scenarioSchemas.adoptBranch,
@@ -115,10 +170,22 @@ export async function registerScenarioRoutes(
       reply,
     );
     if (!payload) return;
-    const branch = await service.adoptScenarioBranch(payload.branchId);
-    if (!branch) {
+    const result = await service.adoptScenarioBranch({
+      branchId: payload.branchId,
+      force: payload.force,
+      actorId: payload.envelope.actorId,
+      againstBranchId: payload.againstBranchId,
+    });
+    if (!result.ok && result.error === 'branch-not-found') {
       return sendNotFound(reply, 'branch-not-found');
     }
-    return branch;
+    if (!result.ok && result.error === 'adoption-blocked') {
+      reply.code(409).send({
+        error: 'adoption-blocked',
+        check: result.check,
+      });
+      return;
+    }
+    return result.branch;
   });
 }

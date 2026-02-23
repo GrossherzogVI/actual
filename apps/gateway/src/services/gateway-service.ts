@@ -18,9 +18,13 @@ import type {
   FocusPanel,
   LedgerEvent,
   NarrativePulse,
+  OpsActivityEvent,
   PlaybookRun,
+  ScenarioAdoptionCheck,
   ScenarioBranch,
   ScenarioComparison,
+  ScenarioLineage,
+  ScenarioLineageNode,
   ScenarioMutation,
   WorkflowAction,
   WorkflowCommandExecution,
@@ -57,6 +61,42 @@ const DELEGATE_ALLOWED_TRANSITIONS: Record<
   completed: ['assigned'],
   rejected: ['assigned'],
 };
+
+function outcomeSeverity(outcome: string): OpsActivityEvent['severity'] {
+  const normalized = outcome.toLowerCase();
+  if (
+    normalized.includes('failed') ||
+    normalized.includes('error') ||
+    normalized.includes('critical')
+  ) {
+    return 'critical';
+  }
+  if (
+    normalized.includes('rejected') ||
+    normalized.includes('defer') ||
+    normalized.includes('ignore')
+  ) {
+    return 'warn';
+  }
+  return 'info';
+}
+
+function laneSeverity(
+  lane: DelegateLane,
+  now: number,
+): OpsActivityEvent['severity'] {
+  if (lane.status === 'rejected') {
+    return lane.priority === 'critical' ? 'critical' : 'warn';
+  }
+  if (
+    (lane.status === 'assigned' || lane.status === 'accepted') &&
+    typeof lane.dueAtMs === 'number' &&
+    lane.dueAtMs < now
+  ) {
+    return 'warn';
+  }
+  return 'info';
+}
 
 function toPlaybookToken(command: Record<string, unknown>): string | null {
   const verb = typeof command.verb === 'string' ? command.verb : null;
@@ -818,6 +858,199 @@ export function createGatewayService(
     });
   }
 
+  async function listOpsActivity(input?: {
+    limit?: number;
+    kinds?: OpsActivityEvent['kind'][];
+    severities?: OpsActivityEvent['severity'][];
+  }): Promise<OpsActivityEvent[]> {
+    const limit = Math.max(1, Math.min(input?.limit ?? 60, 250));
+    const fetchLimit = Math.max(40, Math.min(limit * 4, 500));
+    const now = Date.now();
+
+    const [
+      commandRuns,
+      playbookRuns,
+      closeRuns,
+      outcomes,
+      lanes,
+      scenarioBranches,
+      egressAudit,
+    ] = await Promise.all([
+      repository.listWorkflowCommandRuns(fetchLimit),
+      repository.listPlaybookRuns(fetchLimit),
+      repository.listCloseRuns(fetchLimit),
+      repository.listActionOutcomes({ limit: fetchLimit }),
+      repository.listDelegateLanes(fetchLimit),
+      repository.listScenarioBranches(),
+      repository.listEgressAudit(fetchLimit),
+    ]);
+
+    const events: OpsActivityEvent[] = [];
+
+    for (const run of commandRuns) {
+      events.push({
+        id: `command-run-${run.id}`,
+        kind: 'workflow-command-run',
+        title: run.errorCount > 0 ? 'Command chain reported errors' : 'Command chain executed',
+        detail: `${run.chain} (${run.steps.length} steps, ${run.errorCount} error(s), actor ${run.actorId}${
+          run.dryRun ? ', dry-run' : ''
+        })`,
+        route: run.steps.find(step => typeof step.route === 'string')?.route,
+        severity: run.errorCount > 0 ? 'critical' : 'info',
+        createdAtMs: run.executedAtMs,
+        meta: {
+          runId: run.id,
+          actorId: run.actorId,
+          sourceSurface: run.sourceSurface,
+          dryRun: run.dryRun,
+          errorCount: run.errorCount,
+        },
+      });
+    }
+
+    for (const run of playbookRuns) {
+      events.push({
+        id: `playbook-run-${run.id}`,
+        kind: 'workflow-playbook-run',
+        title: `Playbook run: ${run.dryRun ? 'dry-run' : 'live'}`,
+        detail: `${run.executedSteps} step(s), ${run.errorCount} error(s), actor ${run.actorId}`,
+        severity: run.errorCount > 0 ? 'critical' : 'info',
+        createdAtMs: run.createdAtMs,
+        meta: {
+          runId: run.id,
+          playbookId: run.playbookId,
+          chain: run.chain,
+          sourceSurface: run.sourceSurface,
+          errorCount: run.errorCount,
+        },
+      });
+    }
+
+    for (const run of closeRuns) {
+      events.push({
+        id: `close-run-${run.id}`,
+        kind: 'workflow-close-run',
+        title: `${run.period === 'weekly' ? 'Weekly' : 'Monthly'} close routine executed`,
+        detail: `${run.exceptionCount} exception(s), ${run.summary.pendingReviews} pending review(s), ${run.summary.expiringContracts} expiring contract(s).`,
+        severity: run.exceptionCount > 0 ? 'warn' : 'info',
+        createdAtMs: run.createdAtMs,
+        meta: {
+          runId: run.id,
+          period: run.period,
+          exceptionCount: run.exceptionCount,
+        },
+      });
+    }
+
+    for (const outcome of outcomes) {
+      events.push({
+        id: `focus-outcome-${outcome.id}`,
+        kind: 'focus-action-outcome',
+        title: `Focus outcome: ${outcome.outcome}`,
+        detail: `${outcome.actionId}${outcome.notes ? ` - ${outcome.notes}` : ''}`,
+        severity: outcomeSeverity(outcome.outcome),
+        createdAtMs: outcome.recordedAtMs,
+        meta: {
+          outcomeId: outcome.id,
+          actionId: outcome.actionId,
+          outcome: outcome.outcome,
+        },
+      });
+    }
+
+    for (const lane of lanes) {
+      const severity = laneSeverity(lane, now);
+      events.push({
+        id: `delegate-lane-${lane.id}`,
+        kind: 'delegate-lane',
+        title: `Delegate lane ${lane.status}: ${lane.title}`,
+        detail: `${lane.assignee} (${lane.priority})${lane.dueAtMs ? ` due ${new Date(lane.dueAtMs).toISOString()}` : ''}`,
+        route: '/ops#delegate-lanes',
+        severity,
+        createdAtMs: lane.updatedAtMs,
+        meta: {
+          laneId: lane.id,
+          status: lane.status,
+          priority: lane.priority,
+          assignee: lane.assignee,
+          dueAtMs: lane.dueAtMs,
+        },
+      });
+    }
+
+    for (const branch of scenarioBranches) {
+      if (branch.status !== 'adopted') {
+        continue;
+      }
+      const createdAtMs = branch.adoptedAtMs || branch.updatedAtMs;
+      events.push({
+        id: `scenario-adoption-${branch.id}`,
+        kind: 'scenario-adoption',
+        title: `Scenario adopted: ${branch.name}`,
+        detail: `Lineage baseline ${branch.baseBranchId || 'root'}.`,
+        route: '/ops#spatial-twin',
+        severity: 'info',
+        createdAtMs,
+        meta: {
+          branchId: branch.id,
+          baseBranchId: branch.baseBranchId,
+          adoptedAtMs: branch.adoptedAtMs,
+        },
+      });
+    }
+
+    for (const audit of egressAudit) {
+      const severity: OpsActivityEvent['severity'] =
+        audit.eventType.includes('blocked') || audit.eventType.includes('violation')
+          ? 'critical'
+          : audit.eventType.includes('warn')
+            ? 'warn'
+            : 'info';
+      const provider =
+        typeof audit.provider === 'string' && audit.provider.length > 0
+          ? ` (${audit.provider})`
+          : '';
+
+      events.push({
+        id: `policy-egress-${audit.id}`,
+        kind: 'policy-egress',
+        title: `Policy event: ${audit.eventType}${provider}`,
+        detail:
+          typeof audit.payload === 'object' && audit.payload
+            ? JSON.stringify(audit.payload)
+            : 'No payload attached.',
+        route: '/ops#policy',
+        severity,
+        createdAtMs: audit.createdAtMs,
+        meta: {
+          auditId: audit.id,
+          eventType: audit.eventType,
+          provider: audit.provider,
+        },
+      });
+    }
+
+    const kindFilter =
+      input?.kinds && input.kinds.length > 0 ? new Set(input.kinds) : null;
+    const severityFilter =
+      input?.severities && input.severities.length > 0
+        ? new Set(input.severities)
+        : null;
+
+    return events
+      .filter(event => {
+        if (kindFilter && !kindFilter.has(event.kind)) {
+          return false;
+        }
+        if (severityFilter && !severityFilter.has(event.severity)) {
+          return false;
+        }
+        return true;
+      })
+      .sort((a, b) => b.createdAtMs - a.createdAtMs)
+      .slice(0, limit);
+  }
+
   async function listScenarioBranches(): Promise<ScenarioBranch[]> {
     return repository.listScenarioBranches();
   }
@@ -923,18 +1156,194 @@ export function createGatewayService(
     };
   }
 
-  async function adoptScenarioBranch(branchId: string): Promise<ScenarioBranch | null> {
-    const adoptedAtMs = Date.now();
-    const branch = await repository.adoptScenarioBranch(branchId, adoptedAtMs);
+  async function getScenarioLineage(
+    branchId: string,
+  ): Promise<ScenarioLineage | null> {
+    const branches = await repository.listScenarioBranches();
+    const byId = new Map(branches.map(branch => [branch.id, branch]));
+    const target = byId.get(branchId);
+    if (!target) return null;
+
+    const visited = new Set<string>();
+    const reverse: ScenarioLineageNode[] = [];
+    let current: ScenarioBranch | undefined = target;
+    let hasCycle = false;
+
+    while (current) {
+      if (visited.has(current.id)) {
+        hasCycle = true;
+        break;
+      }
+      visited.add(current.id);
+      reverse.push({
+        branchId: current.id,
+        name: current.name,
+        status: current.status,
+        adoptedAtMs: current.adoptedAtMs,
+      });
+
+      if (!current.baseBranchId) {
+        break;
+      }
+      current = byId.get(current.baseBranchId);
+      if (!current) {
+        break;
+      }
+    }
+
+    return {
+      branchId,
+      nodes: reverse.reverse(),
+      hasCycle,
+    };
+  }
+
+  async function getScenarioAdoptionCheck(input: {
+    branchId: string;
+    againstBranchId?: string;
+  }): Promise<ScenarioAdoptionCheck | null> {
+    const branch = await repository.getScenarioBranchById(input.branchId);
     if (!branch) return null;
+
+    let againstBranchId = input.againstBranchId;
+    if (!againstBranchId) {
+      const adoptedBaseline = (await repository.listScenarioBranches())
+        .filter(candidate => candidate.status === 'adopted' && candidate.id !== branch.id)
+        .sort(
+          (a, b) =>
+            (b.adoptedAtMs || 0) - (a.adoptedAtMs || 0) ||
+            b.updatedAtMs - a.updatedAtMs,
+        )[0];
+      againstBranchId = adoptedBaseline?.id;
+    }
+
+    const comparison = await compareScenarioOutcomes(branch.id, againstBranchId);
+    if (!comparison) return null;
+
+    const mutations = await repository.listScenarioMutations(branch.id);
+    const lineage = await getScenarioLineage(branch.id);
+    if (!lineage) return null;
+
+    const blockers: string[] = [];
+    const warnings: string[] = [];
+
+    if (branch.status === 'adopted') {
+      blockers.push('Branch is already adopted.');
+    }
+    if (lineage.hasCycle) {
+      blockers.push('Scenario lineage cycle detected.');
+    }
+    if (mutations.length === 0) {
+      warnings.push('Branch has no mutations; adoption has no measurable change.');
+    }
+    if (lineage.nodes.length >= 6) {
+      warnings.push(
+        `Lineage depth is ${lineage.nodes.length}, increasing rollback complexity.`,
+      );
+    }
+
+    const amountDelta = comparison.diff.amountDelta;
+    const riskDelta = comparison.diff.riskDelta;
+    if (riskDelta >= 6) {
+      warnings.push(`Risk delta is elevated (${riskDelta}).`);
+    }
+    if (riskDelta >= 10) {
+      blockers.push(`Risk delta is too high for safe adoption (${riskDelta}).`);
+    }
+    if (amountDelta <= -500) {
+      warnings.push(`Projected cashflow delta is negative (${amountDelta}).`);
+    }
+    if (amountDelta <= -2000) {
+      blockers.push(`Projected cashflow downside exceeds threshold (${amountDelta}).`);
+    }
+
+    const riskScoreRaw = Math.round(
+      Math.max(
+        0,
+        Math.min(
+          100,
+          Math.abs(riskDelta) * 8 +
+            (amountDelta < 0 ? Math.min(45, Math.abs(amountDelta) / 80) : 0) +
+            mutations.length * 2 +
+            Math.max(0, lineage.nodes.length - 1) * 3,
+        ),
+      ),
+    );
+    const riskScore = Math.max(
+      riskScoreRaw,
+      blockers.length * 25 + warnings.length * 10,
+    );
+    const canAdopt = blockers.length === 0;
+
+    return {
+      branchId: branch.id,
+      againstBranchId: comparison.againstBranchId,
+      canAdopt,
+      riskScore,
+      blockers,
+      warnings,
+      summary: canAdopt
+        ? `Adoption ready with risk score ${riskScore}.`
+        : `Adoption blocked with risk score ${riskScore}.`,
+      comparison,
+      mutationCount: mutations.length,
+      lineageDepth: lineage.nodes.length,
+      checkedAtMs: Date.now(),
+    };
+  }
+
+  async function adoptScenarioBranch(input: {
+    branchId: string;
+    force?: boolean;
+    actorId?: string;
+    againstBranchId?: string;
+  }): Promise<
+    | { ok: true; branch: ScenarioBranch; check: ScenarioAdoptionCheck }
+    | { ok: false; error: 'branch-not-found' | 'adoption-blocked'; check?: ScenarioAdoptionCheck }
+  > {
+    const check = await getScenarioAdoptionCheck({
+      branchId: input.branchId,
+      againstBranchId: input.againstBranchId,
+    });
+    if (!check) {
+      return {
+        ok: false,
+        error: 'branch-not-found',
+      };
+    }
+    if (!check.canAdopt && !input.force) {
+      return {
+        ok: false,
+        error: 'adoption-blocked',
+        check,
+      };
+    }
+
+    const adoptedAtMs = Date.now();
+    const branch = await repository.adoptScenarioBranch(input.branchId, adoptedAtMs);
+    if (!branch) {
+      return {
+        ok: false,
+        error: 'branch-not-found',
+      };
+    }
 
     await queue.enqueue(
       queueJob('scenario.branch.adopted', {
-        branchId,
+        branchId: input.branchId,
+        actorId: input.actorId || 'owner',
+        force: !!input.force,
+        riskScore: check.riskScore,
+        blockerCount: check.blockers.length,
+        warningCount: check.warnings.length,
       }),
     );
 
-    return branch;
+    return {
+      ok: true,
+      branch,
+      check,
+    };
   }
 
   async function listDelegateLanes(input?: {
@@ -1339,6 +1748,7 @@ export function createGatewayService(
     listCloseRuns,
     applyBatchPolicy,
     executeWorkflowCommandChain,
+    listOpsActivity,
     getAdaptiveFocusPanel,
     recordActionOutcome,
     listActionOutcomes,
@@ -1347,6 +1757,8 @@ export function createGatewayService(
     listScenarioMutations,
     applyScenarioMutation,
     compareScenarioOutcomes,
+    getScenarioAdoptionCheck,
+    getScenarioLineage,
     adoptScenarioBranch,
     listDelegateLanes,
     listDelegateLaneEvents,

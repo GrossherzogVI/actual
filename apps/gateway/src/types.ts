@@ -97,6 +97,33 @@ export type ScenarioComparison = {
   diff: { amountDelta: number; riskDelta: number };
 };
 
+export type ScenarioLineageNode = {
+  branchId: string;
+  name: string;
+  status: ScenarioBranch['status'];
+  adoptedAtMs?: number;
+};
+
+export type ScenarioLineage = {
+  branchId: string;
+  nodes: ScenarioLineageNode[];
+  hasCycle: boolean;
+};
+
+export type ScenarioAdoptionCheck = {
+  branchId: string;
+  againstBranchId?: string;
+  canAdopt: boolean;
+  riskScore: number;
+  blockers: string[];
+  warnings: string[];
+  summary: string;
+  comparison: ScenarioComparison;
+  mutationCount: number;
+  lineageDepth: number;
+  checkedAtMs: number;
+};
+
 export type DelegateLane = {
   id: string;
   title: string;
@@ -156,6 +183,26 @@ export type NarrativePulse = {
   highlights: string[];
   actionHints: string[];
   generatedAtMs: number;
+};
+
+export type OpsActivityKind =
+  | 'workflow-command-run'
+  | 'workflow-playbook-run'
+  | 'workflow-close-run'
+  | 'focus-action-outcome'
+  | 'scenario-adoption'
+  | 'delegate-lane'
+  | 'policy-egress';
+
+export type OpsActivityEvent = {
+  id: string;
+  kind: OpsActivityKind;
+  title: string;
+  detail: string;
+  route?: string;
+  severity: 'info' | 'warn' | 'critical';
+  createdAtMs: number;
+  meta?: Record<string, unknown>;
 };
 
 export type EgressPolicy = {

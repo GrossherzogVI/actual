@@ -389,4 +389,33 @@ describe('gateway HTTP contract/runtime', () => {
 
     expect(invalidTransition.statusCode).toBe(409);
   });
+
+  it('returns 409 for blocked scenario adoption unless forced', async () => {
+    const { app, seeds } = await createHarness();
+
+    const mutation = await invoke(app, 'POST', '/scenario/v1/apply-mutation', {
+      envelope: envelope(),
+      branchId: seeds.branchId,
+      mutationKind: 'manual-adjustment',
+      payload: {
+        amountDelta: -2500,
+        riskDelta: 12,
+      },
+    });
+    expect(mutation.statusCode).toBe(200);
+
+    const blockedAdopt = await invoke(app, 'POST', '/scenario/v1/adopt-branch', {
+      envelope: envelope(),
+      branchId: seeds.branchId,
+      force: false,
+    });
+    expect(blockedAdopt.statusCode).toBe(409);
+
+    const forcedAdopt = await invoke(app, 'POST', '/scenario/v1/adopt-branch', {
+      envelope: envelope(),
+      branchId: seeds.branchId,
+      force: true,
+    });
+    expect(forcedAdopt.statusCode).toBe(200);
+  });
 });

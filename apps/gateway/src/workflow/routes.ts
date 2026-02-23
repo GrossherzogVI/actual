@@ -9,6 +9,28 @@ import type { GatewayService } from '../services/gateway-service';
 type RequestLike = { body?: unknown };
 type QueryLike = { query?: Record<string, unknown> };
 
+const opsActivityKinds = [
+  'workflow-command-run',
+  'workflow-playbook-run',
+  'workflow-close-run',
+  'focus-action-outcome',
+  'scenario-adoption',
+  'delegate-lane',
+  'policy-egress',
+] as const;
+
+const opsActivitySeverities = ['info', 'warn', 'critical'] as const;
+
+function parseCsvList(value: unknown): string[] {
+  if (typeof value !== 'string' || value.trim() === '') {
+    return [];
+  }
+  return value
+    .split(',')
+    .map(token => token.trim())
+    .filter(token => token.length > 0);
+}
+
 export const workflowSchemas = {
   createPlaybook: z.object({
     name: z.string().min(1),
@@ -66,6 +88,11 @@ export const workflowSchemas = {
     sourceSurface: z.string().min(1).optional(),
     dryRun: z.boolean().optional(),
     hasErrors: z.boolean().optional(),
+  }),
+  listOpsActivity: z.object({
+    limit: z.number().int().min(1).max(250).default(60),
+    kinds: z.array(z.enum(opsActivityKinds)).default([]),
+    severities: z.array(z.enum(opsActivitySeverities)).default([]),
   }),
 };
 
@@ -252,6 +279,30 @@ export async function registerWorkflowRoutes(
     });
   });
 
+  app.get('/ops-activity', async request => {
+    const query = ((request as QueryLike).query || {}) as Record<string, unknown>;
+    const parsed = workflowSchemas.listOpsActivity.safeParse({
+      limit:
+        typeof query.limit === 'string'
+          ? Number(query.limit)
+          : typeof query.limit === 'number'
+            ? query.limit
+            : 60,
+      kinds: parseCsvList(query.kinds),
+      severities: parseCsvList(query.severities),
+    });
+
+    if (!parsed.success) {
+      return service.listOpsActivity({ limit: 60 });
+    }
+
+    return service.listOpsActivity({
+      limit: parsed.data.limit,
+      kinds: parsed.data.kinds,
+      severities: parsed.data.severities,
+    });
+  });
+
   app.post('/list-command-runs', async (request, reply) => {
     const payload = parseRequestBody(
       workflowSchemas.listCommandRuns,
@@ -264,6 +315,20 @@ export async function registerWorkflowRoutes(
       sourceSurface: payload.sourceSurface,
       dryRun: payload.dryRun,
       hasErrors: payload.hasErrors,
+    });
+  });
+
+  app.post('/list-ops-activity', async (request, reply) => {
+    const payload = parseRequestBody(
+      workflowSchemas.listOpsActivity,
+      (request as RequestLike).body,
+      reply,
+    );
+    if (!payload) return;
+    return service.listOpsActivity({
+      limit: payload.limit,
+      kinds: payload.kinds,
+      severities: payload.severities,
     });
   });
 

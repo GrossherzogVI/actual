@@ -11,6 +11,7 @@ export function SpatialTwinPanel() {
   const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
   const [amountDelta, setAmountDelta] = useState('150');
   const [riskDelta, setRiskDelta] = useState('-1');
+  const [forceAdopt, setForceAdopt] = useState(false);
 
   const branchesQuery = useQuery({
     queryKey: ['scenario-branches'],
@@ -41,6 +42,19 @@ export function SpatialTwinPanel() {
     queryFn: () => apiClient.listScenarioMutations(selectedBranch!.id),
   });
 
+  const adoptionCheckQuery = useQuery({
+    queryKey: ['scenario-adoption-check', selectedBranch?.id, comparisonTarget?.id],
+    enabled: !!selectedBranch,
+    queryFn: () =>
+      apiClient.getScenarioAdoptionCheck(selectedBranch!.id, comparisonTarget?.id),
+  });
+
+  const lineageQuery = useQuery({
+    queryKey: ['scenario-lineage', selectedBranch?.id],
+    enabled: !!selectedBranch,
+    queryFn: () => apiClient.getScenarioLineage(selectedBranch!.id),
+  });
+
   const createBranch = useMutation({
     mutationFn: async () => {
       const trimmed = branchName.trim();
@@ -50,7 +64,11 @@ export function SpatialTwinPanel() {
     onSuccess: async created => {
       setBranchName('');
       setSelectedBranchId(created.id);
-      await queryClient.invalidateQueries({ queryKey: ['scenario-branches'] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['scenario-branches'] }),
+        queryClient.invalidateQueries({ queryKey: ['scenario-adoption-check'] }),
+        queryClient.invalidateQueries({ queryKey: ['scenario-lineage'] }),
+      ]);
     },
   });
 
@@ -71,14 +89,24 @@ export function SpatialTwinPanel() {
         queryClient.invalidateQueries({ queryKey: ['scenario-branches'] }),
         queryClient.invalidateQueries({ queryKey: ['scenario-compare'] }),
         queryClient.invalidateQueries({ queryKey: ['scenario-mutations'] }),
+        queryClient.invalidateQueries({ queryKey: ['scenario-adoption-check'] }),
       ]);
     },
   });
 
   const adoptBranch = useMutation({
-    mutationFn: async (branchId: string) => apiClient.adoptScenarioBranch(branchId),
+    mutationFn: async (input: { branchId: string; force?: boolean }) =>
+      apiClient.adoptScenarioBranch(input.branchId, {
+        force: input.force,
+        againstBranchId:
+          selectedBranch?.id === input.branchId ? comparisonTarget?.id : undefined,
+      }),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['scenario-branches'] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['scenario-branches'] }),
+        queryClient.invalidateQueries({ queryKey: ['scenario-adoption-check'] }),
+        queryClient.invalidateQueries({ queryKey: ['scenario-lineage'] }),
+      ]);
     },
   });
 
@@ -167,10 +195,23 @@ export function SpatialTwinPanel() {
               <button
                 className="fo-btn-secondary"
                 type="button"
-                onClick={() => adoptBranch.mutate(node.branch.id)}
-                disabled={adoptBranch.isPending || node.branch.status === 'adopted'}
+                onClick={() =>
+                  adoptBranch.mutate({
+                    branchId: node.branch.id,
+                    force: forceAdopt && selectedBranchId === node.branch.id,
+                  })
+                }
+                disabled={
+                  adoptBranch.isPending ||
+                  node.branch.status === 'adopted' ||
+                  (selectedBranchId === node.branch.id &&
+                    !forceAdopt &&
+                    adoptionCheckQuery.data !== null &&
+                    !!adoptionCheckQuery.data &&
+                    !adoptionCheckQuery.data.canAdopt)
+                }
               >
-                Adopt
+                {selectedBranchId === node.branch.id && forceAdopt ? 'Force Adopt' : 'Adopt'}
               </button>
             </div>
           </article>
@@ -216,6 +257,44 @@ export function SpatialTwinPanel() {
           Amount delta: {compareQuery.data?.diff.amountDelta ?? 0} · Risk delta:{' '}
           {compareQuery.data?.diff.riskDelta ?? 0}
         </small>
+      </article>
+
+      <article className="fo-card">
+        <strong>Adoption Guardrail</strong>
+        <small>{adoptionCheckQuery.data?.summary || 'Select a branch to evaluate adoption risk.'}</small>
+        <small>
+          risk score: {adoptionCheckQuery.data?.riskScore ?? '-'} · mutations:{' '}
+          {adoptionCheckQuery.data?.mutationCount ?? 0} · lineage depth:{' '}
+          {adoptionCheckQuery.data?.lineageDepth ?? 0}
+        </small>
+        {(adoptionCheckQuery.data?.blockers || []).map(blocker => (
+          <small key={blocker}>Blocker: {blocker}</small>
+        ))}
+        {(adoptionCheckQuery.data?.warnings || []).map(warning => (
+          <small key={warning}>Warning: {warning}</small>
+        ))}
+        <label className="fo-row">
+          <input
+            type="checkbox"
+            checked={forceAdopt}
+            onChange={event => setForceAdopt(event.target.checked)}
+          />
+          <small>Allow force adopt if blocked</small>
+        </label>
+      </article>
+
+      <article className="fo-card">
+        <strong>Branch Lineage</strong>
+        {(lineageQuery.data?.nodes || []).map((node, index) => (
+          <small key={node.branchId}>
+            {index + 1}. {node.name} · {node.status}
+            {node.adoptedAtMs ? ` · adopted ${new Date(node.adoptedAtMs).toLocaleDateString()}` : ''}
+          </small>
+        ))}
+        {lineageQuery.data?.hasCycle ? <small>Cycle detected in lineage.</small> : null}
+        {(lineageQuery.data?.nodes || []).length === 0 ? (
+          <small>No lineage available.</small>
+        ) : null}
       </article>
 
       <article className="fo-card">

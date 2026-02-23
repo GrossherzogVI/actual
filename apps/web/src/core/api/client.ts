@@ -11,10 +11,15 @@ import type {
   FocusPanel,
   MoneyPulse,
   NarrativePulse,
+  OpsActivityEvent,
+  OpsActivityKind,
+  OpsActivitySeverity,
   Playbook,
   PlaybookRun,
+  ScenarioAdoptionCheck,
   ScenarioBranch,
   ScenarioComparison,
+  ScenarioLineage,
   ScenarioMutation,
   WorkflowCommandExecution,
 } from '../types';
@@ -217,6 +222,22 @@ export const apiClient = {
     );
   },
 
+  listOpsActivity(input?: {
+    limit?: number;
+    kinds?: OpsActivityKind[];
+    severities?: OpsActivitySeverity[];
+  }) {
+    const params = new URLSearchParams();
+    params.set('limit', String(Math.max(1, Math.min(input?.limit ?? 60, 250))));
+    if (input?.kinds && input.kinds.length > 0) {
+      params.set('kinds', input.kinds.join(','));
+    }
+    if (input?.severities && input.severities.length > 0) {
+      params.set('severities', input.severities.join(','));
+    }
+    return request<OpsActivityEvent[]>(`/workflow/v1/ops-activity?${params.toString()}`);
+  },
+
   listDelegateLanes(input?: {
     limit?: number;
     status?: DelegateLane['status'];
@@ -355,6 +376,23 @@ export const apiClient = {
     return request<ScenarioMutation[]>(`/scenario/v1/mutations?${params.toString()}`);
   },
 
+  getScenarioAdoptionCheck(branchId: string, againstBranchId?: string) {
+    const params = new URLSearchParams();
+    params.set('branchId', branchId);
+    if (againstBranchId) {
+      params.set('againstBranchId', againstBranchId);
+    }
+    return request<ScenarioAdoptionCheck | null>(
+      `/scenario/v1/adoption-check?${params.toString()}`,
+    );
+  },
+
+  getScenarioLineage(branchId: string) {
+    const params = new URLSearchParams();
+    params.set('branchId', branchId);
+    return request<ScenarioLineage | null>(`/scenario/v1/lineage?${params.toString()}`);
+  },
+
   createScenarioBranch(name: string, baseBranchId?: string, notes?: string) {
     return request<ScenarioBranch>('/scenario/v1/create-branch', {
       method: 'POST',
@@ -386,12 +424,17 @@ export const apiClient = {
     );
   },
 
-  adoptScenarioBranch(branchId: string) {
+  adoptScenarioBranch(
+    branchId: string,
+    options?: { force?: boolean; againstBranchId?: string },
+  ) {
     return request<ScenarioBranch>('/scenario/v1/adopt-branch', {
       method: 'POST',
       body: JSON.stringify({
         envelope: commandEnvelope('adopt-scenario-branch'),
         branchId,
+        force: !!options?.force,
+        againstBranchId: options?.againstBranchId,
       }),
     });
   },

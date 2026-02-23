@@ -130,6 +130,14 @@ export const rpcRegistry: RpcRegistryEntry[] = [
     requestSchema: workflowSchemas.listCommandRuns,
   },
   {
+    service: 'workflow.v1',
+    rpc: 'ListOpsActivity',
+    method: 'POST',
+    path: '/workflow/v1/list-ops-activity',
+    requiresEnvelope: false,
+    requestSchema: workflowSchemas.listOpsActivity,
+  },
+  {
     service: 'scenario.v1',
     rpc: 'CreateBranch',
     method: 'POST',
@@ -155,11 +163,27 @@ export const rpcRegistry: RpcRegistryEntry[] = [
   },
   {
     service: 'scenario.v1',
+    rpc: 'AdoptionCheck',
+    method: 'POST',
+    path: '/scenario/v1/adoption-check',
+    requiresEnvelope: false,
+    requestSchema: scenarioSchemas.adoptionCheck,
+  },
+  {
+    service: 'scenario.v1',
     rpc: 'ListMutations',
     method: 'POST',
     path: '/scenario/v1/list-mutations',
     requiresEnvelope: false,
     requestSchema: scenarioSchemas.listMutations,
+  },
+  {
+    service: 'scenario.v1',
+    rpc: 'GetLineage',
+    method: 'POST',
+    path: '/scenario/v1/lineage',
+    requiresEnvelope: false,
+    requestSchema: scenarioSchemas.lineage,
   },
   {
     service: 'scenario.v1',

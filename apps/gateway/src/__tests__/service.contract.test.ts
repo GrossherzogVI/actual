@@ -162,6 +162,146 @@ describe('gateway service contract behavior', () => {
     expect(Array.isArray(pulse.actionHints)).toBe(true);
   });
 
+  it('aggregates ops activity across workflow, focus, delegate, and scenario planes', async () => {
+    const { service } = await createHarness();
+    const playbookId = (await service.listPlaybooks())[0]?.id;
+    expect(playbookId).toBeTruthy();
+    if (!playbookId) {
+      return;
+    }
+
+    await service.runPlaybook(playbookId, true, 'owner', 'finance-os-web');
+    await service.executeWorkflowCommandChain({
+      chain: 'triage -> open-review',
+      actorId: 'owner',
+      sourceSurface: 'finance-os-web',
+      dryRun: false,
+    });
+    await service.executeWorkflowCommandChain({
+      chain: 'unknown-command-token',
+      actorId: 'owner',
+      sourceSurface: 'finance-os-web',
+      dryRun: false,
+    });
+    await service.runCloseRoutine('weekly');
+    await service.recordActionOutcome({
+      actionId: 'focus-urgent-review',
+      outcome: 'accepted',
+      notes: 'processed queue',
+    });
+    await service.assignDelegateLane({
+      title: 'Follow-up with insurance provider',
+      assignee: 'delegate',
+      assignedBy: 'owner',
+      actorId: 'owner',
+      priority: 'high',
+      payload: {
+        source: 'contract-test',
+      },
+    });
+    await service.setEgressPolicy({
+      allowCloud: false,
+      allowedProviders: ['openai'],
+      redactionMode: 'balanced',
+    });
+
+    const branch = await service.createScenarioBranch({
+      name: 'Adoption Candidate',
+    });
+    await service.applyScenarioMutation({
+      branchId: branch.id,
+      mutationKind: 'cashflow-adjustment',
+      payload: {
+        amountDelta: 120,
+        riskDelta: 1,
+      },
+    });
+    const adopted = await service.adoptScenarioBranch({
+      branchId: branch.id,
+      force: true,
+    });
+    expect(adopted.ok).toBe(true);
+
+    const events = await service.listOpsActivity({
+      limit: 80,
+    });
+    expect(events.length).toBeGreaterThan(0);
+    expect(
+      events.every((event, index) => {
+        if (index === 0) {
+          return true;
+        }
+        return event.createdAtMs <= events[index - 1]!.createdAtMs;
+      }),
+    ).toBe(true);
+    expect(events.some(event => event.kind === 'workflow-command-run')).toBe(true);
+    expect(events.some(event => event.kind === 'workflow-playbook-run')).toBe(true);
+    expect(events.some(event => event.kind === 'workflow-close-run')).toBe(true);
+    expect(events.some(event => event.kind === 'focus-action-outcome')).toBe(true);
+    expect(events.some(event => event.kind === 'scenario-adoption')).toBe(true);
+    expect(events.some(event => event.kind === 'delegate-lane')).toBe(true);
+    expect(events.some(event => event.kind === 'policy-egress')).toBe(true);
+
+    const delegateOnly = await service.listOpsActivity({
+      limit: 20,
+      kinds: ['delegate-lane'],
+    });
+    expect(delegateOnly.length).toBeGreaterThan(0);
+    expect(delegateOnly.every(event => event.kind === 'delegate-lane')).toBe(true);
+
+    const criticalOnly = await service.listOpsActivity({
+      limit: 20,
+      severities: ['critical'],
+    });
+    expect(criticalOnly.length).toBeGreaterThan(0);
+    expect(criticalOnly.every(event => event.severity === 'critical')).toBe(true);
+  });
+
+  it('checks scenario adoption risk, exposes lineage, and supports force adopt', async () => {
+    const { service } = await createHarness();
+
+    const root = await service.createScenarioBranch({
+      name: 'Root Scenario',
+    });
+    const child = await service.createScenarioBranch({
+      name: 'Risky Child',
+      baseBranchId: root.id,
+    });
+
+    await service.applyScenarioMutation({
+      branchId: child.id,
+      mutationKind: 'manual-adjustment',
+      payload: {
+        amountDelta: -2500,
+        riskDelta: 12,
+      },
+    });
+
+    const lineage = await service.getScenarioLineage(child.id);
+    expect(lineage?.nodes.map(node => node.branchId)).toEqual([root.id, child.id]);
+
+    const check = await service.getScenarioAdoptionCheck({
+      branchId: child.id,
+      againstBranchId: root.id,
+    });
+    expect(check?.canAdopt).toBe(false);
+    expect((check?.blockers || []).length).toBeGreaterThan(0);
+
+    const blocked = await service.adoptScenarioBranch({
+      branchId: child.id,
+    });
+    expect(blocked).toMatchObject({
+      ok: false,
+      error: 'adoption-blocked',
+    });
+
+    const forced = await service.adoptScenarioBranch({
+      branchId: child.id,
+      force: true,
+    });
+    expect(forced.ok).toBe(true);
+  });
+
   it('filters command runs by actor, surface, mode, and error state', async () => {
     const { service } = await createHarness();
 

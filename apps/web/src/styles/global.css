@@ -254,6 +254,58 @@ pre {
   gap: 4px;
 }
 
+.fo-activity-filters {
+  display: grid;
+  gap: 8px;
+}
+
+.fo-chip {
+  border: 1px solid var(--fo-border);
+  border-radius: 999px;
+  background: rgba(12, 23, 36, 0.85);
+  color: var(--fo-text);
+  padding: 4px 9px;
+  cursor: pointer;
+  transition: border-color 160ms ease, transform 160ms ease;
+}
+
+.fo-chip:hover {
+  border-color: var(--fo-info);
+  transform: translateY(-1px);
+}
+
+.fo-chip-active {
+  border-color: var(--fo-accent);
+}
+
+.fo-activity-list {
+  display: grid;
+  gap: 8px;
+  max-height: 360px;
+  overflow: auto;
+}
+
+.fo-activity-item {
+  border: 1px solid var(--fo-border);
+  border-radius: 8px;
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+  background: rgba(11, 20, 32, 0.72);
+}
+
+.fo-activity-info {
+  border-left: 3px solid var(--fo-info);
+}
+
+.fo-activity-warn {
+  border-left: 3px solid var(--fo-accent);
+}
+
+.fo-activity-critical {
+  border-left: 3px solid var(--fo-danger);
+}
+
 .fo-delegate-grid {
   display: grid;
   gap: 10px;

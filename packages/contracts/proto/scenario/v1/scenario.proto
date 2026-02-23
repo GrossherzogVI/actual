@@ -8,7 +8,9 @@ service ScenarioService {
   rpc CreateBranch(CreateBranchRequest) returns (CreateBranchResponse);
   rpc ApplyMutation(ApplyMutationRequest) returns (ApplyMutationResponse);
   rpc CompareOutcomes(CompareOutcomesRequest) returns (CompareOutcomesResponse);
+  rpc AdoptionCheck(AdoptionCheckRequest) returns (AdoptionCheckResponse);
   rpc ListMutations(ListMutationsRequest) returns (ListMutationsResponse);
+  rpc GetLineage(GetLineageRequest) returns (GetLineageResponse);
   rpc AdoptBranch(AdoptBranchRequest) returns (AdoptBranchResponse);
 }
 
@@ -44,12 +46,42 @@ message CompareOutcomesResponse {
   double risk_delta = 2;
 }
 
+message AdoptionCheckRequest {
+  string branch_id = 1;
+  string against_branch_id = 2;
+}
+
+message AdoptionCheckResponse {
+  string branch_id = 1;
+  string against_branch_id = 2;
+  bool can_adopt = 3;
+  int32 risk_score = 4;
+  repeated string blockers = 5;
+  repeated string warnings = 6;
+  string summary = 7;
+  double amount_delta = 8;
+  double risk_delta = 9;
+  int32 mutation_count = 10;
+  int32 lineage_depth = 11;
+  int64 checked_at_ms = 12;
+}
+
 message ListMutationsRequest {
   string branch_id = 1;
 }
 
 message ListMutationsResponse {
   repeated ScenarioMutation mutations = 1;
+}
+
+message GetLineageRequest {
+  string branch_id = 1;
+}
+
+message GetLineageResponse {
+  string branch_id = 1;
+  repeated ScenarioLineageNode nodes = 2;
+  bool has_cycle = 3;
 }
 
 message ScenarioMutation {
@@ -60,9 +92,18 @@ message ScenarioMutation {
   int64 created_at_ms = 5;
 }
 
+message ScenarioLineageNode {
+  string branch_id = 1;
+  string name = 2;
+  string status = 3;
+  int64 adopted_at_ms = 4;
+}
+
 message AdoptBranchRequest {
   financeos.common.v1.CommandEnvelope envelope = 1;
   string branch_id = 2;
+  bool force = 3;
+  string against_branch_id = 4;
 }
 
 message AdoptBranchResponse {

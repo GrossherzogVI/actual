@@ -16,6 +16,7 @@ service WorkflowService {
   rpc ApplyBatchPolicy(ApplyBatchPolicyRequest) returns (ApplyBatchPolicyResponse);
   rpc ExecuteChain(ExecuteChainRequest) returns (ExecuteChainResponse);
   rpc ListCommandRuns(ListCommandRunsRequest) returns (ListCommandRunsResponse);
+  rpc ListOpsActivity(ListOpsActivityRequest) returns (ListOpsActivityResponse);
 }
 
 message ResolveNextActionRequest {
@@ -147,6 +148,26 @@ message ListCommandRunsRequest {
 
 message ListCommandRunsResponse {
   repeated CommandRun runs = 1;
+}
+
+message ListOpsActivityRequest {
+  int32 limit = 1;
+  repeated string kinds = 2;
+  repeated string severities = 3;
+}
+
+message ListOpsActivityResponse {
+  repeated OpsActivityEvent events = 1;
+}
+
+message OpsActivityEvent {
+  string event_id = 1;
+  string kind = 2;
+  string title = 3;
+  string detail = 4;
+  string route = 5;
+  string severity = 6;
+  int64 created_at_ms = 7;
 }
 
 message CommandRun {
