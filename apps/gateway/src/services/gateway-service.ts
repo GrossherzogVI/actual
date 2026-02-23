@@ -20,6 +20,7 @@ import type {
   EgressAuditEntry,
   EgressPolicy,
   ExecutionMode,
+  FocusAction,
   FocusPanel,
   GuardrailProfile,
   GuardrailResult,
@@ -44,6 +45,7 @@ import type {
   ScenarioLineage,
   ScenarioLineageNode,
   ScenarioMutation,
+  ScenarioSimulationResult,
   TemporalLaneSignal,
   TemporalSignalSeverity,
   TemporalSignals,
@@ -317,6 +319,62 @@ function safeRate(numerator: number, denominator: number): number {
     return 0;
   }
   return Number((numerator / denominator).toFixed(4));
+}
+
+function clampSimulationConfidence(input?: number): number {
+  if (!Number.isFinite(input)) {
+    return 0.85;
+  }
+  return Math.max(0.5, Math.min(1.5, input as number));
+}
+
+function deriveSimulationDelta(input: {
+  expectedImpact?: string;
+  confidence?: number;
+  amountDelta?: number;
+  riskDelta?: number;
+}): { amountDelta: number; riskDelta: number } {
+  const explicitAmount = input.amountDelta;
+  const explicitRisk = input.riskDelta;
+
+  const hasExplicitAmount =
+    typeof explicitAmount === 'number' && Number.isFinite(explicitAmount);
+  const hasExplicitRisk =
+    typeof explicitRisk === 'number' && Number.isFinite(explicitRisk);
+
+  if (hasExplicitAmount && hasExplicitRisk) {
+    return {
+      amountDelta: Math.round(explicitAmount as number),
+      riskDelta: Math.round(explicitRisk as number),
+    };
+  }
+
+  const impact = (input.expectedImpact || '').toLowerCase();
+  let amountBaseline = 120;
+  let riskBaseline = -1;
+
+  if (impact.includes('cost')) {
+    amountBaseline = 420;
+    riskBaseline = -3;
+  } else if (impact.includes('risk')) {
+    amountBaseline = 240;
+    riskBaseline = -8;
+  } else if (impact.includes('compression') || impact.includes('throughput')) {
+    amountBaseline = 180;
+    riskBaseline = -2;
+  } else if (impact.includes('deadline')) {
+    amountBaseline = 210;
+    riskBaseline = -4;
+  }
+
+  const confidence = clampSimulationConfidence(input.confidence);
+  const derivedAmount = Math.round(amountBaseline * confidence);
+  const derivedRisk = Math.round(riskBaseline * confidence);
+
+  return {
+    amountDelta: hasExplicitAmount ? Math.round(explicitAmount as number) : derivedAmount,
+    riskDelta: hasExplicitRisk ? Math.round(explicitRisk as number) : derivedRisk,
+  };
 }
 
 function encodeOpsActivityCursor(cursor: OpsActivityCursor): string {
@@ -1954,13 +2012,19 @@ export function createGatewayService(
       }
     }
 
-    const actions = [
+    const baseActions = [
       {
         id: 'focus-urgent-review',
         title: 'Clear urgent review queue',
         route: '/review?priority=urgent',
         score: state.urgentReviews * 100,
         reason: 'Urgent queue items carry highest immediate financial risk.',
+        recommendedChain: 'triage -> open-review',
+        recommendedAssignee: 'delegate',
+        recommendedExecutionMode: 'live',
+        recommendedGuardrailProfile: 'strict',
+        recommendedRollbackWindowMinutes: 120,
+        expectedImpact: 'risk-reduction',
       },
       {
         id: 'focus-expiring-contracts',
@@ -1968,6 +2032,13 @@ export function createGatewayService(
         route: '/contracts?filter=expiring',
         score: state.expiringContracts * 85,
         reason: 'Contract deadlines create time-sensitive spend outcomes.',
+        recommendedChain:
+          'triage -> open-expiring-contracts -> assign-expiring-contracts-lane',
+        recommendedAssignee: 'delegate',
+        recommendedExecutionMode: 'live',
+        recommendedGuardrailProfile: 'balanced',
+        recommendedRollbackWindowMinutes: 180,
+        expectedImpact: 'cost-avoidance',
       },
       {
         id: 'focus-close-routine',
@@ -1975,6 +2046,12 @@ export function createGatewayService(
         route: '/ops',
         score: Math.max(20, state.pendingReviews * 8),
         reason: 'Close loop compresses unresolved manual operations.',
+        recommendedChain: 'triage -> close-weekly -> refresh',
+        recommendedAssignee: 'delegate',
+        recommendedExecutionMode: 'live',
+        recommendedGuardrailProfile: 'strict',
+        recommendedRollbackWindowMinutes: 240,
+        expectedImpact: 'operational-compression',
       },
       {
         id: 'focus-delegate-lanes-due',
@@ -1985,6 +2062,12 @@ export function createGatewayService(
           dueSoonLanes.length > 0
             ? `${dueSoonLanes.length} mission lane(s) are close to deadline.`
             : 'No due-soon mission lanes.',
+        recommendedChain: 'triage -> delegate-triage-batch -> apply-batch-policy',
+        recommendedAssignee: 'delegate',
+        recommendedExecutionMode: 'live',
+        recommendedGuardrailProfile: 'balanced',
+        recommendedRollbackWindowMinutes: 90,
+        expectedImpact: 'throughput-acceleration',
       },
       {
         id: 'focus-delegate-lanes-stale',
@@ -1995,8 +2078,18 @@ export function createGatewayService(
           staleAssignedLanes.length > 0
             ? `${staleAssignedLanes.length} assigned lane(s) have no progress for 48h.`
             : 'No stale assigned mission lanes.',
+        recommendedChain:
+          'triage -> escalate-stale-lanes -> delegate-triage-batch -> apply-batch-policy',
+        recommendedAssignee: 'delegate',
+        recommendedExecutionMode: 'live',
+        recommendedGuardrailProfile: 'strict',
+        recommendedRollbackWindowMinutes: 90,
+        expectedImpact: 'deadline-risk-control',
       },
-    ].map(action => {
+    ] satisfies FocusAction[];
+
+    const actions = baseActions
+      .map(action => {
       const latest = latestOutcomeByAction.get(action.id);
       if (!latest) {
         return action;
@@ -2384,6 +2477,124 @@ export function createGatewayService(
 
   async function listScenarioBranches(): Promise<ScenarioBranch[]> {
     return repository.listScenarioBranches();
+  }
+
+  async function selectSimulationBaseBranch(
+    preferredBaseBranchId?: string,
+  ): Promise<ScenarioBranch | undefined> {
+    const branches = await repository.listScenarioBranches();
+    if (branches.length === 0) {
+      return undefined;
+    }
+
+    if (preferredBaseBranchId) {
+      const preferred = branches.find(branch => branch.id === preferredBaseBranchId);
+      if (preferred) {
+        return preferred;
+      }
+    }
+
+    const adopted = branches
+      .filter(branch => branch.status === 'adopted')
+      .sort(
+        (a, b) =>
+          (b.adoptedAtMs || 0) - (a.adoptedAtMs || 0) ||
+          b.updatedAtMs - a.updatedAtMs,
+      )[0];
+    if (adopted) {
+      return adopted;
+    }
+
+    return branches.slice().sort((a, b) => b.updatedAtMs - a.updatedAtMs)[0];
+  }
+
+  async function simulateScenarioBranch(input: {
+    label?: string;
+    chain: string;
+    source: ScenarioSimulationResult['source'];
+    expectedImpact?: string;
+    confidence?: number;
+    amountDelta?: number;
+    riskDelta?: number;
+    preferredBaseBranchId?: string;
+    notes?: string;
+    recommendationId?: string;
+    actorId?: string;
+  }): Promise<ScenarioSimulationResult> {
+    const now = Date.now();
+    const baseBranch = await selectSimulationBaseBranch(input.preferredBaseBranchId);
+    const delta = deriveSimulationDelta({
+      expectedImpact: input.expectedImpact,
+      confidence: input.confidence,
+      amountDelta: input.amountDelta,
+      riskDelta: input.riskDelta,
+    });
+
+    const notes = [
+      typeof input.notes === 'string' && input.notes.trim().length > 0
+        ? input.notes.trim()
+        : undefined,
+      `Source: ${input.source}`,
+      `Chain: ${input.chain}`,
+      input.recommendationId ? `Recommendation: ${input.recommendationId}` : undefined,
+    ]
+      .filter((part): part is string => typeof part === 'string' && part.length > 0)
+      .join('\n');
+
+    const branch = await createScenarioBranch({
+      name:
+        typeof input.label === 'string' && input.label.trim().length > 0
+          ? input.label.trim()
+          : 'Simulation branch',
+      baseBranchId: baseBranch?.id,
+      notes,
+    });
+
+    const mutation = await applyScenarioMutation({
+      branchId: branch.id,
+      mutationKind: 'manual-adjustment',
+      payload: {
+        amountDelta: delta.amountDelta,
+        riskDelta: delta.riskDelta,
+        source: input.source,
+        chain: input.chain,
+        expectedImpact: input.expectedImpact,
+        confidence:
+          typeof input.confidence === 'number' && Number.isFinite(input.confidence)
+            ? input.confidence
+            : undefined,
+        recommendationId: input.recommendationId,
+        actorId: input.actorId || 'owner',
+        simulatedAtMs: now,
+      },
+    });
+
+    if (!mutation) {
+      throw new Error('simulation-mutation-failed');
+    }
+
+    await queue.enqueue(
+      queueJob('scenario.branch.simulated', {
+        branchId: branch.id,
+        mutationId: mutation.id,
+        source: input.source,
+        chain: input.chain,
+        actorId: input.actorId || 'owner',
+      }),
+    );
+
+    return {
+      branch,
+      mutation,
+      amountDelta: delta.amountDelta,
+      riskDelta: delta.riskDelta,
+      baseBranchId: baseBranch?.id,
+      source: input.source,
+      chain: input.chain,
+      simulatedAtMs: now,
+      expectedImpact: input.expectedImpact,
+      recommendationId: input.recommendationId,
+    };
   }
 
   async function createScenarioBranch(input: {
@@ -3790,6 +4001,7 @@ export function createGatewayService(
     listActionOutcomes,
     listScenarioBranches,
     createScenarioBranch,
+    simulateScenarioBranch,
     listScenarioMutations,
     applyScenarioMutation,
     compareScenarioOutcomes,

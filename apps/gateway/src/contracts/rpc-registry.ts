@@ -305,6 +305,14 @@ export const rpcRegistry: RpcRegistryEntry[] = [
   },
   {
     service: 'scenario.v1',
+    rpc: 'SimulateBranch',
+    method: 'POST',
+    path: '/scenario/v1/simulate-branch',
+    requiresEnvelope: true,
+    requestSchema: scenarioSchemas.simulateBranch,
+  },
+  {
+    service: 'scenario.v1',
     rpc: 'CompareOutcomes',
     method: 'POST',
     path: '/scenario/v1/compare-outcomes',

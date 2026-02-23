@@ -10,6 +10,7 @@ const apiClientMock = vi.hoisted(() => ({
   executeCommandChain: vi.fn(),
   createPlaybook: vi.fn(),
   recordActionOutcome: vi.fn(),
+  simulateScenarioBranch: vi.fn(),
 }));
 
 vi.mock('../../core/api/client', () => ({
@@ -124,6 +125,31 @@ describe('DecisionGraphPanel', () => {
       outcome: 'accepted',
       recordedAtMs: Date.now(),
     });
+    apiClientMock.simulateScenarioBranch.mockResolvedValue({
+      branch: {
+        id: 'scenario-generated',
+        name: 'Decision branch',
+        status: 'draft',
+        createdAtMs: Date.now(),
+        updatedAtMs: Date.now(),
+      },
+      mutation: {
+        id: 'mutation-generated',
+        branchId: 'scenario-generated',
+        kind: 'manual-adjustment',
+        payload: {
+          source: 'decision-graph',
+        },
+        createdAtMs: Date.now(),
+      },
+      amountDelta: 336,
+      riskDelta: -2,
+      source: 'decision-graph',
+      chain: 'triage -> expiring<30d -> batch-renegotiate',
+      simulatedAtMs: Date.now(),
+      recommendationId: 'rec-contract-expiring',
+      expectedImpact: 'cost-avoidance',
+    });
   });
 
   it('executes mapped recommendation chain with selected execution controls', async () => {
@@ -179,5 +205,35 @@ describe('DecisionGraphPanel', () => {
   it('renders fallback empty state when no recommendations exist', () => {
     renderPanel([]);
     expect(screen.getByText('No recommendations available yet.')).toBeInTheDocument();
+  });
+
+  it('creates a scenario simulation from the selected recommendation', async () => {
+    const recommendation = createRecommendation({
+      id: 'rec-contract-expiring',
+      title: 'Review expiring contracts this week',
+      expectedImpact: 'cost-avoidance',
+      confidence: 0.8,
+    });
+    const { onRoute } = renderPanel([recommendation]);
+
+    await screen.findByText(/Recommendation explanation/i);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Simulate recommendation branch' }));
+
+    await waitFor(() => {
+      expect(apiClientMock.simulateScenarioBranch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          label: expect.stringContaining('Decision Review expiring contracts'),
+          chain: 'triage -> expiring<30d -> batch-renegotiate',
+          source: 'decision-graph',
+          expectedImpact: 'cost-avoidance',
+          confidence: 0.8,
+          recommendationId: 'rec-contract-expiring',
+          notes: 'Generated from decision graph. Recommendation: rec-contract-expiring.',
+        }),
+      );
+    });
+
+    expect(onRoute).toHaveBeenCalledWith('/ops#spatial-twin');
   });
 });

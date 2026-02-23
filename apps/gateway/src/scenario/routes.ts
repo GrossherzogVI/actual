@@ -9,6 +9,14 @@ import type { GatewayService } from '../services/gateway-service';
 type RequestLike = { body?: unknown };
 type QueryLike = { query?: Record<string, unknown> };
 
+const simulationSources = [
+  'decision-graph',
+  'temporal-intelligence',
+  'adaptive-focus',
+  'command-mesh',
+  'manual',
+] as const;
+
 export const scenarioSchemas = {
   createBranch: z.object({
     envelope: commandEnvelopeSchema,
@@ -21,6 +29,19 @@ export const scenarioSchemas = {
     branchId: z.string().min(1),
     mutationKind: z.string().min(1),
     payload: z.record(z.string(), z.unknown()),
+  }),
+  simulateBranch: z.object({
+    envelope: commandEnvelopeSchema,
+    label: z.string().trim().min(1).default('Simulation branch'),
+    chain: z.string().trim().min(1).default('triage -> refresh'),
+    source: z.enum(simulationSources).default('manual'),
+    expectedImpact: z.string().optional(),
+    confidence: z.number().finite().optional(),
+    amountDelta: z.number().finite().optional(),
+    riskDelta: z.number().finite().optional(),
+    preferredBaseBranchId: z.string().trim().min(1).optional(),
+    notes: z.string().optional(),
+    recommendationId: z.string().optional(),
   }),
   compareOutcomes: z.object({
     branchId: z.string().min(1),
@@ -96,6 +117,29 @@ export async function registerScenarioRoutes(
       return sendNotFound(reply, 'branch-not-found');
     }
     return mutation;
+  });
+
+  app.post('/simulate-branch', async (request, reply) => {
+    const payload = parseRequestBody(
+      scenarioSchemas.simulateBranch,
+      (request as RequestLike).body,
+      reply,
+    );
+    if (!payload) return;
+
+    return service.simulateScenarioBranch({
+      label: payload.label,
+      chain: payload.chain,
+      source: payload.source,
+      expectedImpact: payload.expectedImpact,
+      confidence: payload.confidence,
+      amountDelta: payload.amountDelta,
+      riskDelta: payload.riskDelta,
+      preferredBaseBranchId: payload.preferredBaseBranchId,
+      notes: payload.notes,
+      recommendationId: payload.recommendationId,
+      actorId: payload.envelope.actorId,
+    });
   });
 
   app.post('/compare-outcomes', async (request, reply) => {

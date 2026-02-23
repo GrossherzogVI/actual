@@ -1000,6 +1000,44 @@ describe('gateway service contract behavior', () => {
     expect(forced.ok).toBe(true);
   });
 
+  it('creates simulation branches with derived deltas and preferred adopted baseline', async () => {
+    const { service } = await createHarness();
+
+    const root = await service.createScenarioBranch({
+      name: 'Simulation Root',
+    });
+    const adopted = await service.adoptScenarioBranch({
+      branchId: root.id,
+      force: true,
+      actorId: 'owner',
+    });
+    expect(adopted.ok).toBe(true);
+
+    const simulation = await service.simulateScenarioBranch({
+      label: 'Decision: urgent review',
+      chain: 'triage -> open-review',
+      source: 'decision-graph',
+      expectedImpact: 'risk-reduction',
+      confidence: 0.8,
+      recommendationId: 'rec-review-urgent',
+      actorId: 'owner',
+    });
+
+    expect(simulation.branch.id).toBeTruthy();
+    expect(simulation.branch.baseBranchId).toBe(root.id);
+    expect(simulation.mutation.kind).toBe('manual-adjustment');
+    expect(simulation.amountDelta).toBe(192);
+    expect(simulation.riskDelta).toBe(-6);
+    expect(simulation.mutation.payload).toMatchObject({
+      source: 'decision-graph',
+      chain: 'triage -> open-review',
+      recommendationId: 'rec-review-urgent',
+    });
+
+    const mutations = await service.listScenarioMutations(simulation.branch.id);
+    expect(mutations.some(mutation => mutation.id === simulation.mutation.id)).toBe(true);
+  });
+
   it('filters command runs by actor, surface, mode, and error state', async () => {
     const { service } = await createHarness();
 
@@ -1072,6 +1110,83 @@ describe('gateway service contract behavior', () => {
     const queued = await queue.dequeue(20);
     expect(queued.some(job => job.name === 'workflow.close.run')).toBe(false);
     expect(queued.some(job => job.name === 'delegate.lane.assigned')).toBe(false);
+  });
+
+  it('escalates only stale assigned lanes during live chain execution', async () => {
+    const { service, repository } = await createHarness();
+    const now = Date.now();
+
+    await repository.createDelegateLane({
+      id: 'lane-stale-assigned',
+      title: 'Stale assigned lane',
+      priority: 'high',
+      status: 'assigned',
+      assignee: 'delegate',
+      assignedBy: 'owner',
+      payload: {},
+      createdAtMs: now - 72 * 60 * 60 * 1000,
+      updatedAtMs: now - 50 * 60 * 60 * 1000,
+    });
+
+    await repository.createDelegateLane({
+      id: 'lane-fresh-assigned',
+      title: 'Fresh assigned lane',
+      priority: 'normal',
+      status: 'assigned',
+      assignee: 'delegate',
+      assignedBy: 'owner',
+      payload: {},
+      createdAtMs: now - 4 * 60 * 60 * 1000,
+      updatedAtMs: now - 2 * 60 * 60 * 1000,
+    });
+
+    await repository.createDelegateLane({
+      id: 'lane-stale-accepted',
+      title: 'Stale accepted lane',
+      priority: 'normal',
+      status: 'accepted',
+      assignee: 'delegate',
+      assignedBy: 'owner',
+      payload: {},
+      createdAtMs: now - 96 * 60 * 60 * 1000,
+      updatedAtMs: now - 60 * 60 * 60 * 1000,
+    });
+
+    const run = await service.executeWorkflowCommandChain({
+      chain: 'escalate-stale-lanes',
+      actorId: 'owner',
+      options: {
+        executionMode: 'live',
+        guardrailProfile: 'strict',
+      },
+    });
+
+    expect(run.status).toBe('completed');
+    expect(run.steps[0]?.status).toBe('ok');
+    expect(run.steps[0]?.detail).toContain('Escalated 1 stale lane(s).');
+
+    const staleEvents = await service.listDelegateLaneEvents({
+      laneId: 'lane-stale-assigned',
+      limit: 20,
+    });
+    const staleEscalation = staleEvents.find(event => event.type === 'comment');
+    expect(staleEscalation).toBeDefined();
+    expect(staleEscalation?.message).toContain('Autopilot escalation');
+    expect(staleEscalation?.payload).toMatchObject({
+      source: 'workflow.escalate-stale-lanes',
+    });
+
+    const freshEvents = await service.listDelegateLaneEvents({
+      laneId: 'lane-fresh-assigned',
+      limit: 20,
+    });
+    expect(freshEvents.some(event => event.type === 'comment')).toBe(false);
+
+    const acceptedEvents = await service.listDelegateLaneEvents({
+      laneId: 'lane-stale-accepted',
+      limit: 20,
+    });
+    expect(acceptedEvents.some(event => event.type === 'comment')).toBe(false);
   });
 
   it('blocks strict live runs on guardrail violations and allows balanced runs', async () => {

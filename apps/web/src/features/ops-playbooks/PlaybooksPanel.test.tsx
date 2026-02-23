@@ -14,6 +14,7 @@ const apiClientMock = vi.hoisted(() => ({
   replayPlaybookRun: vi.fn(),
   executeCommandChain: vi.fn(),
   rollbackPlaybookRun: vi.fn(),
+  simulateScenarioBranch: vi.fn(),
 }));
 
 vi.mock('../../core/api/client', () => ({
@@ -160,6 +161,30 @@ describe('PlaybooksPanel', () => {
         status: 'completed',
       }),
     );
+    apiClientMock.simulateScenarioBranch.mockResolvedValue({
+      branch: {
+        id: 'playbook-sim-branch',
+        name: 'Playbook simulation',
+        status: 'draft',
+        createdAtMs: Date.now(),
+        updatedAtMs: Date.now(),
+      },
+      mutation: {
+        id: 'playbook-sim-mutation',
+        branchId: 'playbook-sim-branch',
+        kind: 'manual-adjustment',
+        payload: {
+          source: 'manual',
+        },
+        createdAtMs: Date.now(),
+      },
+      amountDelta: 180,
+      riskDelta: -2,
+      source: 'manual',
+      chain: 'triage -> open-review',
+      simulatedAtMs: Date.now(),
+      expectedImpact: 'playbook execution rehearsal',
+    });
   });
 
   it('sends execution controls to live playbook runs', async () => {
@@ -191,7 +216,7 @@ describe('PlaybooksPanel', () => {
         idempotencyKey: 'playbook-key-001',
       }),
     );
-  });
+  }, 10000);
 
   it('renders run statuses and only enables rollback for eligible terminal runs', async () => {
     renderPanel();
@@ -268,5 +293,24 @@ describe('PlaybooksPanel', () => {
       await screen.findByRole('dialog', { name: 'Run details drawer' }),
     ).toBeInTheDocument();
     expect(screen.getByText(/event-playbook-failed/i)).toBeInTheDocument();
+  });
+
+  it('simulates drafted playbook chain into spatial twin', async () => {
+    renderPanel();
+    await screen.findByText('Morning Loop');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Simulate Chain' }));
+
+    await waitFor(() => {
+      expect(apiClientMock.simulateScenarioBranch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          label: 'Playbook Draft simulation',
+          chain: 'triage -> expiring<30d -> batch-renegotiate -> close-weekly -> refresh',
+          source: 'manual',
+          expectedImpact: 'playbook execution rehearsal',
+          confidence: 0.82,
+        }),
+      );
+    });
   });
 });

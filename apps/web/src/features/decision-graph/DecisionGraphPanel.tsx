@@ -249,6 +249,40 @@ export function DecisionGraphPanel({
     },
   });
 
+  const simulateRecommendation = useMutation({
+    mutationFn: async () => {
+      if (!selected || !blueprint) {
+        throw new Error('No selected recommendation');
+      }
+
+      return apiClient.simulateScenarioBranch({
+        label: `Decision ${short(selected.title, 26)}`,
+        chain: blueprint.chain,
+        source: 'decision-graph',
+        expectedImpact: selected.expectedImpact,
+        confidence: selected.confidence,
+        notes: `Generated from decision graph. Recommendation: ${selected.id}.`,
+        recommendationId: selected.id,
+      });
+    },
+    onSuccess: async simulation => {
+      onRoute('/ops#spatial-twin');
+      onStatus(
+        `Decision simulation branch ready: ${simulation.branch.name} (Δamount ${simulation.amountDelta}, Δrisk ${simulation.riskDelta}).`,
+      );
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['scenario-branches'] }),
+        queryClient.invalidateQueries({ queryKey: ['scenario-mutations'] }),
+        queryClient.invalidateQueries({ queryKey: ['scenario-compare'] }),
+        queryClient.invalidateQueries({ queryKey: ['scenario-adoption-check'] }),
+        queryClient.invalidateQueries({ queryKey: ['scenario-lineage'] }),
+      ]);
+    },
+    onError: error => {
+      onStatus(asError(error, 'Decision simulation failed'));
+    },
+  });
+
   if (!selected || !blueprint) {
     return (
       <section className="fo-panel">
@@ -335,9 +369,12 @@ export function DecisionGraphPanel({
         </Button>
         <Button
           variant="secondary"
-          onClick={() => onRoute('/ops#spatial-twin')}
+          disabled={simulateRecommendation.isPending}
+          onClick={() => simulateRecommendation.mutate()}
         >
-          Simulate in spatial twin
+          {simulateRecommendation.isPending
+            ? 'Simulating...'
+            : 'Simulate recommendation branch'}
         </Button>
       </div>
 

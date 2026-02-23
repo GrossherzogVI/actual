@@ -44,6 +44,17 @@ function nextId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function simulationLabel(chain: string): string {
+  const trimmed = chain.trim();
+  if (!trimmed) {
+    return 'Command mesh simulation';
+  }
+  if (trimmed.length <= 56) {
+    return `Command ${trimmed}`;
+  }
+  return `Command ${trimmed.slice(0, 55)}…`;
+}
+
 export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
   const queryClient = useQueryClient();
   const [command, setCommand] = useState('triage -> close-weekly');
@@ -213,6 +224,35 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
     },
   });
 
+  const simulateChain = useMutation({
+    mutationFn: async (chain: string) =>
+      apiClient.simulateScenarioBranch({
+        label: simulationLabel(chain),
+        chain,
+        source: 'command-mesh',
+        expectedImpact: 'command-path simulation',
+        confidence: executionMode === 'live' ? 0.9 : 0.8,
+        notes: `Generated from command mesh. mode=${executionMode} guardrail=${guardrailProfile}.`,
+      }),
+    onSuccess: async simulation => {
+      onRoute('/ops#spatial-twin');
+      onStatus(
+        `Command simulation ready: ${simulation.branch.name} (Δamount ${simulation.amountDelta}, Δrisk ${simulation.riskDelta}).`,
+      );
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['scenario-branches'] }),
+        queryClient.invalidateQueries({ queryKey: ['scenario-mutations'] }),
+        queryClient.invalidateQueries({ queryKey: ['scenario-compare'] }),
+        queryClient.invalidateQueries({ queryKey: ['scenario-adoption-check'] }),
+        queryClient.invalidateQueries({ queryKey: ['scenario-lineage'] }),
+      ]);
+    },
+    onError: error => {
+      const message = error instanceof Error ? error.message : String(error);
+      onStatus(`Simulation failed: ${message}`);
+    },
+  });
+
   const rollbackRun = useMutation({
     mutationFn: (input: { runId: string; reason: string }) =>
       apiClient.rollbackCommandRun(input.runId, input.reason),
@@ -258,6 +298,13 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
             onClick={() => execute.mutate(command)}
           >
             {execute.isPending ? 'Running' : 'Execute'}
+          </Button>
+          <Button
+            variant="secondary"
+            disabled={simulateChain.isPending}
+            onClick={() => simulateChain.mutate(command)}
+          >
+            {simulateChain.isPending ? 'Simulating...' : 'Simulate in twin'}
           </Button>
           <Button
             variant="secondary"
@@ -466,6 +513,14 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
                 onClick={() => setSelectedRunId(run.id)}
               >
                 Details
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => simulateChain.mutate(run.chain)}
+                disabled={simulateChain.isPending}
+              >
+                {simulateChain.isPending ? 'Simulating...' : 'Simulate'}
               </Button>
               <Button
                 size="sm"

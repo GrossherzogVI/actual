@@ -7,6 +7,7 @@ import "common/v1/envelope.proto";
 service ScenarioService {
   rpc CreateBranch(CreateBranchRequest) returns (CreateBranchResponse);
   rpc ApplyMutation(ApplyMutationRequest) returns (ApplyMutationResponse);
+  rpc SimulateBranch(SimulateBranchRequest) returns (SimulateBranchResponse);
   rpc CompareOutcomes(CompareOutcomesRequest) returns (CompareOutcomesResponse);
   rpc AdoptionCheck(AdoptionCheckRequest) returns (AdoptionCheckResponse);
   rpc ListMutations(ListMutationsRequest) returns (ListMutationsResponse);
@@ -34,6 +35,34 @@ message ApplyMutationRequest {
 
 message ApplyMutationResponse {
   string mutation_id = 1;
+}
+
+message SimulateBranchRequest {
+  financeos.common.v1.CommandEnvelope envelope = 1;
+  string label = 2;
+  string chain = 3;
+  string source = 4;
+  string expected_impact = 5;
+  double confidence = 6;
+  double amount_delta = 7;
+  double risk_delta = 8;
+  string preferred_base_branch_id = 9;
+  string notes = 10;
+  string recommendation_id = 11;
+}
+
+message SimulateBranchResponse {
+  string branch_id = 1;
+  string branch_name = 2;
+  string mutation_id = 3;
+  double amount_delta = 4;
+  double risk_delta = 5;
+  string base_branch_id = 6;
+  string source = 7;
+  string chain = 8;
+  int64 simulated_at_ms = 9;
+  string expected_impact = 10;
+  string recommendation_id = 11;
 }
 
 message CompareOutcomesRequest {

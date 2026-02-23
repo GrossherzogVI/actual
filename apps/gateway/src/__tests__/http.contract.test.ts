@@ -823,6 +823,35 @@ describe('gateway HTTP contract/runtime', () => {
     expect(forcedAdopt.statusCode).toBe(200);
   });
 
+  it('simulates scenario branches through the shared simulation endpoint', async () => {
+    const { app } = await createHarness();
+
+    const simulated = await invoke(app, 'POST', '/scenario/v1/simulate-branch', {
+      envelope: envelope(),
+      label: 'HTTP simulation',
+      chain: 'triage -> open-review',
+      source: 'decision-graph',
+      expectedImpact: 'risk-reduction',
+      confidence: 0.8,
+      recommendationId: 'rec-http-1',
+    });
+
+    expect(simulated.statusCode).toBe(200);
+    const body = simulated.body as {
+      branch?: { id?: string };
+      mutation?: { id?: string; kind?: string };
+      amountDelta?: number;
+      riskDelta?: number;
+      source?: string;
+    };
+    expect(typeof body.branch?.id).toBe('string');
+    expect(typeof body.mutation?.id).toBe('string');
+    expect(body.mutation?.kind).toBe('manual-adjustment');
+    expect(body.amountDelta).toBeGreaterThan(0);
+    expect(body.riskDelta).toBeLessThan(0);
+    expect(body.source).toBe('decision-graph');
+  });
+
   it('serves temporal intelligence signals over HTTP query params', async () => {
     const { app } = await createHarness();
 

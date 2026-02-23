@@ -10,6 +10,7 @@ const apiClientMock = vi.hoisted(() => ({
   listCommandRuns: vi.fn(),
   executeCommandChain: vi.fn(),
   rollbackCommandRun: vi.fn(),
+  simulateScenarioBranch: vi.fn(),
 }));
 
 vi.mock('../../core/api/client', () => ({
@@ -119,6 +120,30 @@ describe('CommandMeshPanel', () => {
         status: 'completed',
       }),
     );
+    apiClientMock.simulateScenarioBranch.mockResolvedValue({
+      branch: {
+        id: 'cmd-sim-branch',
+        name: 'Command simulation',
+        status: 'draft',
+        createdAtMs: Date.now(),
+        updatedAtMs: Date.now(),
+      },
+      mutation: {
+        id: 'cmd-sim-mutation',
+        branchId: 'cmd-sim-branch',
+        kind: 'manual-adjustment',
+        payload: {
+          source: 'command-mesh',
+        },
+        createdAtMs: Date.now(),
+      },
+      amountDelta: 120,
+      riskDelta: -2,
+      source: 'command-mesh',
+      chain: 'triage -> close-weekly',
+      simulatedAtMs: Date.now(),
+      expectedImpact: 'command-path simulation',
+    });
   });
 
   it('passes execution options to command chain execution and renders guardrail blocks', async () => {
@@ -182,6 +207,26 @@ describe('CommandMeshPanel', () => {
         'rollback-latest-live-chain',
       );
     });
+  });
+
+  it('simulates the current command chain into spatial twin', async () => {
+    const { onRoute } = renderPanel();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Simulate in twin' }));
+
+    await waitFor(() => {
+      expect(apiClientMock.simulateScenarioBranch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          label: 'Command triage -> close-weekly',
+          chain: 'triage -> close-weekly',
+          source: 'command-mesh',
+          expectedImpact: 'command-path simulation',
+          confidence: 0.8,
+        }),
+      );
+    });
+
+    expect(onRoute).toHaveBeenCalledWith('/ops#spatial-twin');
   });
 
   it('renders command run history guardrail and effect summaries', async () => {

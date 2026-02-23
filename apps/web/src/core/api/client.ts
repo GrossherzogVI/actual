@@ -29,6 +29,8 @@ import type {
   ScenarioComparison,
   ScenarioLineage,
   ScenarioMutation,
+  ScenarioSimulationResult,
+  ScenarioSimulationSource,
   TemporalSignals,
   ReplayWorkerDeadLettersResult,
   WorkerDeadLetter,
@@ -736,6 +738,36 @@ export const apiClient = {
         }),
       },
     );
+  },
+
+  simulateScenarioBranch(input: {
+    label: string;
+    chain: string;
+    source: ScenarioSimulationSource;
+    expectedImpact?: string;
+    confidence?: number;
+    amountDelta?: number;
+    riskDelta?: number;
+    preferredBaseBranchId?: string;
+    notes?: string;
+    recommendationId?: string;
+  }) {
+    return request<ScenarioSimulationResult>('/scenario/v1/simulate-branch', {
+      method: 'POST',
+      body: JSON.stringify({
+        envelope: commandEnvelope('simulate-scenario-branch'),
+        label: input.label,
+        chain: input.chain,
+        source: input.source,
+        expectedImpact: input.expectedImpact,
+        confidence: input.confidence,
+        amountDelta: input.amountDelta,
+        riskDelta: input.riskDelta,
+        preferredBaseBranchId: input.preferredBaseBranchId,
+        notes: input.notes,
+        recommendationId: input.recommendationId,
+      }),
+    });
   },
 
   adoptScenarioBranch(

@@ -791,7 +791,7 @@ export function App() {
             <CommandMeshPanel onRoute={handleRoute} onStatus={setStatus} />
           </motion.div>
           <motion.div variants={itemVariants}>
-            <PlaybooksPanel onStatus={setStatus} />
+            <PlaybooksPanel onStatus={setStatus} onRoute={handleRoute} />
           </motion.div>
           <motion.div variants={itemVariants}>
             <SpatialTwinPanel onStatus={setStatus} />

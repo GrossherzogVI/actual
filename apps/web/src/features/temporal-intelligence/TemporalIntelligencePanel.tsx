@@ -145,37 +145,20 @@ export function TemporalIntelligencePanel({
   });
 
   const simulateChain = useMutation({
-    mutationFn: async (chain: TemporalRecommendedChain) => {
-      const branches = await apiClient.listScenarioBranches();
-      const preferredBase =
-        branches
-          .filter(branch => branch.status === 'adopted')
-          .sort(
-            (left, right) =>
-              (right.adoptedAtMs || 0) - (left.adoptedAtMs || 0) ||
-              right.updatedAtMs - left.updatedAtMs,
-          )[0] ||
-        branches.slice().sort((left, right) => right.updatedAtMs - left.updatedAtMs)[0] ||
-        null;
-
-      const created = await apiClient.createScenarioBranch(
-        `${chain.label} ${todayKey()}`,
-        preferredBase?.id,
-        `Generated from temporal intelligence. Chain: ${chain.chain}`,
-      );
-
-      await apiClient.applyScenarioMutation(created.id, 'manual-adjustment', {
+    mutationFn: async (chain: TemporalRecommendedChain) =>
+      apiClient.simulateScenarioBranch({
+        label: `${chain.label} ${todayKey()}`,
+        chain: chain.chain,
+        source: 'temporal-intelligence',
+        expectedImpact: chain.reason,
+        confidence: 0.85,
         amountDelta: chain.amountDelta,
         riskDelta: chain.riskDelta,
-        source: 'temporal-intelligence',
-        chain: chain.chain,
-      });
-
-      return created;
-    },
-    onSuccess: async branch => {
+        notes: `Generated from temporal intelligence. Chain: ${chain.chain}`,
+      }),
+    onSuccess: async simulation => {
       onRoute('/ops#spatial-twin');
-      onStatus(`Temporal simulation branch ready: ${branch.name}`);
+      onStatus(`Temporal simulation branch ready: ${simulation.branch.name}`);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['scenario-branches'] }),
         queryClient.invalidateQueries({ queryKey: ['scenario-mutations'] }),

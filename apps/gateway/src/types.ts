@@ -187,6 +187,26 @@ export type ScenarioAdoptionCheck = {
   checkedAtMs: number;
 };
 
+export type ScenarioSimulationSource =
+  | 'decision-graph'
+  | 'temporal-intelligence'
+  | 'adaptive-focus'
+  | 'command-mesh'
+  | 'manual';
+
+export type ScenarioSimulationResult = {
+  branch: ScenarioBranch;
+  mutation: ScenarioMutation;
+  amountDelta: number;
+  riskDelta: number;
+  baseBranchId?: string;
+  source: ScenarioSimulationSource;
+  chain: string;
+  simulatedAtMs: number;
+  expectedImpact?: string;
+  recommendationId?: string;
+};
+
 export type DelegateLane = {
   id: string;
   title: string;
@@ -219,6 +239,12 @@ export type FocusAction = {
   route: string;
   score: number;
   reason: string;
+  recommendedChain?: string;
+  recommendedAssignee?: string;
+  recommendedExecutionMode?: ExecutionMode;
+  recommendedGuardrailProfile?: GuardrailProfile;
+  recommendedRollbackWindowMinutes?: number;
+  expectedImpact?: string;
 };
 
 export type FocusPanel = {

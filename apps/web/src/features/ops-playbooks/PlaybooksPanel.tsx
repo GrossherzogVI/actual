@@ -27,6 +27,7 @@ import {
 
 type PlaybooksPanelProps = {
   onStatus: (status: string) => void;
+  onRoute?: (route: string) => void;
 };
 
 type RunModeFilter =
@@ -205,7 +206,30 @@ function mutationErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-export function PlaybooksPanel({ onStatus }: PlaybooksPanelProps) {
+function commandToToken(command: Record<string, unknown>): string | null {
+  const verb = command.verb;
+  if (verb === 'resolve-next-action') return 'triage';
+  if (verb === 'open-expiring-contracts') return 'expiring<30d';
+  if (verb === 'assign-expiring-contracts-lane') return 'batch-renegotiate';
+  if (verb === 'open-urgent-review') return 'open-review';
+  if (verb === 'refresh-command-center') return 'refresh';
+  if (verb === 'run-close') {
+    return command.period === 'monthly' ? 'close-monthly' : 'close-weekly';
+  }
+  return null;
+}
+
+function playbookToChain(playbook: Playbook): string {
+  const tokens = playbook.commands
+    .map(command => commandToToken(command))
+    .filter((token): token is string => typeof token === 'string' && token.length > 0);
+  if (tokens.length === 0) {
+    return 'triage -> refresh';
+  }
+  return joinChain(tokens);
+}
+
+export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
   const queryClient = useQueryClient();
   const [playbookName, setPlaybookName] = useState('');
   const [playbookChain, setPlaybookChain] = useState(CHAIN_HINT);
@@ -375,6 +399,34 @@ export function PlaybooksPanel({ onStatus }: PlaybooksPanelProps) {
     },
     onError: error => {
       onStatus(mutationErrorMessage(error, 'Rollback failed'));
+    },
+  });
+
+  const simulate = useMutation({
+    mutationFn: async (input: { label: string; chain: string; expectedImpact: string }) =>
+      apiClient.simulateScenarioBranch({
+        label: input.label,
+        chain: input.chain,
+        source: 'manual',
+        expectedImpact: input.expectedImpact,
+        confidence: executionMode === 'live' ? 0.9 : 0.82,
+        notes: `Generated from ops playbooks panel. mode=${executionMode} guardrail=${guardrailProfile}.`,
+      }),
+    onSuccess: async simulation => {
+      onStatus(
+        `Playbook simulation ready: ${simulation.branch.name} (Δamount ${simulation.amountDelta}, Δrisk ${simulation.riskDelta}).`,
+      );
+      onRoute?.('/ops#spatial-twin');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['scenario-branches'] }),
+        queryClient.invalidateQueries({ queryKey: ['scenario-mutations'] }),
+        queryClient.invalidateQueries({ queryKey: ['scenario-compare'] }),
+        queryClient.invalidateQueries({ queryKey: ['scenario-adoption-check'] }),
+        queryClient.invalidateQueries({ queryKey: ['scenario-lineage'] }),
+      ]);
+    },
+    onError: error => {
+      onStatus(mutationErrorMessage(error, 'Simulate playbook failed'));
     },
   });
 
@@ -604,6 +656,19 @@ export function PlaybooksPanel({ onStatus }: PlaybooksPanelProps) {
           >
             {preview.isPending ? 'Previewing...' : 'Run Dry-run Preview'}
           </Button>
+          <Button
+            variant="secondary"
+            disabled={!canPreview || simulate.isPending}
+            onClick={() =>
+              simulate.mutate({
+                label: `Playbook Draft ${playbookName.trim() || 'simulation'}`,
+                chain: normalizedChain || 'triage -> refresh',
+                expectedImpact: 'playbook execution rehearsal',
+              })
+            }
+          >
+            {simulate.isPending ? 'Simulating...' : 'Simulate Chain'}
+          </Button>
 
           <Button
             disabled={
@@ -671,6 +736,20 @@ export function PlaybooksPanel({ onStatus }: PlaybooksPanelProps) {
                 }
               >
                 Dry-run
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={simulate.isPending}
+                onClick={() =>
+                  simulate.mutate({
+                    label: `Playbook ${playbook.name}`,
+                    chain: playbookToChain(playbook),
+                    expectedImpact: 'playbook template rehearsal',
+                  })
+                }
+              >
+                {simulate.isPending ? 'Simulating...' : 'Simulate'}
               </Button>
               <Button
                 size="sm"
@@ -775,6 +854,20 @@ export function PlaybooksPanel({ onStatus }: PlaybooksPanelProps) {
                 }
               >
                 Replay dry-run
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={simulate.isPending || !runItem.chain}
+                onClick={() =>
+                  simulate.mutate({
+                    label: `Playbook run ${runItem.id}`,
+                    chain: runItem.chain || 'triage -> refresh',
+                    expectedImpact: 'playbook run scenario rehearsal',
+                  })
+                }
+              >
+                {simulate.isPending ? 'Simulating...' : 'Simulate'}
               </Button>
               <Button
                 size="sm"

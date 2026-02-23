@@ -11,9 +11,7 @@ import { TemporalIntelligencePanel } from './TemporalIntelligencePanel';
 const apiClientMock = vi.hoisted(() => ({
   getTemporalSignals: vi.fn(),
   executeCommandChain: vi.fn(),
-  listScenarioBranches: vi.fn(),
-  createScenarioBranch: vi.fn(),
-  applyScenarioMutation: vi.fn(),
+  simulateScenarioBranch: vi.fn(),
 }));
 
 vi.mock('../../core/api/client', () => ({
@@ -153,28 +151,30 @@ describe('TemporalIntelligencePanel', () => {
     vi.clearAllMocks();
     apiClientMock.getTemporalSignals.mockResolvedValue(createTemporalSignals());
     apiClientMock.executeCommandChain.mockResolvedValue(createRun());
-    apiClientMock.listScenarioBranches.mockResolvedValue([
-      {
-        id: 'baseline-1',
-        name: 'Baseline',
-        status: 'adopted',
-        createdAtMs: Date.now() - 10_000,
-        updatedAtMs: Date.now() - 10_000,
-        adoptedAtMs: Date.now() - 9_000,
+    apiClientMock.simulateScenarioBranch.mockResolvedValue({
+      branch: {
+        id: 'branch-temporal-1',
+        name: 'Run safe close window 2026-02-23',
+        status: 'draft',
+        baseBranchId: 'baseline-1',
+        createdAtMs: Date.now(),
+        updatedAtMs: Date.now(),
       },
-    ]);
-    apiClientMock.createScenarioBranch.mockResolvedValue({
-      id: 'branch-temporal-1',
-      name: 'Run safe close window 2026-02-23',
-      status: 'draft',
-      baseBranchId: 'baseline-1',
-      createdAtMs: Date.now(),
-      updatedAtMs: Date.now(),
-    });
-    apiClientMock.applyScenarioMutation.mockResolvedValue({
-      id: 'mutation-1',
-      branchId: 'branch-temporal-1',
-      kind: 'manual-adjustment',
+      mutation: {
+        id: 'mutation-1',
+        branchId: 'branch-temporal-1',
+        kind: 'manual-adjustment',
+        payload: {
+          source: 'temporal-intelligence',
+        },
+        createdAtMs: Date.now(),
+      },
+      amountDelta: 120,
+      riskDelta: -2,
+      source: 'temporal-intelligence',
+      chain: 'triage -> close-safe -> refresh',
+      simulatedAtMs: Date.now(),
+      expectedImpact: 'Next business-day execution window starts 2026-02-24.',
     });
   });
 
@@ -236,17 +236,17 @@ describe('TemporalIntelligencePanel', () => {
     );
 
     await waitFor(() => {
-      expect(apiClientMock.createScenarioBranch).toHaveBeenCalledTimes(1);
+      expect(apiClientMock.simulateScenarioBranch).toHaveBeenCalledTimes(1);
     });
 
-    expect(apiClientMock.applyScenarioMutation).toHaveBeenCalledWith(
-      'branch-temporal-1',
-      'manual-adjustment',
+    expect(apiClientMock.simulateScenarioBranch).toHaveBeenCalledWith(
       expect.objectContaining({
+        label: expect.stringContaining('Run safe close window'),
+        chain: 'triage -> close-safe -> refresh',
+        source: 'temporal-intelligence',
         amountDelta: 120,
         riskDelta: -2,
-        source: 'temporal-intelligence',
-        chain: 'triage -> close-safe -> refresh',
+        expectedImpact: 'Next business-day execution window starts 2026-02-24.',
       }),
     );
 
