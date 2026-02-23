@@ -10,6 +10,18 @@ This `apps/` tree is the ground-up Level-5 stack for the Finance OS command plat
 - `apps/worker`: projection/anomaly/close/model background jobs.
 - `apps/ai-policy`: sovereignty-first AI routing and egress audit plane.
 
+## Persistence + Queue
+
+`apps/gateway` supports dual-mode operation:
+
+- `FINANCE_GATEWAY_STORE=memory`: in-memory repository (default).
+- `FINANCE_GATEWAY_STORE=postgres` + `FINANCE_GATEWAY_DATABASE_URL=...`: PostgreSQL repository with schema bootstrap.
+
+Queue semantics are also dual-mode:
+
+- No `FINANCE_GATEWAY_REDIS_URL`: in-memory queue.
+- With `FINANCE_GATEWAY_REDIS_URL`: Redis-backed queue (`LPUSH`/`RPOP`) for background jobs.
+
 ## Quick start
 
 ```bash

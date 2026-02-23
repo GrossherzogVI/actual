@@ -1,0 +1,230 @@
+import type { ZodTypeAny } from 'zod';
+
+import { delegateSchemas } from '../delegate/routes';
+import { focusSchemas } from '../focus/routes';
+import { intelligenceSchemas } from '../intelligence/routes';
+import { ledgerSchemas } from '../ledger/routes';
+import { policySchemas } from '../policy/routes';
+import { scenarioSchemas } from '../scenario/routes';
+import { workflowSchemas } from '../workflow/routes';
+
+export type RpcRegistryEntry = {
+  service: string;
+  rpc: string;
+  method: 'GET' | 'POST';
+  path: string;
+  requiresEnvelope: boolean;
+  requestSchema?: ZodTypeAny;
+};
+
+export const rpcRegistry: RpcRegistryEntry[] = [
+  {
+    service: 'ledger.v1',
+    rpc: 'SubmitCommand',
+    method: 'POST',
+    path: '/ledger/v1/submit-command',
+    requiresEnvelope: true,
+    requestSchema: ledgerSchemas.submitCommand,
+  },
+  {
+    service: 'ledger.v1',
+    rpc: 'StreamEvents',
+    method: 'POST',
+    path: '/ledger/v1/stream-events',
+    requiresEnvelope: false,
+    requestSchema: ledgerSchemas.streamEvents,
+  },
+  {
+    service: 'ledger.v1',
+    rpc: 'GetProjectionSnapshot',
+    method: 'POST',
+    path: '/ledger/v1/projection-snapshot',
+    requiresEnvelope: false,
+    requestSchema: ledgerSchemas.projectionSnapshot,
+  },
+  {
+    service: 'workflow.v1',
+    rpc: 'ResolveNextAction',
+    method: 'POST',
+    path: '/workflow/v1/resolve-next-action',
+    requiresEnvelope: true,
+    requestSchema: workflowSchemas.resolveNextAction,
+  },
+  {
+    service: 'workflow.v1',
+    rpc: 'RunPlaybook',
+    method: 'POST',
+    path: '/workflow/v1/run-playbook',
+    requiresEnvelope: true,
+    requestSchema: workflowSchemas.runPlaybook,
+  },
+  {
+    service: 'workflow.v1',
+    rpc: 'GetMoneyPulse',
+    method: 'GET',
+    path: '/workflow/v1/money-pulse',
+    requiresEnvelope: false,
+  },
+  {
+    service: 'workflow.v1',
+    rpc: 'RunCloseRoutine',
+    method: 'POST',
+    path: '/workflow/v1/run-close-routine',
+    requiresEnvelope: true,
+    requestSchema: workflowSchemas.runCloseRoutine,
+  },
+  {
+    service: 'workflow.v1',
+    rpc: 'ApplyBatchPolicy',
+    method: 'POST',
+    path: '/workflow/v1/apply-batch-policy',
+    requiresEnvelope: true,
+    requestSchema: workflowSchemas.applyBatchPolicy,
+  },
+  {
+    service: 'scenario.v1',
+    rpc: 'CreateBranch',
+    method: 'POST',
+    path: '/scenario/v1/create-branch',
+    requiresEnvelope: true,
+    requestSchema: scenarioSchemas.createBranch,
+  },
+  {
+    service: 'scenario.v1',
+    rpc: 'ApplyMutation',
+    method: 'POST',
+    path: '/scenario/v1/apply-mutation',
+    requiresEnvelope: true,
+    requestSchema: scenarioSchemas.applyMutation,
+  },
+  {
+    service: 'scenario.v1',
+    rpc: 'CompareOutcomes',
+    method: 'POST',
+    path: '/scenario/v1/compare-outcomes',
+    requiresEnvelope: false,
+    requestSchema: scenarioSchemas.compareOutcomes,
+  },
+  {
+    service: 'scenario.v1',
+    rpc: 'AdoptBranch',
+    method: 'POST',
+    path: '/scenario/v1/adopt-branch',
+    requiresEnvelope: true,
+    requestSchema: scenarioSchemas.adoptBranch,
+  },
+  {
+    service: 'focus.v1',
+    rpc: 'GetAdaptivePanel',
+    method: 'GET',
+    path: '/focus/v1/adaptive-panel',
+    requiresEnvelope: false,
+  },
+  {
+    service: 'focus.v1',
+    rpc: 'RecordActionOutcome',
+    method: 'POST',
+    path: '/focus/v1/record-action-outcome',
+    requiresEnvelope: true,
+    requestSchema: focusSchemas.recordActionOutcome,
+  },
+  {
+    service: 'delegate.v1',
+    rpc: 'AssignLane',
+    method: 'POST',
+    path: '/delegate/v1/assign-lane',
+    requiresEnvelope: true,
+    requestSchema: delegateSchemas.assignLane,
+  },
+  {
+    service: 'delegate.v1',
+    rpc: 'AcceptLane',
+    method: 'POST',
+    path: '/delegate/v1/accept-lane',
+    requiresEnvelope: true,
+    requestSchema: delegateSchemas.transitionLane,
+  },
+  {
+    service: 'delegate.v1',
+    rpc: 'CompleteLane',
+    method: 'POST',
+    path: '/delegate/v1/complete-lane',
+    requiresEnvelope: true,
+    requestSchema: delegateSchemas.transitionLane,
+  },
+  {
+    service: 'delegate.v1',
+    rpc: 'RejectLane',
+    method: 'POST',
+    path: '/delegate/v1/reject-lane',
+    requiresEnvelope: true,
+    requestSchema: delegateSchemas.transitionLane,
+  },
+  {
+    service: 'policy.v1',
+    rpc: 'GetEgressPolicy',
+    method: 'GET',
+    path: '/policy/v1/egress-policy',
+    requiresEnvelope: false,
+  },
+  {
+    service: 'policy.v1',
+    rpc: 'SetEgressPolicy',
+    method: 'POST',
+    path: '/policy/v1/set-egress-policy',
+    requiresEnvelope: true,
+    requestSchema: policySchemas.setEgressPolicy,
+  },
+  {
+    service: 'policy.v1',
+    rpc: 'ListEgressAudit',
+    method: 'POST',
+    path: '/policy/v1/list-egress-audit',
+    requiresEnvelope: false,
+    requestSchema: policySchemas.listEgressAudit,
+  },
+  {
+    service: 'intelligence.v1',
+    rpc: 'Recommend',
+    method: 'POST',
+    path: '/intelligence/v1/recommend',
+    requiresEnvelope: true,
+    requestSchema: intelligenceSchemas.recommend,
+  },
+  {
+    service: 'intelligence.v1',
+    rpc: 'Explain',
+    method: 'POST',
+    path: '/intelligence/v1/explain',
+    requiresEnvelope: true,
+    requestSchema: intelligenceSchemas.explain,
+  },
+  {
+    service: 'intelligence.v1',
+    rpc: 'Classify',
+    method: 'POST',
+    path: '/intelligence/v1/classify',
+    requiresEnvelope: true,
+    requestSchema: intelligenceSchemas.classify,
+  },
+  {
+    service: 'intelligence.v1',
+    rpc: 'Forecast',
+    method: 'POST',
+    path: '/intelligence/v1/forecast',
+    requiresEnvelope: true,
+    requestSchema: intelligenceSchemas.forecast,
+  },
+  {
+    service: 'intelligence.v1',
+    rpc: 'LearnCorrection',
+    method: 'POST',
+    path: '/intelligence/v1/learn-correction',
+    requiresEnvelope: true,
+    requestSchema: intelligenceSchemas.learnCorrection,
+  },
+];
+
+export function findRpcRegistryEntry(service: string, rpc: string): RpcRegistryEntry | undefined {
+  return rpcRegistry.find(entry => entry.service === service && entry.rpc === rpc);
+}

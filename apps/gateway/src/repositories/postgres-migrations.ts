@@ -1,0 +1,104 @@
+export const POSTGRES_MIGRATIONS: string[] = [
+  `CREATE TABLE IF NOT EXISTS ops_state (
+      id TEXT PRIMARY KEY,
+      pending_reviews INTEGER NOT NULL DEFAULT 0,
+      urgent_reviews INTEGER NOT NULL DEFAULT 0,
+      expiring_contracts INTEGER NOT NULL DEFAULT 0,
+      updated_at_ms BIGINT NOT NULL
+    );`,
+  `CREATE TABLE IF NOT EXISTS workflow_playbooks (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT NOT NULL,
+      commands_json JSONB NOT NULL,
+      created_at_ms BIGINT NOT NULL,
+      updated_at_ms BIGINT NOT NULL
+    );`,
+  `CREATE TABLE IF NOT EXISTS workflow_playbook_runs (
+      id TEXT PRIMARY KEY,
+      playbook_id TEXT NOT NULL REFERENCES workflow_playbooks(id),
+      dry_run BOOLEAN NOT NULL,
+      executed_steps INTEGER NOT NULL,
+      steps_json JSONB NOT NULL,
+      created_at_ms BIGINT NOT NULL
+    );`,
+  `CREATE TABLE IF NOT EXISTS workflow_close_runs (
+      id TEXT PRIMARY KEY,
+      period TEXT NOT NULL,
+      exception_count INTEGER NOT NULL,
+      summary_json JSONB NOT NULL,
+      created_at_ms BIGINT NOT NULL
+    );`,
+  `CREATE TABLE IF NOT EXISTS scenario_branches (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      status TEXT NOT NULL,
+      base_branch_id TEXT,
+      notes TEXT,
+      created_at_ms BIGINT NOT NULL,
+      updated_at_ms BIGINT NOT NULL,
+      adopted_at_ms BIGINT
+    );`,
+  `CREATE TABLE IF NOT EXISTS scenario_mutations (
+      id TEXT PRIMARY KEY,
+      branch_id TEXT NOT NULL REFERENCES scenario_branches(id),
+      kind TEXT NOT NULL,
+      payload_json JSONB NOT NULL,
+      created_at_ms BIGINT NOT NULL
+    );`,
+  `CREATE INDEX IF NOT EXISTS idx_scenario_mutations_branch ON scenario_mutations(branch_id, created_at_ms);`,
+  `CREATE TABLE IF NOT EXISTS delegate_lanes (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      status TEXT NOT NULL,
+      assignee TEXT NOT NULL,
+      assigned_by TEXT NOT NULL,
+      payload_json JSONB NOT NULL,
+      created_at_ms BIGINT NOT NULL,
+      updated_at_ms BIGINT NOT NULL,
+      accepted_at_ms BIGINT,
+      completed_at_ms BIGINT,
+      rejected_at_ms BIGINT
+    );`,
+  `CREATE INDEX IF NOT EXISTS idx_delegate_lanes_status ON delegate_lanes(status, updated_at_ms DESC);`,
+  `CREATE TABLE IF NOT EXISTS action_outcomes (
+      id TEXT PRIMARY KEY,
+      action_id TEXT NOT NULL,
+      outcome TEXT NOT NULL,
+      notes TEXT,
+      recorded_at_ms BIGINT NOT NULL
+    );`,
+  `CREATE TABLE IF NOT EXISTS policy_egress (
+      id TEXT PRIMARY KEY,
+      allow_cloud BOOLEAN NOT NULL,
+      allowed_providers_json JSONB NOT NULL,
+      redaction_mode TEXT NOT NULL,
+      updated_at_ms BIGINT NOT NULL
+    );`,
+  `CREATE TABLE IF NOT EXISTS policy_egress_audit (
+      id TEXT PRIMARY KEY,
+      event_type TEXT NOT NULL,
+      provider TEXT,
+      payload_json JSONB,
+      created_at_ms BIGINT NOT NULL
+    );`,
+  `CREATE INDEX IF NOT EXISTS idx_policy_egress_audit_created ON policy_egress_audit(created_at_ms DESC);`,
+  `CREATE TABLE IF NOT EXISTS intelligence_corrections (
+      id TEXT PRIMARY KEY,
+      input_json JSONB NOT NULL,
+      correct_output_json JSONB NOT NULL,
+      created_at_ms BIGINT NOT NULL
+    );`,
+  `CREATE TABLE IF NOT EXISTS ledger_events (
+      event_id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      aggregate_id TEXT NOT NULL,
+      aggregate_type TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      payload_json JSONB NOT NULL,
+      actor_id TEXT NOT NULL,
+      occurred_at_ms BIGINT NOT NULL,
+      version INTEGER NOT NULL
+    );`,
+  `CREATE INDEX IF NOT EXISTS idx_ledger_events_workspace_time ON ledger_events(workspace_id, occurred_at_ms DESC);`,
+];
