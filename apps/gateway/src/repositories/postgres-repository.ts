@@ -1,6 +1,7 @@
 import { Pool } from 'pg';
 
 import type {
+  ActionOutcome,
   CloseRun,
   Correction,
   DelegateLane,
@@ -22,8 +23,10 @@ import {
 } from './ledger-cursor';
 import { POSTGRES_MIGRATIONS } from './postgres-migrations';
 import type {
+  CloseRunFilters,
   DelegateLaneFilters,
   GatewayRepository,
+  PlaybookRunFilters,
   WorkflowCommandRunFilters,
 } from './types';
 
@@ -65,6 +68,49 @@ function asDelegateLaneEvent(
     message: row.message ? String(row.message) : undefined,
     payload: row.payload_json ? asRecord(row.payload_json) : undefined,
     createdAtMs: Number(row.created_at_ms),
+  };
+}
+
+function asPlaybookRun(
+  row: Record<string, unknown>,
+): PlaybookRun {
+  return {
+    id: String(row.id),
+    playbookId: String(row.playbook_id),
+    chain: String(row.chain || ''),
+    dryRun: !!row.dry_run,
+    executedSteps: Number(row.executed_steps),
+    errorCount: Number(row.error_count || 0),
+    actorId: String(row.actor_id || 'owner'),
+    sourceSurface: String(row.source_surface || 'unknown'),
+    steps: Array.isArray(row.steps_json)
+      ? (row.steps_json as PlaybookRun['steps'])
+      : [],
+    createdAtMs: Number(row.created_at_ms),
+  };
+}
+
+function asCloseRun(
+  row: Record<string, unknown>,
+): CloseRun {
+  return {
+    id: String(row.id),
+    period: String(row.period) as CloseRun['period'],
+    exceptionCount: Number(row.exception_count),
+    summary: asRecord(row.summary_json) as CloseRun['summary'],
+    createdAtMs: Number(row.created_at_ms),
+  };
+}
+
+function asActionOutcome(
+  row: Record<string, unknown>,
+): ActionOutcome {
+  return {
+    id: String(row.id),
+    actionId: String(row.action_id),
+    outcome: String(row.outcome),
+    notes: row.notes ? String(row.notes) : undefined,
+    recordedAtMs: Number(row.recorded_at_ms),
   };
 }
 
@@ -264,18 +310,79 @@ export class PostgresGatewayRepository implements GatewayRepository {
   async createPlaybookRun(run: PlaybookRun): Promise<PlaybookRun> {
     await this.pool.query(
       `INSERT INTO workflow_playbook_runs
-         (id, playbook_id, dry_run, executed_steps, steps_json, created_at_ms)
-       VALUES ($1, $2, $3, $4, $5::jsonb, $6)`,
+         (id, playbook_id, chain, dry_run, executed_steps, error_count, actor_id, source_surface, steps_json, created_at_ms)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10)`,
       [
         run.id,
         run.playbookId,
+        run.chain,
         run.dryRun,
         run.executedSteps,
+        run.errorCount,
+        run.actorId,
+        run.sourceSurface,
         JSON.stringify(run.steps),
         run.createdAtMs,
       ],
     );
     return run;
+  }
+
+  async getPlaybookRunById(runId: string): Promise<PlaybookRun | null> {
+    const result = await this.pool.query(
+      `SELECT id, playbook_id, chain, dry_run, executed_steps, error_count, actor_id, source_surface, steps_json, created_at_ms
+       FROM workflow_playbook_runs
+       WHERE id = $1`,
+      [runId],
+    );
+    const row = result.rows[0];
+    if (!row) return null;
+    return asPlaybookRun(row as Record<string, unknown>);
+  }
+
+  async listPlaybookRuns(
+    limit: number,
+    filters?: PlaybookRunFilters,
+  ): Promise<PlaybookRun[]> {
+    const predicates: string[] = [];
+    const params: unknown[] = [];
+
+    if (filters?.playbookId) {
+      const index = params.push(filters.playbookId);
+      predicates.push(`playbook_id = $${index}`);
+    }
+
+    if (filters?.actorId) {
+      const index = params.push(filters.actorId);
+      predicates.push(`actor_id = $${index}`);
+    }
+
+    if (filters?.sourceSurface) {
+      const index = params.push(filters.sourceSurface);
+      predicates.push(`source_surface = $${index}`);
+    }
+
+    if (typeof filters?.dryRun === 'boolean') {
+      const index = params.push(filters.dryRun);
+      predicates.push(`dry_run = $${index}`);
+    }
+
+    if (typeof filters?.hasErrors === 'boolean') {
+      predicates.push(filters.hasErrors ? 'error_count > 0' : 'error_count = 0');
+    }
+
+    const where = predicates.length > 0 ? `WHERE ${predicates.join(' AND ')}` : '';
+    const limitIndex = params.push(limit);
+    const result = await this.pool.query(
+      `SELECT id, playbook_id, chain, dry_run, executed_steps, error_count, actor_id, source_surface, steps_json, created_at_ms
+       FROM workflow_playbook_runs
+       ${where}
+       ORDER BY created_at_ms DESC
+       LIMIT $${limitIndex}`,
+      params,
+    );
+
+    return result.rows.map(row => asPlaybookRun(row as Record<string, unknown>));
   }
 
   async createCloseRun(run: CloseRun): Promise<CloseRun> {
@@ -286,6 +393,33 @@ export class PostgresGatewayRepository implements GatewayRepository {
       [run.id, run.period, run.exceptionCount, JSON.stringify(run.summary), run.createdAtMs],
     );
     return run;
+  }
+
+  async listCloseRuns(limit: number, filters?: CloseRunFilters): Promise<CloseRun[]> {
+    const predicates: string[] = [];
+    const params: unknown[] = [];
+
+    if (filters?.period) {
+      const index = params.push(filters.period);
+      predicates.push(`period = $${index}`);
+    }
+
+    if (typeof filters?.hasExceptions === 'boolean') {
+      predicates.push(filters.hasExceptions ? 'exception_count > 0' : 'exception_count = 0');
+    }
+
+    const where = predicates.length > 0 ? `WHERE ${predicates.join(' AND ')}` : '';
+    const limitIndex = params.push(limit);
+    const result = await this.pool.query(
+      `SELECT id, period, exception_count, summary_json, created_at_ms
+       FROM workflow_close_runs
+       ${where}
+       ORDER BY created_at_ms DESC
+       LIMIT $${limitIndex}`,
+      params,
+    );
+
+    return result.rows.map(row => asCloseRun(row as Record<string, unknown>));
   }
 
   async createWorkflowCommandRun(
@@ -653,7 +787,7 @@ export class PostgresGatewayRepository implements GatewayRepository {
     outcome: string;
     notes?: string;
     recordedAtMs: number;
-  }): Promise<Record<string, unknown>> {
+  }): Promise<ActionOutcome> {
     await this.pool.query(
       `INSERT INTO action_outcomes (id, action_id, outcome, notes, recorded_at_ms)
        VALUES ($1, $2, $3, $4, $5)`,
@@ -667,6 +801,33 @@ export class PostgresGatewayRepository implements GatewayRepository {
       notes: input.notes,
       recordedAtMs: input.recordedAtMs,
     };
+  }
+
+  async listActionOutcomes(input: {
+    limit: number;
+    actionId?: string;
+  }): Promise<ActionOutcome[]> {
+    const predicates: string[] = [];
+    const params: unknown[] = [];
+
+    if (input.actionId) {
+      const index = params.push(input.actionId);
+      predicates.push(`action_id = $${index}`);
+    }
+
+    const where = predicates.length > 0 ? `WHERE ${predicates.join(' AND ')}` : '';
+    const limitIndex = params.push(input.limit);
+
+    const result = await this.pool.query(
+      `SELECT id, action_id, outcome, notes, recorded_at_ms
+       FROM action_outcomes
+       ${where}
+       ORDER BY recorded_at_ms DESC
+       LIMIT $${limitIndex}`,
+      params,
+    );
+
+    return result.rows.map(row => asActionOutcome(row as Record<string, unknown>));
   }
 
   async getEgressPolicy(): Promise<EgressPolicy> {

@@ -6,6 +6,7 @@ import "common/v1/envelope.proto";
 
 service FocusService {
   rpc GetAdaptivePanel(GetAdaptivePanelRequest) returns (GetAdaptivePanelResponse);
+  rpc ListActionOutcomes(ListActionOutcomesRequest) returns (ListActionOutcomesResponse);
   rpc RecordActionOutcome(RecordActionOutcomeRequest) returns (RecordActionOutcomeResponse);
 }
 
@@ -26,6 +27,15 @@ message GetAdaptivePanelResponse {
   int64 generated_at_ms = 2;
 }
 
+message ListActionOutcomesRequest {
+  int32 limit = 1;
+  string action_id = 2;
+}
+
+message ListActionOutcomesResponse {
+  repeated ActionOutcome outcomes = 1;
+}
+
 message RecordActionOutcomeRequest {
   financeos.common.v1.CommandEnvelope envelope = 1;
   string action_id = 2;
@@ -35,4 +45,12 @@ message RecordActionOutcomeRequest {
 
 message RecordActionOutcomeResponse {
   string outcome_id = 1;
+}
+
+message ActionOutcome {
+  string id = 1;
+  string action_id = 2;
+  string outcome = 3;
+  string notes = 4;
+  int64 recorded_at_ms = 5;
 }

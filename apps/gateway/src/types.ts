@@ -19,12 +19,17 @@ export type WorkflowAction = {
 export type PlaybookRun = {
   id: string;
   playbookId: string;
+  chain: string;
   dryRun: boolean;
   executedSteps: number;
+  errorCount: number;
+  actorId: string;
+  sourceSurface: string;
   steps: Array<{
     index: number;
     command: Record<string, unknown>;
     status: string;
+    detail?: string;
   }>;
   createdAtMs: number;
 };
@@ -131,11 +136,26 @@ export type FocusPanel = {
   generatedAtMs: number;
 };
 
+export type ActionOutcome = {
+  id: string;
+  actionId: string;
+  outcome: string;
+  notes?: string;
+  recordedAtMs: number;
+};
+
 export type OpsState = {
   pendingReviews: number;
   urgentReviews: number;
   expiringContracts: number;
   updatedAtMs: number;
+};
+
+export type NarrativePulse = {
+  summary: string;
+  highlights: string[];
+  actionHints: string[];
+  generatedAtMs: number;
 };
 
 export type EgressPolicy = {

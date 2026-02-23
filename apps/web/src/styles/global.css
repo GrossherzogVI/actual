@@ -241,6 +241,10 @@ pre {
   border-color: var(--fo-danger);
 }
 
+.fo-log-live {
+  border-color: var(--fo-ok);
+}
+
 .fo-card {
   border: 1px solid var(--fo-border);
   border-radius: 8px;

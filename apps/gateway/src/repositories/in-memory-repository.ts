@@ -1,6 +1,7 @@
 import { customAlphabet } from 'nanoid';
 
 import type {
+  ActionOutcome,
   CloseRun,
   Correction,
   DelegateLane,
@@ -21,8 +22,10 @@ import {
   encodeLedgerCursor,
 } from './ledger-cursor';
 import type {
+  CloseRunFilters,
   DelegateLaneFilters,
   GatewayRepository,
+  PlaybookRunFilters,
   WorkflowCommandRunFilters,
 } from './types';
 
@@ -46,7 +49,7 @@ export class InMemoryGatewayRepository implements GatewayRepository {
 
   private readonly delegateLanes = new Map<string, DelegateLane>();
   private readonly delegateLaneEvents = new Map<string, DelegateLaneEvent[]>();
-  private readonly actionOutcomes = new Map<string, Record<string, unknown>>();
+  private readonly actionOutcomes = new Map<string, ActionOutcome>();
 
   private readonly egressAudit: EgressAuditEntry[] = [];
   private readonly corrections = new Map<string, Correction>();
@@ -161,9 +164,61 @@ export class InMemoryGatewayRepository implements GatewayRepository {
     return run;
   }
 
+  async getPlaybookRunById(runId: string): Promise<PlaybookRun | null> {
+    return this.playbookRuns.get(runId) || null;
+  }
+
+  async listPlaybookRuns(
+    limit: number,
+    filters?: PlaybookRunFilters,
+  ): Promise<PlaybookRun[]> {
+    return [...this.playbookRuns.values()]
+      .filter(run => {
+        if (filters?.playbookId && run.playbookId !== filters.playbookId) {
+          return false;
+        }
+        if (filters?.actorId && run.actorId !== filters.actorId) {
+          return false;
+        }
+        if (filters?.sourceSurface && run.sourceSurface !== filters.sourceSurface) {
+          return false;
+        }
+        if (typeof filters?.dryRun === 'boolean' && run.dryRun !== filters.dryRun) {
+          return false;
+        }
+        if (
+          typeof filters?.hasErrors === 'boolean' &&
+          (run.errorCount > 0) !== filters.hasErrors
+        ) {
+          return false;
+        }
+        return true;
+      })
+      .sort((a, b) => b.createdAtMs - a.createdAtMs)
+      .slice(0, limit);
+  }
+
   async createCloseRun(run: CloseRun): Promise<CloseRun> {
     this.closeRuns.set(run.id, run);
     return run;
+  }
+
+  async listCloseRuns(limit: number, filters?: CloseRunFilters): Promise<CloseRun[]> {
+    return [...this.closeRuns.values()]
+      .filter(run => {
+        if (filters?.period && run.period !== filters.period) {
+          return false;
+        }
+        if (
+          typeof filters?.hasExceptions === 'boolean' &&
+          (run.exceptionCount > 0) !== filters.hasExceptions
+        ) {
+          return false;
+        }
+        return true;
+      })
+      .sort((a, b) => b.createdAtMs - a.createdAtMs)
+      .slice(0, limit);
   }
 
   async createWorkflowCommandRun(
@@ -327,8 +382,8 @@ export class InMemoryGatewayRepository implements GatewayRepository {
     outcome: string;
     notes?: string;
     recordedAtMs: number;
-  }): Promise<Record<string, unknown>> {
-    const outcome = {
+  }): Promise<ActionOutcome> {
+    const outcome: ActionOutcome = {
       id: input.id,
       actionId: input.actionId,
       outcome: input.outcome,
@@ -337,6 +392,21 @@ export class InMemoryGatewayRepository implements GatewayRepository {
     };
     this.actionOutcomes.set(input.id, outcome);
     return outcome;
+  }
+
+  async listActionOutcomes(input: {
+    limit: number;
+    actionId?: string;
+  }): Promise<ActionOutcome[]> {
+    return [...this.actionOutcomes.values()]
+      .filter(outcome => {
+        if (input.actionId && outcome.actionId !== input.actionId) {
+          return false;
+        }
+        return true;
+      })
+      .sort((a, b) => b.recordedAtMs - a.recordedAtMs)
+      .slice(0, input.limit);
   }
 
   async getEgressPolicy(): Promise<EgressPolicy> {

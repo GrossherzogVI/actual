@@ -7,6 +7,13 @@ export type MoneyPulse = {
   generatedAtMs: number;
 };
 
+export type NarrativePulse = {
+  summary: string;
+  highlights: string[];
+  actionHints: string[];
+  generatedAtMs: number;
+};
+
 export type FocusAction = {
   id: string;
   title: string;
@@ -20,6 +27,14 @@ export type FocusPanel = {
   generatedAtMs: number;
 };
 
+export type ActionOutcome = {
+  id: string;
+  actionId: string;
+  outcome: string;
+  notes?: string;
+  recordedAtMs: number;
+};
+
 export type Playbook = {
   id: string;
   name: string;
@@ -27,6 +42,36 @@ export type Playbook = {
   commands: Array<Record<string, unknown>>;
   createdAtMs: number;
   updatedAtMs: number;
+};
+
+export type PlaybookRun = {
+  id: string;
+  playbookId: string;
+  chain: string;
+  dryRun: boolean;
+  executedSteps: number;
+  errorCount: number;
+  actorId: string;
+  sourceSurface: string;
+  steps: Array<{
+    index: number;
+    command: Record<string, unknown>;
+    status: string;
+    detail?: string;
+  }>;
+  createdAtMs: number;
+};
+
+export type CloseRun = {
+  id: string;
+  period: 'weekly' | 'monthly';
+  exceptionCount: number;
+  summary: {
+    pendingReviews: number;
+    urgentReviews: number;
+    expiringContracts: number;
+  };
+  createdAtMs: number;
 };
 
 export type DelegateLane = {

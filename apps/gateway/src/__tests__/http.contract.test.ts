@@ -31,6 +31,7 @@ function envelope() {
 
 type RuntimeSeeds = {
   playbookId: string;
+  runId: string;
   laneId: string;
   branchId: string;
 };
@@ -93,6 +94,7 @@ function payloadFor(service: string, rpc: string, seeds: RuntimeSeeds) {
     payload: { amount: 1234, riskDelta: -1, amountDelta: 10 },
     projectionName: 'ops-default',
     playbookId: seeds.playbookId,
+    runId: seeds.runId,
     dryRun: true,
     period: 'weekly',
     ids: ['id-1'],
@@ -212,6 +214,8 @@ describe('gateway HTTP contract/runtime', () => {
 
     const service = createGatewayService(repository, queue);
     const playbookId = (await service.listPlaybooks())[0]?.id ?? 'missing-playbook';
+    const seededRun =
+      (await service.runPlaybook(playbookId, true, 'tester', 'vitest')) || null;
     const laneId = (await service.listDelegateLanes())[0]?.id ?? 'missing-lane';
     const branch = await service.createScenarioBranch({
       name: 'Seed Branch',
@@ -230,6 +234,7 @@ describe('gateway HTTP contract/runtime', () => {
 
     const seeds: RuntimeSeeds = {
       playbookId,
+      runId: seededRun?.id || 'missing-run',
       laneId,
       branchId: branch.id,
     };
@@ -285,6 +290,17 @@ describe('gateway HTTP contract/runtime', () => {
       dryRun: true,
     });
     expect(runPlaybook.statusCode).toBe(404);
+
+    const replayPlaybookRun = await invoke(
+      app,
+      'POST',
+      '/workflow/v1/replay-playbook-run',
+      {
+        envelope: shared.envelope,
+        runId: 'missing-run-id',
+      },
+    );
+    expect(replayPlaybookRun.statusCode).toBe(404);
 
     const applyMutation = await invoke(app, 'POST', '/scenario/v1/apply-mutation', {
       envelope: shared.envelope,

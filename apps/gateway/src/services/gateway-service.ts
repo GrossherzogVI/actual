@@ -9,6 +9,7 @@ import {
 import type { GatewayRepository } from '../repositories/types';
 import type { GatewayQueue, QueueJob } from '../queue/types';
 import type {
+  ActionOutcome,
   CloseRun,
   DelegateLane,
   DelegateLaneEvent,
@@ -16,6 +17,7 @@ import type {
   EgressPolicy,
   FocusPanel,
   LedgerEvent,
+  NarrativePulse,
   PlaybookRun,
   ScenarioBranch,
   ScenarioComparison,
@@ -55,6 +57,52 @@ const DELEGATE_ALLOWED_TRANSITIONS: Record<
   completed: ['assigned'],
   rejected: ['assigned'],
 };
+
+function toPlaybookToken(command: Record<string, unknown>): string | null {
+  const verb = typeof command.verb === 'string' ? command.verb : null;
+  const token = typeof command.token === 'string' ? command.token : null;
+  const chainToken =
+    typeof command.chainToken === 'string' ? command.chainToken : null;
+
+  const candidate = chainToken || token || verb;
+  if (!candidate) {
+    return null;
+  }
+
+  if (candidate === 'resolve-next-action' || candidate === 'resolve-next') {
+    return 'triage';
+  }
+  if (candidate === 'run-close') {
+    const period = command.period;
+    return period === 'monthly' ? 'close-monthly' : 'close-weekly';
+  }
+  if (candidate === 'run-close-weekly') {
+    return 'close-weekly';
+  }
+  if (candidate === 'run-close-monthly') {
+    return 'close-monthly';
+  }
+  if (candidate === 'open-expiring-contracts') {
+    return 'expiring<30d';
+  }
+  if (candidate === 'assign-expiring-contracts-lane') {
+    return 'batch-renegotiate';
+  }
+  if (candidate === 'open-urgent-review') {
+    return 'open-review';
+  }
+  if (candidate === 'refresh-command-center') {
+    return 'refresh';
+  }
+  if (candidate === 'create-default-playbook') {
+    return 'playbook-create-default';
+  }
+  if (candidate === 'run-first-playbook') {
+    return 'run-first';
+  }
+
+  return null;
+}
 
 export function createGatewayService(
   repository: GatewayRepository,
@@ -99,8 +147,55 @@ export function createGatewayService(
     };
   }
 
+  async function getNarrativePulse(): Promise<NarrativePulse> {
+    const now = Date.now();
+    const state = await repository.getOpsState();
+    const recs = await recommend();
+    const openLanes = await repository.listDelegateLanes(100, {
+      status: 'assigned',
+    });
+    const dueSoon = openLanes.filter(
+      lane => typeof lane.dueAtMs === 'number' && lane.dueAtMs <= now + 72 * 60 * 60 * 1000,
+    ).length;
+    const latestClose = (await repository.listCloseRuns(1))[0];
+
+    const highlights = [
+      `${state.urgentReviews} urgent review item(s) and ${state.pendingReviews} pending total.`,
+      `${state.expiringContracts} contract(s) expiring in the next 30 days.`,
+      `${dueSoon} delegate lane(s) due within 72 hours.`,
+      latestClose
+        ? `Last ${latestClose.period} close had ${latestClose.exceptionCount} exception(s).`
+        : 'No close history yet.',
+    ];
+
+    const actionHints = recs.slice(0, 3).map(recommendation => recommendation.title);
+
+    return {
+      summary:
+        actionHints.length > 0
+          ? `Top move now: ${actionHints[0]}.`
+          : 'No high-confidence recommendations at this time.',
+      highlights,
+      actionHints,
+      generatedAtMs: now,
+    };
+  }
+
   async function listPlaybooks(): Promise<WorkflowPlaybook[]> {
     return repository.listPlaybooks();
+  }
+
+  async function listPlaybookRuns(
+    limit = 20,
+    filters?: {
+      playbookId?: string;
+      actorId?: string;
+      sourceSurface?: string;
+      dryRun?: boolean;
+      hasErrors?: boolean;
+    },
+  ) {
+    return repository.listPlaybookRuns(Math.max(1, Math.min(limit, 200)), filters);
   }
 
   async function listWorkflowCommandRuns(
@@ -144,20 +239,86 @@ export function createGatewayService(
   async function runPlaybook(
     playbookId: string,
     dryRun: boolean,
+    actorId = 'owner',
+    sourceSurface = 'unknown',
   ): Promise<PlaybookRun | null> {
     const playbook = await repository.getPlaybookById(playbookId);
     if (!playbook) return null;
 
+    const baseSteps = playbook.commands.map((command, index) => {
+      const token = toPlaybookToken(command);
+      return {
+        index,
+        command,
+        token,
+      };
+    });
+
+    const unsupportedSteps = baseSteps
+      .filter(step => !step.token)
+      .map(step => ({
+        index: step.index,
+        command: step.command,
+        status: 'error',
+        detail: 'Unsupported playbook command payload.',
+      }));
+
+    const executableSteps = baseSteps.filter(
+      step => typeof step.token === 'string',
+    ) as Array<{
+      index: number;
+      command: Record<string, unknown>;
+      token: string;
+    }>;
+
+    const chain = executableSteps.map(step => step.token).join(' -> ');
+
+    let commandRun:
+      | WorkflowCommandExecution
+      | undefined;
+
+    if (chain) {
+      commandRun = await executeWorkflowCommandChain({
+        chain,
+        dryRun,
+        actorId,
+        sourceSurface,
+      });
+    }
+
+    const executedSteps = executableSteps.map((step, index) => {
+      const executionStep = commandRun?.steps[index];
+      if (!executionStep) {
+        return {
+          index: step.index,
+          command: step.command,
+          status: 'error',
+          detail: 'Missing execution result for playbook command.',
+        };
+      }
+
+      return {
+        index: step.index,
+        command: step.command,
+        status: executionStep.status,
+        detail: executionStep.detail,
+      };
+    });
+
+    const steps = [...unsupportedSteps, ...executedSteps].sort(
+      (a, b) => a.index - b.index,
+    );
+
     const run: PlaybookRun = {
       id: nanoid(),
       playbookId,
+      chain,
       dryRun,
-      executedSteps: playbook.commands.length,
-      steps: playbook.commands.map((command, index) => ({
-        index,
-        command,
-        status: 'queued',
-      })),
+      executedSteps: steps.length,
+      errorCount: steps.filter(step => step.status === 'error').length,
+      actorId,
+      sourceSurface,
+      steps,
       createdAtMs: Date.now(),
     };
 
@@ -166,11 +327,34 @@ export function createGatewayService(
       queueJob('workflow.playbook.run', {
         runId: run.id,
         playbookId,
+        chain,
         dryRun,
+        actorId,
+        sourceSurface,
+        errorCount: run.errorCount,
       }),
     );
 
     return run;
+  }
+
+  async function replayPlaybookRun(input: {
+    runId: string;
+    dryRun?: boolean;
+    actorId?: string;
+    sourceSurface?: string;
+  }): Promise<PlaybookRun | null> {
+    const previousRun = await repository.getPlaybookRunById(input.runId);
+    if (!previousRun) {
+      return null;
+    }
+
+    return runPlaybook(
+      previousRun.playbookId,
+      typeof input.dryRun === 'boolean' ? input.dryRun : previousRun.dryRun,
+      input.actorId || previousRun.actorId,
+      input.sourceSurface || previousRun.sourceSurface,
+    );
   }
 
   async function runCloseRoutine(period: 'weekly' | 'monthly'): Promise<CloseRun> {
@@ -197,6 +381,16 @@ export function createGatewayService(
     );
 
     return run;
+  }
+
+  async function listCloseRuns(
+    limit = 20,
+    filters?: {
+      period?: CloseRun['period'];
+      hasExceptions?: boolean;
+    },
+  ) {
+    return repository.listCloseRuns(Math.max(1, Math.min(limit, 200)), filters);
   }
 
   async function applyBatchPolicy(
@@ -378,7 +572,12 @@ export function createGatewayService(
           continue;
         }
 
-        const run = await runPlaybook(first.id, true);
+        const run = await runPlaybook(
+          first.id,
+          true,
+          input.actorId || 'owner',
+          input.sourceSurface || 'unknown',
+        );
         if (!run) {
           steps.push({
             id: step.id,
@@ -498,6 +697,13 @@ export function createGatewayService(
     const staleAssignedLanes = openLanes.filter(
       lane => lane.status === 'assigned' && now - lane.updatedAtMs >= 48 * 60 * 60 * 1000,
     );
+    const recentOutcomes = await repository.listActionOutcomes({ limit: 120 });
+    const latestOutcomeByAction = new Map<string, ActionOutcome>();
+    for (const outcome of recentOutcomes) {
+      if (!latestOutcomeByAction.has(outcome.actionId)) {
+        latestOutcomeByAction.set(outcome.actionId, outcome);
+      }
+    }
 
     const actions = [
       {
@@ -541,7 +747,44 @@ export function createGatewayService(
             ? `${staleAssignedLanes.length} assigned lane(s) have no progress for 48h.`
             : 'No stale assigned mission lanes.',
       },
-    ]
+    ].map(action => {
+      const latest = latestOutcomeByAction.get(action.id);
+      if (!latest) {
+        return action;
+      }
+
+      const hoursSince = (now - latest.recordedAtMs) / (60 * 60 * 1000);
+      if (
+        (latest.outcome === 'accepted' ||
+          latest.outcome === 'completed' ||
+          latest.outcome === 'done') &&
+        hoursSince < 24
+      ) {
+        return {
+          ...action,
+          score: action.score * 0.35,
+          reason: `${action.reason} Cooldown after recent completion.`,
+        };
+      }
+
+      if (latest.outcome === 'deferred' && hoursSince < 72) {
+        return {
+          ...action,
+          score: action.score * 1.15,
+          reason: `${action.reason} Previously deferred.`,
+        };
+      }
+
+      if (latest.outcome === 'ignored' && hoursSince < 72) {
+        return {
+          ...action,
+          score: action.score * 1.25,
+          reason: `${action.reason} Previously ignored.`,
+        };
+      }
+
+      return action;
+    })
       .filter(action => action.score > 0)
       .sort((a, b) => b.score - a.score);
 
@@ -562,6 +805,16 @@ export function createGatewayService(
       outcome: input.outcome,
       notes: input.notes,
       recordedAtMs: Date.now(),
+    });
+  }
+
+  async function listActionOutcomes(input?: {
+    limit?: number;
+    actionId?: string;
+  }): Promise<ActionOutcome[]> {
+    return repository.listActionOutcomes({
+      limit: Math.max(1, Math.min(input?.limit ?? 50, 200)),
+      actionId: input?.actionId,
     });
   }
 
@@ -1075,15 +1328,20 @@ export function createGatewayService(
     queue,
     resolveNextAction,
     getMoneyPulse,
+    getNarrativePulse,
     listPlaybooks,
+    listPlaybookRuns,
     listWorkflowCommandRuns,
     createPlaybook,
     runPlaybook,
+    replayPlaybookRun,
     runCloseRoutine,
+    listCloseRuns,
     applyBatchPolicy,
     executeWorkflowCommandChain,
     getAdaptiveFocusPanel,
     recordActionOutcome,
+    listActionOutcomes,
     listScenarioBranches,
     createScenarioBranch,
     listScenarioMutations,

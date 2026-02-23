@@ -7,7 +7,11 @@ import "common/v1/envelope.proto";
 service WorkflowService {
   rpc ResolveNextAction(ResolveNextActionRequest) returns (ResolveNextActionResponse);
   rpc RunPlaybook(RunPlaybookRequest) returns (RunPlaybookResponse);
+  rpc ReplayPlaybookRun(ReplayPlaybookRunRequest) returns (ReplayPlaybookRunResponse);
+  rpc ListPlaybookRuns(ListPlaybookRunsRequest) returns (ListPlaybookRunsResponse);
   rpc GetMoneyPulse(GetMoneyPulseRequest) returns (GetMoneyPulseResponse);
+  rpc GetNarrativePulse(GetNarrativePulseRequest) returns (GetNarrativePulseResponse);
+  rpc ListCloseRuns(ListCloseRunsRequest) returns (ListCloseRunsResponse);
   rpc RunCloseRoutine(RunCloseRoutineRequest) returns (RunCloseRoutineResponse);
   rpc ApplyBatchPolicy(ApplyBatchPolicyRequest) returns (ApplyBatchPolicyResponse);
   rpc ExecuteChain(ExecuteChainRequest) returns (ExecuteChainResponse);
@@ -37,6 +41,31 @@ message RunPlaybookResponse {
   bool dry_run = 3;
 }
 
+message ReplayPlaybookRunRequest {
+  financeos.common.v1.CommandEnvelope envelope = 1;
+  string run_id = 2;
+  bool dry_run = 3;
+}
+
+message ReplayPlaybookRunResponse {
+  string run_id = 1;
+  int32 steps = 2;
+  bool dry_run = 3;
+}
+
+message ListPlaybookRunsRequest {
+  int32 limit = 1;
+  string playbook_id = 2;
+  string actor_id = 3;
+  string source_surface = 4;
+  bool dry_run = 5;
+  bool has_errors = 6;
+}
+
+message ListPlaybookRunsResponse {
+  repeated PlaybookRun runs = 1;
+}
+
 message GetMoneyPulseRequest {
   string workspace_id = 1;
 }
@@ -48,6 +77,17 @@ message GetMoneyPulseResponse {
   int64 generated_at_ms = 4;
 }
 
+message GetNarrativePulseRequest {
+  string workspace_id = 1;
+}
+
+message GetNarrativePulseResponse {
+  string summary = 1;
+  repeated string highlights = 2;
+  repeated string action_hints = 3;
+  int64 generated_at_ms = 4;
+}
+
 message RunCloseRoutineRequest {
   financeos.common.v1.CommandEnvelope envelope = 1;
   string period = 2;
@@ -56,6 +96,16 @@ message RunCloseRoutineRequest {
 message RunCloseRoutineResponse {
   string run_id = 1;
   int32 exception_count = 2;
+}
+
+message ListCloseRunsRequest {
+  int32 limit = 1;
+  string period = 2;
+  bool has_exceptions = 3;
+}
+
+message ListCloseRunsResponse {
+  repeated CloseRun runs = 1;
 }
 
 message ApplyBatchPolicyRequest {
@@ -117,4 +167,34 @@ message CommandExecutionStep {
   string status = 4;
   string detail = 5;
   string route = 6;
+}
+
+message PlaybookRun {
+  string run_id = 1;
+  string playbook_id = 2;
+  string chain = 3;
+  bool dry_run = 4;
+  int32 executed_steps = 5;
+  int32 error_count = 6;
+  string actor_id = 7;
+  string source_surface = 8;
+  repeated PlaybookRunStep steps = 9;
+  int64 created_at_ms = 10;
+}
+
+message PlaybookRunStep {
+  int32 index = 1;
+  bytes command = 2;
+  string status = 3;
+  string detail = 4;
+}
+
+message CloseRun {
+  string run_id = 1;
+  string period = 2;
+  int32 exception_count = 3;
+  int32 pending_reviews = 4;
+  int32 urgent_reviews = 5;
+  int32 expiring_contracts = 6;
+  int64 created_at_ms = 7;
 }

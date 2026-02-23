@@ -18,14 +18,35 @@ export const workflowSchemas = {
   resolveNextAction: z.object({
     envelope: commandEnvelopeSchema,
   }),
+  getNarrativePulse: z.object({
+    workspaceId: z.string().optional(),
+  }),
   runPlaybook: z.object({
     envelope: commandEnvelopeSchema,
     playbookId: z.string().min(1),
     dryRun: z.boolean().default(true),
   }),
+  listPlaybookRuns: z.object({
+    limit: z.number().int().min(1).max(200).default(20),
+    playbookId: z.string().min(1).optional(),
+    actorId: z.string().min(1).optional(),
+    sourceSurface: z.string().min(1).optional(),
+    dryRun: z.boolean().optional(),
+    hasErrors: z.boolean().optional(),
+  }),
+  replayPlaybookRun: z.object({
+    envelope: commandEnvelopeSchema,
+    runId: z.string().min(1),
+    dryRun: z.boolean().optional(),
+  }),
   runCloseRoutine: z.object({
     envelope: commandEnvelopeSchema,
     period: z.enum(['weekly', 'monthly']),
+  }),
+  listCloseRuns: z.object({
+    limit: z.number().int().min(1).max(200).default(20),
+    period: z.enum(['weekly', 'monthly']).optional(),
+    hasExceptions: z.boolean().optional(),
   }),
   applyBatchPolicy: z.object({
     envelope: commandEnvelopeSchema,
@@ -56,6 +77,59 @@ export async function registerWorkflowRoutes(
     return service.getMoneyPulse();
   });
 
+  app.get('/narrative-pulse', async () => {
+    return service.getNarrativePulse();
+  });
+
+  app.post('/get-narrative-pulse', async (request, reply) => {
+    const payload = parseRequestBody(
+      workflowSchemas.getNarrativePulse,
+      (request as RequestLike).body || {},
+      reply,
+    );
+    if (!payload) return;
+    return service.getNarrativePulse();
+  });
+
+  app.get('/close-runs', async request => {
+    const query = ((request as QueryLike).query || {}) as Record<string, unknown>;
+    const parsed = workflowSchemas.listCloseRuns.safeParse({
+      limit:
+        typeof query.limit === 'string'
+          ? Number(query.limit)
+          : typeof query.limit === 'number'
+            ? query.limit
+            : 20,
+      period: typeof query.period === 'string' ? query.period : undefined,
+      hasExceptions:
+        typeof query.hasExceptions === 'string'
+          ? query.hasExceptions === 'true'
+          : typeof query.hasExceptions === 'boolean'
+            ? query.hasExceptions
+            : undefined,
+    });
+    if (!parsed.success) {
+      return service.listCloseRuns(20);
+    }
+    return service.listCloseRuns(parsed.data.limit, {
+      period: parsed.data.period,
+      hasExceptions: parsed.data.hasExceptions,
+    });
+  });
+
+  app.post('/list-close-runs', async (request, reply) => {
+    const payload = parseRequestBody(
+      workflowSchemas.listCloseRuns,
+      (request as RequestLike).body,
+      reply,
+    );
+    if (!payload) return;
+    return service.listCloseRuns(payload.limit, {
+      period: payload.period,
+      hasExceptions: payload.hasExceptions,
+    });
+  });
+
   app.post('/resolve-next-action', async (request, reply) => {
     const payload = parseRequestBody(
       workflowSchemas.resolveNextAction,
@@ -69,6 +143,70 @@ export async function registerWorkflowRoutes(
 
   app.get('/playbooks', async () => {
     return service.listPlaybooks();
+  });
+
+  app.get('/playbook-runs', async request => {
+    const query = ((request as QueryLike).query || {}) as Record<string, unknown>;
+    const parsed = workflowSchemas.listPlaybookRuns.safeParse({
+      limit:
+        typeof query.limit === 'string'
+          ? Number(query.limit)
+          : typeof query.limit === 'number'
+            ? query.limit
+            : 20,
+      playbookId:
+        typeof query.playbookId === 'string' && query.playbookId.trim()
+          ? query.playbookId.trim()
+          : undefined,
+      actorId:
+        typeof query.actorId === 'string' && query.actorId.trim()
+          ? query.actorId.trim()
+          : undefined,
+      sourceSurface:
+        typeof query.sourceSurface === 'string' && query.sourceSurface.trim()
+          ? query.sourceSurface.trim()
+          : undefined,
+      dryRun:
+        typeof query.dryRun === 'string'
+          ? query.dryRun === 'true'
+          : typeof query.dryRun === 'boolean'
+            ? query.dryRun
+            : undefined,
+      hasErrors:
+        typeof query.hasErrors === 'string'
+          ? query.hasErrors === 'true'
+          : typeof query.hasErrors === 'boolean'
+            ? query.hasErrors
+            : undefined,
+    });
+
+    if (!parsed.success) {
+      return service.listPlaybookRuns(20);
+    }
+
+    return service.listPlaybookRuns(parsed.data.limit, {
+      playbookId: parsed.data.playbookId,
+      actorId: parsed.data.actorId,
+      sourceSurface: parsed.data.sourceSurface,
+      dryRun: parsed.data.dryRun,
+      hasErrors: parsed.data.hasErrors,
+    });
+  });
+
+  app.post('/list-playbook-runs', async (request, reply) => {
+    const payload = parseRequestBody(
+      workflowSchemas.listPlaybookRuns,
+      (request as RequestLike).body,
+      reply,
+    );
+    if (!payload) return;
+    return service.listPlaybookRuns(payload.limit, {
+      playbookId: payload.playbookId,
+      actorId: payload.actorId,
+      sourceSurface: payload.sourceSurface,
+      dryRun: payload.dryRun,
+      hasErrors: payload.hasErrors,
+    });
   });
 
   app.get('/command-runs', async request => {
@@ -147,11 +285,36 @@ export async function registerWorkflowRoutes(
     );
     if (!payload) return;
 
-    const run = await service.runPlaybook(payload.playbookId, payload.dryRun);
+    const run = await service.runPlaybook(
+      payload.playbookId,
+      payload.dryRun,
+      payload.envelope.actorId,
+      payload.envelope.sourceSurface,
+    );
     if (!run) {
       return sendNotFound(reply, 'playbook-not-found');
     }
 
+    return run;
+  });
+
+  app.post('/replay-playbook-run', async (request, reply) => {
+    const payload = parseRequestBody(
+      workflowSchemas.replayPlaybookRun,
+      (request as RequestLike).body,
+      reply,
+    );
+    if (!payload) return;
+
+    const run = await service.replayPlaybookRun({
+      runId: payload.runId,
+      dryRun: payload.dryRun,
+      actorId: payload.envelope.actorId,
+      sourceSurface: payload.envelope.sourceSurface,
+    });
+    if (!run) {
+      return sendNotFound(reply, 'run-not-found');
+    }
     return run;
   });
 

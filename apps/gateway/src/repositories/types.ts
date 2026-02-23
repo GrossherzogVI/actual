@@ -1,4 +1,5 @@
 import type {
+  ActionOutcome,
   CloseRun,
   Correction,
   DelegateLane,
@@ -20,6 +21,19 @@ export type WorkflowCommandRunFilters = {
   sourceSurface?: string;
   dryRun?: boolean;
   hasErrors?: boolean;
+};
+
+export type PlaybookRunFilters = {
+  playbookId?: string;
+  actorId?: string;
+  sourceSurface?: string;
+  dryRun?: boolean;
+  hasErrors?: boolean;
+};
+
+export type CloseRunFilters = {
+  period?: CloseRun['period'];
+  hasExceptions?: boolean;
 };
 
 export type DelegateLaneFilters = {
@@ -48,8 +62,11 @@ export interface GatewayRepository {
     createdAtMs: number;
   }): Promise<WorkflowPlaybook>;
   createPlaybookRun(run: PlaybookRun): Promise<PlaybookRun>;
+  getPlaybookRunById(runId: string): Promise<PlaybookRun | null>;
+  listPlaybookRuns(limit: number, filters?: PlaybookRunFilters): Promise<PlaybookRun[]>;
 
   createCloseRun(run: CloseRun): Promise<CloseRun>;
+  listCloseRuns(limit: number, filters?: CloseRunFilters): Promise<CloseRun[]>;
   createWorkflowCommandRun(
     run: WorkflowCommandExecution,
   ): Promise<WorkflowCommandExecution>;
@@ -87,7 +104,11 @@ export interface GatewayRepository {
     outcome: string;
     notes?: string;
     recordedAtMs: number;
-  }): Promise<Record<string, unknown>>;
+  }): Promise<ActionOutcome>;
+  listActionOutcomes(input: {
+    limit: number;
+    actionId?: string;
+  }): Promise<ActionOutcome[]>;
 
   getEgressPolicy(): Promise<EgressPolicy>;
   setEgressPolicy(policy: EgressPolicy): Promise<EgressPolicy>;

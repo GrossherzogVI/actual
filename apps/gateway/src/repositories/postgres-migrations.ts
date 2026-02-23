@@ -17,11 +17,23 @@ export const POSTGRES_MIGRATIONS: string[] = [
   `CREATE TABLE IF NOT EXISTS workflow_playbook_runs (
       id TEXT PRIMARY KEY,
       playbook_id TEXT NOT NULL REFERENCES workflow_playbooks(id),
+      chain TEXT NOT NULL DEFAULT '',
       dry_run BOOLEAN NOT NULL,
       executed_steps INTEGER NOT NULL,
+      error_count INTEGER NOT NULL DEFAULT 0,
+      actor_id TEXT NOT NULL DEFAULT 'owner',
+      source_surface TEXT NOT NULL DEFAULT 'unknown',
       steps_json JSONB NOT NULL,
       created_at_ms BIGINT NOT NULL
     );`,
+  `ALTER TABLE workflow_playbook_runs ADD COLUMN IF NOT EXISTS chain TEXT NOT NULL DEFAULT '';`,
+  `ALTER TABLE workflow_playbook_runs ADD COLUMN IF NOT EXISTS error_count INTEGER NOT NULL DEFAULT 0;`,
+  `ALTER TABLE workflow_playbook_runs ADD COLUMN IF NOT EXISTS actor_id TEXT NOT NULL DEFAULT 'owner';`,
+  `ALTER TABLE workflow_playbook_runs ADD COLUMN IF NOT EXISTS source_surface TEXT NOT NULL DEFAULT 'unknown';`,
+  `CREATE INDEX IF NOT EXISTS idx_workflow_playbook_runs_created
+    ON workflow_playbook_runs(created_at_ms DESC);`,
+  `CREATE INDEX IF NOT EXISTS idx_workflow_playbook_runs_playbook
+    ON workflow_playbook_runs(playbook_id, created_at_ms DESC);`,
   `CREATE TABLE IF NOT EXISTS workflow_close_runs (
       id TEXT PRIMARY KEY,
       period TEXT NOT NULL,
@@ -29,6 +41,10 @@ export const POSTGRES_MIGRATIONS: string[] = [
       summary_json JSONB NOT NULL,
       created_at_ms BIGINT NOT NULL
     );`,
+  `CREATE INDEX IF NOT EXISTS idx_workflow_close_runs_created
+    ON workflow_close_runs(created_at_ms DESC);`,
+  `CREATE INDEX IF NOT EXISTS idx_workflow_close_runs_period
+    ON workflow_close_runs(period, created_at_ms DESC);`,
   `CREATE TABLE IF NOT EXISTS workflow_command_runs (
       id TEXT PRIMARY KEY,
       chain TEXT NOT NULL,
@@ -103,6 +119,8 @@ export const POSTGRES_MIGRATIONS: string[] = [
       notes TEXT,
       recorded_at_ms BIGINT NOT NULL
     );`,
+  `CREATE INDEX IF NOT EXISTS idx_action_outcomes_action_time
+    ON action_outcomes(action_id, recorded_at_ms DESC);`,
   `CREATE TABLE IF NOT EXISTS policy_egress (
       id TEXT PRIMARY KEY,
       allow_cloud BOOLEAN NOT NULL,

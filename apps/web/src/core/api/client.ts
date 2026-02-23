@@ -1,14 +1,18 @@
 import { createCommandEnvelope } from '@finance-os/domain-kernel';
 
 import type {
+  ActionOutcome,
   AppRecommendation,
+  CloseRun,
   DelegateLane,
   DelegateLaneEvent,
   EgressAuditEntry,
   EgressPolicy,
   FocusPanel,
   MoneyPulse,
+  NarrativePulse,
   Playbook,
+  PlaybookRun,
   ScenarioBranch,
   ScenarioComparison,
   ScenarioMutation,
@@ -58,6 +62,10 @@ export const apiClient = {
     return request<MoneyPulse>('/workflow/v1/money-pulse');
   },
 
+  getNarrativePulse() {
+    return request<NarrativePulse>('/workflow/v1/narrative-pulse');
+  },
+
   resolveNextAction() {
     return request<{ id: string; title: string; route: string; confidence: number }>(
       '/workflow/v1/resolve-next-action',
@@ -88,7 +96,7 @@ export const apiClient = {
   },
 
   runPlaybook(playbookId: string, dryRun = true) {
-    return request<{ id: string; dryRun: boolean; executedSteps: number }>(
+    return request<PlaybookRun>(
       '/workflow/v1/run-playbook',
       {
         method: 'POST',
@@ -101,8 +109,47 @@ export const apiClient = {
     );
   },
 
+  listPlaybookRuns(input?: {
+    limit?: number;
+    playbookId?: string;
+    actorId?: string;
+    sourceSurface?: string;
+    dryRun?: boolean;
+    hasErrors?: boolean;
+  }) {
+    const params = new URLSearchParams();
+    params.set('limit', String(Math.max(1, Math.min(input?.limit ?? 20, 200))));
+    if (input?.playbookId) {
+      params.set('playbookId', input.playbookId);
+    }
+    if (input?.actorId) {
+      params.set('actorId', input.actorId);
+    }
+    if (input?.sourceSurface) {
+      params.set('sourceSurface', input.sourceSurface);
+    }
+    if (typeof input?.dryRun === 'boolean') {
+      params.set('dryRun', String(input.dryRun));
+    }
+    if (typeof input?.hasErrors === 'boolean') {
+      params.set('hasErrors', String(input.hasErrors));
+    }
+    return request<PlaybookRun[]>(`/workflow/v1/playbook-runs?${params.toString()}`);
+  },
+
+  replayPlaybookRun(runId: string, dryRun?: boolean) {
+    return request<PlaybookRun>('/workflow/v1/replay-playbook-run', {
+      method: 'POST',
+      body: JSON.stringify({
+        envelope: commandEnvelope('replay-playbook-run'),
+        runId,
+        dryRun,
+      }),
+    });
+  },
+
   runCloseRoutine(period: 'weekly' | 'monthly') {
-    return request<{ id: string; exceptionCount: number }>(
+    return request<CloseRun>(
       '/workflow/v1/run-close-routine',
       {
         method: 'POST',
@@ -112,6 +159,22 @@ export const apiClient = {
         }),
       },
     );
+  },
+
+  listCloseRuns(input?: {
+    limit?: number;
+    period?: 'weekly' | 'monthly';
+    hasExceptions?: boolean;
+  }) {
+    const params = new URLSearchParams();
+    params.set('limit', String(Math.max(1, Math.min(input?.limit ?? 30, 200))));
+    if (input?.period) {
+      params.set('period', input.period);
+    }
+    if (typeof input?.hasExceptions === 'boolean') {
+      params.set('hasExceptions', String(input.hasExceptions));
+    }
+    return request<CloseRun[]>(`/workflow/v1/close-runs?${params.toString()}`);
   },
 
   executeCommandChain(chain: string, assignee = 'delegate', dryRun = false) {
@@ -340,6 +403,40 @@ export const apiClient = {
         envelope: commandEnvelope('recommend'),
       }),
     });
+  },
+
+  explainRecommendation(recommendation: AppRecommendation) {
+    return request<{ explanation: string; confidence: number; reversible: boolean }>(
+      '/intelligence/v1/explain',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          envelope: commandEnvelope('explain'),
+          recommendation,
+        }),
+      },
+    );
+  },
+
+  recordActionOutcome(actionId: string, outcome: string, notes?: string) {
+    return request<ActionOutcome>('/focus/v1/record-action-outcome', {
+      method: 'POST',
+      body: JSON.stringify({
+        envelope: commandEnvelope('record-action-outcome'),
+        actionId,
+        outcome,
+        notes,
+      }),
+    });
+  },
+
+  listActionOutcomes(input?: { limit?: number; actionId?: string }) {
+    const params = new URLSearchParams();
+    params.set('limit', String(Math.max(1, Math.min(input?.limit ?? 40, 200))));
+    if (input?.actionId) {
+      params.set('actionId', input.actionId);
+    }
+    return request<ActionOutcome[]>(`/focus/v1/action-outcomes?${params.toString()}`);
   },
 
   getEgressPolicy() {

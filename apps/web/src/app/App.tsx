@@ -34,6 +34,12 @@ export function App() {
     refetchInterval: 30_000,
   });
 
+  const narrativePulse = useQuery({
+    queryKey: ['narrative-pulse'],
+    queryFn: apiClient.getNarrativePulse,
+    refetchInterval: 30_000,
+  });
+
   const paletteEntries = useMemo(
     () => [
       { id: 'open-ops', label: 'Open Ops Command Center', hint: 'G O' },
@@ -186,16 +192,26 @@ export function App() {
           <section className="fo-panel">
             <header className="fo-panel-header">
               <h2>Narrative Compression Pulse</h2>
-              <small>Actionable summary from recommendation graph.</small>
+              <small>Daily briefing compressed into top actionable outcomes.</small>
             </header>
             <div className="fo-stack">
-              {(recommendations.data || []).slice(0, 3).map(recommendation => (
-                <article className="fo-card" key={recommendation.id}>
-                  <strong>{recommendation.title}</strong>
-                  <small>{recommendation.rationale}</small>
-                  <small>
-                    confidence {Math.round(recommendation.confidence * 100)}% - {recommendation.expectedImpact}
-                  </small>
+              <article className="fo-card">
+                <strong>{narrativePulse.data?.summary || 'Generating pulse...'}</strong>
+                <small>
+                  Generated:{' '}
+                  {narrativePulse.data?.generatedAtMs
+                    ? new Date(narrativePulse.data.generatedAtMs).toLocaleTimeString()
+                    : '-'}
+                </small>
+              </article>
+              {(narrativePulse.data?.highlights || []).map(highlight => (
+                <article className="fo-card" key={highlight}>
+                  <small>{highlight}</small>
+                </article>
+              ))}
+              {(narrativePulse.data?.actionHints || []).map(hint => (
+                <article className="fo-card" key={hint}>
+                  <strong>{hint}</strong>
                 </article>
               ))}
             </div>
@@ -206,7 +222,10 @@ export function App() {
           <CommandMeshPanel onRoute={handleRoute} onStatus={setStatus} />
           <PlaybooksPanel onStatus={setStatus} />
           <SpatialTwinPanel />
-          <DecisionGraphPanel recommendations={recommendations.data || []} />
+          <DecisionGraphPanel
+            recommendations={recommendations.data || []}
+            onStatus={setStatus}
+          />
         </section>
 
         <aside className="fo-column fo-right-column">

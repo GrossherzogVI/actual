@@ -36,6 +36,35 @@ describe('gateway service contract behavior', () => {
     expect(queued.some(job => job.name === 'workflow.playbook.run')).toBe(true);
   });
 
+  it('lists and replays playbook runs', async () => {
+    const { service } = await createHarness();
+
+    const playbook = await service.createPlaybook({
+      name: 'Replayable Playbook',
+      description: 'for replay tests',
+      commands: [{ verb: 'resolve-next-action' }, { verb: 'refresh-command-center' }],
+    });
+
+    const first = await service.runPlaybook(playbook.id, true, 'owner', 'finance-os-web');
+    expect(first).not.toBeNull();
+
+    const history = await service.listPlaybookRuns(10, {
+      playbookId: playbook.id,
+      dryRun: true,
+    });
+    expect(history.some(run => run.id === first?.id)).toBe(true);
+
+    const replayed = await service.replayPlaybookRun({
+      runId: first?.id || 'missing',
+      dryRun: false,
+      actorId: 'owner',
+      sourceSurface: 'finance-os-web',
+    });
+    expect(replayed).not.toBeNull();
+    expect(replayed?.dryRun).toBe(false);
+    expect(replayed?.chain.length).toBeGreaterThan(0);
+  });
+
   it('applies batch policy and decreases pending reviews', async () => {
     const { service, repository } = await createHarness();
     const before = await repository.getOpsState();
@@ -45,6 +74,18 @@ describe('gateway service contract behavior', () => {
 
     const after = await repository.getOpsState();
     expect(after.pendingReviews).toBeLessThanOrEqual(before.pendingReviews);
+  });
+
+  it('lists close runs with filters', async () => {
+    const { service } = await createHarness();
+    await service.runCloseRoutine('weekly');
+    await service.runCloseRoutine('monthly');
+
+    const weekly = await service.listCloseRuns(20, { period: 'weekly' });
+    expect(weekly.every(run => run.period === 'weekly')).toBe(true);
+
+    const withExceptions = await service.listCloseRuns(20, { hasExceptions: true });
+    expect(withExceptions.every(run => run.exceptionCount > 0)).toBe(true);
   });
 
   it('executes command chains with merged pair semantics', async () => {
@@ -90,6 +131,35 @@ describe('gateway service contract behavior', () => {
     expect(recentRuns.some(run => run.id === secondRun.id)).toBe(true);
     expect(recentRuns.every(run => typeof run.actorId === 'string')).toBe(true);
     expect(recentRuns.every(run => typeof run.sourceSurface === 'string')).toBe(true);
+  });
+
+  it('adapts focus scores based on recent action outcomes', async () => {
+    const { service } = await createHarness();
+
+    const before = await service.getAdaptiveFocusPanel();
+    const urgentBefore =
+      before.actions.find(action => action.id === 'focus-urgent-review')?.score || 0;
+
+    await service.recordActionOutcome({
+      actionId: 'focus-urgent-review',
+      outcome: 'accepted',
+      notes: 'completed',
+    });
+
+    const after = await service.getAdaptiveFocusPanel();
+    const urgentAfter =
+      after.actions.find(action => action.id === 'focus-urgent-review')?.score || 0;
+
+    expect(urgentAfter).toBeLessThanOrEqual(urgentBefore);
+  });
+
+  it('builds narrative pulse summary with highlights and actions', async () => {
+    const { service } = await createHarness();
+    const pulse = await service.getNarrativePulse();
+
+    expect(typeof pulse.summary).toBe('string');
+    expect(pulse.highlights.length).toBeGreaterThan(0);
+    expect(Array.isArray(pulse.actionHints)).toBe(true);
   });
 
   it('filters command runs by actor, surface, mode, and error state', async () => {
