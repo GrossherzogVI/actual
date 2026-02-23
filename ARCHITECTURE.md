@@ -318,6 +318,7 @@ POST   /contracts/bulk-import        → import from Finanzguru/CSV data
 ```
 
 **Response shape (single contract):**
+
 ```json
 {
   "status": "ok",
@@ -351,8 +352,9 @@ POST   /contracts/bulk-import        → import from Finanzguru/CSV data
 ```
 
 **Computed fields** (not stored, calculated on read):
+
 - `health`: green (ok) / yellow (renewal within 60 days) / red (cancellation deadline within 30 days)
-- `annual_cost`: amount * intervals_per_year + sum(additional_events annualized)
+- `annual_cost`: amount \* intervals_per_year + sum(additional_events annualized)
 - `cost_per_day`: annual_cost / 365
 - `cancellation_deadline`: end_date - notice_period_months (stored for indexing, recomputed on update)
 
@@ -374,6 +376,7 @@ DELETE /review/:id                  → dismiss permanently
 **File:** `packages/sync-server/src/ai/app-ai.ts` (refactor)
 
 Keep existing Ollama integration. Add:
+
 ```
 POST   /ai/classify                 → classify single transaction → { category_id, confidence, tier }
 POST   /ai/classify-batch           → classify array of transactions
@@ -385,6 +388,7 @@ GET    /ai/stats                    → { total_rules, auto_rate, review_rate, a
 ```
 
 **Smart Matching flow:**
+
 ```
 Transaction arrives →
   1. Check pinned rules (exact payee match) → ASSIGN, confidence=1.0
@@ -441,13 +445,13 @@ app.method('handler-name', handlerFn);
 
 **New handler modules:**
 
-| Module | File | Handlers |
-|--------|------|----------|
-| contracts (rewrite) | `server/contracts/app.ts` | `contract-list`, `contract-get`, `contract-create`, `contract-update`, `contract-delete`, `contract-summary`, `contract-expiring`, `contract-discover`, `contract-bulk-import`, `contract-price-change` |
-| review (new) | `server/review/app.ts` | `review-list`, `review-count`, `review-update`, `review-batch`, `review-apply`, `review-dismiss` |
-| ai (rewrite) | `server/ai/app.ts` | `ai-classify`, `ai-classify-batch`, `ai-rules-list`, `ai-rules-create`, `ai-rules-delete`, `ai-learn`, `ai-stats` |
-| import (new) | `server/import-data/app.ts` | `import-finanzguru-preview`, `import-finanzguru-commit`, `import-csv-preview`, `import-csv-commit`, `import-detect-contracts` |
-| categories-setup (new) | `server/categories-setup/app.ts` | `categories-setup-german-tree`, `categories-setup-templates`, `categories-setup-map` |
+| Module                 | File                             | Handlers                                                                                                                                                                                                |
+| ---------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| contracts (rewrite)    | `server/contracts/app.ts`        | `contract-list`, `contract-get`, `contract-create`, `contract-update`, `contract-delete`, `contract-summary`, `contract-expiring`, `contract-discover`, `contract-bulk-import`, `contract-price-change` |
+| review (new)           | `server/review/app.ts`           | `review-list`, `review-count`, `review-update`, `review-batch`, `review-apply`, `review-dismiss`                                                                                                        |
+| ai (rewrite)           | `server/ai/app.ts`               | `ai-classify`, `ai-classify-batch`, `ai-rules-list`, `ai-rules-create`, `ai-rules-delete`, `ai-learn`, `ai-stats`                                                                                       |
+| import (new)           | `server/import-data/app.ts`      | `import-finanzguru-preview`, `import-finanzguru-commit`, `import-csv-preview`, `import-csv-commit`, `import-detect-contracts`                                                                           |
+| categories-setup (new) | `server/categories-setup/app.ts` | `categories-setup-german-tree`, `categories-setup-templates`, `categories-setup-map`                                                                                                                    |
 
 ### 4.2 Handler Type Registration
 
@@ -470,10 +474,10 @@ import type { CategoriesSetupHandlers } from '../server/categories-setup/app';
 // Update Handlers union:
 export type Handlers = {} & ServerHandlers &
   // ... existing ...
-  ContractHandlers &    // rewritten
-  AIHandlers &          // rewritten
-  ReviewHandlers &      // NEW
-  ImportDataHandlers &  // NEW
+  ContractHandlers & // rewritten
+  AIHandlers & // rewritten
+  ReviewHandlers & // NEW
+  ImportDataHandlers & // NEW
   CategoriesSetupHandlers; // NEW
 ```
 
@@ -495,11 +499,11 @@ import { app as categoriesSetupApp } from './categories-setup/app';
 
 app.combine(
   // ... existing ...
-  contractsApp,        // rewritten
-  aiApp,               // rewritten
-  reviewApp,           // NEW
-  importDataApp,       // NEW
-  categoriesSetupApp,  // NEW
+  contractsApp, // rewritten
+  aiApp, // rewritten
+  reviewApp, // NEW
+  importDataApp, // NEW
+  categoriesSetupApp, // NEW
   // REMOVED: documentsApp, forecastApp, intelligenceApp, nlQueryApp
 );
 ```
@@ -524,14 +528,14 @@ export type FeatureFlag =
   | 'customThemes'
   | 'budgetAnalysisReport'
   // Phase 1 flags (replace old scaffold flags):
-  | 'financeOS'            // Master toggle: enables dashboard, nav restructure
-  | 'contractManagement'   // Enriched contracts (rewrite of old flag)
-  | 'aiSmartMatching'      // Three-tier AI classification
-  | 'reviewQueue'          // Unified review queue
-  | 'quickAdd'             // Quick add overlay
-  | 'paymentCalendar'      // Calendar view
-  | 'germanCategories'     // German category tree + import
-  | 'extendedCommandBar';  // Extended command palette
+  | 'financeOS' // Master toggle: enables dashboard, nav restructure
+  | 'contractManagement' // Enriched contracts (rewrite of old flag)
+  | 'aiSmartMatching' // Three-tier AI classification
+  | 'reviewQueue' // Unified review queue
+  | 'quickAdd' // Quick add overlay
+  | 'paymentCalendar' // Calendar view
+  | 'germanCategories' // German category tree + import
+  | 'extendedCommandBar'; // Extended command palette
 
 // REMOVE:
 // | 'forecastEngine'
@@ -551,17 +555,20 @@ All Phase 1 flags default to `false`. User enables in Settings > Experimental.
 ### 6.1 Navigation Restructure
 
 **Current sidebar** (PrimaryButtons.tsx):
+
 ```
 Budget | Reports | Schedules | More > [Payees, Rules, Bank Sync, Tags, Contracts, Forecast, AI Review, Documents, Settings]
 ```
 
 **Phase 1 sidebar** (when `financeOS` flag enabled):
+
 ```
 Dashboard (⌘1) | Accounts (⌘2) | Contracts (⌘3) | Calendar (⌘4) | Budget (⌘5) | Reports (⌘6) |
 More > [Import (⌘7), Review (⌘8, badge), Settings (⌘9), Payees, Rules, Bank Sync, Tags, Schedules]
 ```
 
 **Progressive disclosure:**
+
 - Initial: Dashboard + Accounts + Import visible. Others dimmed with "Set up X to unlock" tooltip.
 - After import: Contracts + Calendar activate
 - After AI rules: Review queue appears
@@ -574,6 +581,7 @@ More > [Import (⌘7), Review (⌘8, badge), Settings (⌘9), Payees, Rules, Ban
 **File:** `packages/desktop-client/src/components/FinancesApp.tsx`
 
 New routes (all eager imports, `element={}` prop):
+
 ```tsx
 // Phase 1 routes (inside financeOS flag check):
 <Route path="/dashboard" element={<DashboardPage />} />
@@ -616,6 +624,7 @@ packages/desktop-client/src/components/dashboard/
 ```
 
 **Data flow for UpcomingPaymentsWidget:**
+
 1. Fetch all active schedules via `send('schedule/get-upcoming-dates', { config, count: 60 })`
 2. Fetch all active contracts via `send('contract-list', { status: 'active' })`
 3. Merge: for each contract with schedule_id, match to schedule dates
@@ -718,15 +727,16 @@ packages/desktop-client/src/components/import/
 
 **New modes** (detected by input prefix):
 
-| Prefix | Mode | Behavior |
-|--------|------|----------|
-| (none) | Search | Fuzzy search across navigation, accounts, contracts |
-| `>` | Actions | Quick actions: `> add`, `> contract`, `> review`, `> sync`, `> import` |
-| `=` | Calculator | Inline math: `= 3200 - 1840` → shows result with copy button |
-| `€` or number | Transaction search | Search transactions by amount |
-| (type anything) | Universal | Search payees, categories, contracts by name |
+| Prefix          | Mode               | Behavior                                                               |
+| --------------- | ------------------ | ---------------------------------------------------------------------- |
+| (none)          | Search             | Fuzzy search across navigation, accounts, contracts                    |
+| `>`             | Actions            | Quick actions: `> add`, `> contract`, `> review`, `> sync`, `> import` |
+| `=`             | Calculator         | Inline math: `= 3200 - 1840` → shows result with copy button           |
+| `€` or number   | Transaction search | Search transactions by amount                                          |
+| (type anything) | Universal          | Search payees, categories, contracts by name                           |
 
 **New search sections added to CommandBar:**
+
 ```typescript
 const sections: SearchSection[] = [
   // ... existing navigation, accounts, reports, custom reports ...
@@ -801,37 +811,82 @@ export const GERMAN_CATEGORY_TREE = [
     name: 'Wohnen',
     color: '#4A90D9',
     icon: 'home',
-    categories: ['Miete', 'Nebenkosten', 'Strom', 'Gas', 'Internet', 'Hausrat', 'Renovierung'],
+    categories: [
+      'Miete',
+      'Nebenkosten',
+      'Strom',
+      'Gas',
+      'Internet',
+      'Hausrat',
+      'Renovierung',
+    ],
   },
   {
     name: 'Mobilität',
     color: '#F5A623',
     icon: 'car',
-    categories: ['Auto-Versicherung', 'Tanken', 'Werkstatt', 'Leasing', 'ÖPNV', 'Taxi', 'Fahrrad'],
+    categories: [
+      'Auto-Versicherung',
+      'Tanken',
+      'Werkstatt',
+      'Leasing',
+      'ÖPNV',
+      'Taxi',
+      'Fahrrad',
+    ],
   },
   {
     name: 'Lebensmittel',
     color: '#7ED321',
     icon: 'cart',
-    categories: ['Supermarkt', 'Restaurant', 'Lieferdienst', 'Kaffee', 'Bäckerei', 'Markt'],
+    categories: [
+      'Supermarkt',
+      'Restaurant',
+      'Lieferdienst',
+      'Kaffee',
+      'Bäckerei',
+      'Markt',
+    ],
   },
   {
     name: 'Freizeit',
     color: '#BD10E0',
     icon: 'gamepad',
-    categories: ['Streaming', 'Sport', 'Ausgehen', 'Hobbys', 'Reisen', 'Kultur', 'Bücher'],
+    categories: [
+      'Streaming',
+      'Sport',
+      'Ausgehen',
+      'Hobbys',
+      'Reisen',
+      'Kultur',
+      'Bücher',
+    ],
   },
   {
     name: 'Versicherungen',
     color: '#9013FE',
     icon: 'shield',
-    categories: ['Kranken', 'Haftpflicht', 'Hausrat', 'BU', 'Rechtsschutz', 'KFZ', 'Leben'],
+    categories: [
+      'Kranken',
+      'Haftpflicht',
+      'Hausrat',
+      'BU',
+      'Rechtsschutz',
+      'KFZ',
+      'Leben',
+    ],
   },
   {
     name: 'Finanzen',
     color: '#417505',
     icon: 'bank',
-    categories: ['Sparen', 'Kredit-Tilgung', 'Zinsen', 'Gebühren', 'Investitionen'],
+    categories: [
+      'Sparen',
+      'Kredit-Tilgung',
+      'Zinsen',
+      'Gebühren',
+      'Investitionen',
+    ],
   },
   {
     name: 'Gesundheit',
@@ -843,7 +898,14 @@ export const GERMAN_CATEGORY_TREE = [
     name: 'Einkäufe',
     color: '#F8E71C',
     icon: 'bag',
-    categories: ['Kleidung', 'Elektronik', 'Möbel', 'Haushalt', 'Geschenke', 'Online'],
+    categories: [
+      'Kleidung',
+      'Elektronik',
+      'Möbel',
+      'Haushalt',
+      'Geschenke',
+      'Online',
+    ],
   },
   {
     name: 'Bildung',
@@ -868,7 +930,13 @@ export const GERMAN_CATEGORY_TREE = [
     color: '#7ED321',
     icon: 'wallet',
     is_income: true,
-    categories: ['Gehalt', 'Nebeneinkommen', 'Kindergeld', 'Zinserträge', 'Erstattungen'],
+    categories: [
+      'Gehalt',
+      'Nebeneinkommen',
+      'Kindergeld',
+      'Zinserträge',
+      'Erstattungen',
+    ],
   },
 ];
 ```
@@ -876,6 +944,7 @@ export const GERMAN_CATEGORY_TREE = [
 ### 7.2 Default Tags
 
 Pre-suggested but user-extensible:
+
 ```typescript
 export const DEFAULT_TAGS = [
   'Steuerlich relevant',
@@ -1011,6 +1080,7 @@ packages/component-library/src/theme.ts — design token refresh values
 The core architectural challenge is that **contracts live in account.sqlite** (sync-server) while **schedules, categories, accounts, and transactions live in db.sqlite** (loot-core, per-budget file).
 
 **Resolution:**
+
 - Contract `schedule_id`, `category_id`, `payment_account_id` store the loot-core IDs as plain text.
 - The **frontend** resolves these references by fetching from both systems and joining in-memory.
 - The **sync-server** never reads db.sqlite directly. It stores IDs it receives from the client.
@@ -1029,20 +1099,28 @@ async function createContract(data) {
       conditions: [
         { op: 'is', field: 'account', value: data.payment_account_id },
         { op: 'is', field: 'amount', value: data.amount },
-        { op: 'isapprox', field: 'date', value: {
-          frequency: intervalToFrequency(data.interval),
-          start: data.start_date || currentDay(),
-          interval: 1,
-        }},
+        {
+          op: 'isapprox',
+          field: 'date',
+          value: {
+            frequency: intervalToFrequency(data.interval),
+            start: data.start_date || currentDay(),
+            interval: 1,
+          },
+        },
       ],
     });
   }
 
   // 2. Create contract on sync-server with schedule reference
-  const res = await post(getServer().BASE_SERVER + '/contracts', {
-    ...data,
-    schedule_id: scheduleId,
-  }, { 'X-ACTUAL-TOKEN': userToken });
+  const res = await post(
+    getServer().BASE_SERVER + '/contracts',
+    {
+      ...data,
+      schedule_id: scheduleId,
+    },
+    { 'X-ACTUAL-TOKEN': userToken },
+  );
 
   return res;
 }
@@ -1083,11 +1161,11 @@ toastText: 'var(--color-toastText)',
 
 ## 12. Risks & Mitigations
 
-| Risk | Mitigation |
-|------|-----------|
-| Cross-DB references break if IDs change | IDs are UUIDs, never change. Orphan detection on contract load. |
-| Schedule creation fails mid-contract-create | Transaction: create schedule → on success create contract. On contract failure, delete schedule. |
-| Large number of upcoming dates computation | Cache in `useUpcomingPayments` hook, invalidate on schedule change only. |
-| German tree conflicts with existing categories | Check for existing categories by name before seeding. Merge, don't overwrite. |
-| Feature flag proliferation | `financeOS` master flag gates the entire navigation restructure. Individual flags for fine-grained rollout. |
-| Upstream merge conflict on modified files | `FinancesApp.tsx`, `PrimaryButtons.tsx`, `CommandBar.tsx`, `GlobalKeys.tsx` are high-conflict. Minimize changes to these files; wrap modifications in flag checks. |
+| Risk                                           | Mitigation                                                                                                                                                         |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Cross-DB references break if IDs change        | IDs are UUIDs, never change. Orphan detection on contract load.                                                                                                    |
+| Schedule creation fails mid-contract-create    | Transaction: create schedule → on success create contract. On contract failure, delete schedule.                                                                   |
+| Large number of upcoming dates computation     | Cache in `useUpcomingPayments` hook, invalidate on schedule change only.                                                                                           |
+| German tree conflicts with existing categories | Check for existing categories by name before seeding. Merge, don't overwrite.                                                                                      |
+| Feature flag proliferation                     | `financeOS` master flag gates the entire navigation restructure. Individual flags for fine-grained rollout.                                                        |
+| Upstream merge conflict on modified files      | `FinancesApp.tsx`, `PrimaryButtons.tsx`, `CommandBar.tsx`, `GlobalKeys.tsx` are high-conflict. Minimize changes to these files; wrap modifications in flag checks. |

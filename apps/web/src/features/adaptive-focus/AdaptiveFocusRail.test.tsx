@@ -1,8 +1,13 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { FocusAction, FocusPanel, WorkflowCommandExecution } from '../../core/types';
+import type {
+  FocusAction,
+  FocusPanel,
+  WorkflowCommandExecution,
+} from '../../core/types';
+
 import { AdaptiveFocusRail } from './AdaptiveFocusRail';
 
 const apiClientMock = vi.hoisted(() => ({
@@ -104,7 +109,8 @@ describe('AdaptiveFocusRail', () => {
     });
     apiClientMock.executeCommandChain.mockResolvedValue(
       createCommandRun({
-        chain: 'triage -> escalate-stale-lanes -> delegate-triage-batch -> apply-batch-policy',
+        chain:
+          'triage -> escalate-stale-lanes -> delegate-triage-batch -> apply-batch-policy',
         executionMode: 'live',
         guardrailProfile: 'strict',
         steps: [
@@ -139,7 +145,8 @@ describe('AdaptiveFocusRail', () => {
       amountDelta: 188,
       riskDelta: -5,
       source: 'adaptive-focus',
-      chain: 'triage -> escalate-stale-lanes -> delegate-triage-batch -> apply-batch-policy',
+      chain:
+        'triage -> escalate-stale-lanes -> delegate-triage-batch -> apply-batch-policy',
       simulatedAtMs: Date.now(),
       expectedImpact: 'deadline-risk-control',
     });
@@ -159,7 +166,9 @@ describe('AdaptiveFocusRail', () => {
     );
     const { onRoute } = renderRail();
 
-    const staleLabels = await screen.findAllByText('Nudge stale assigned delegate lanes');
+    const staleLabels = await screen.findAllByText(
+      'Nudge stale assigned delegate lanes',
+    );
     expect(staleLabels.length).toBeGreaterThan(0);
 
     fireEvent.change(screen.getByLabelText('focus execution mode'), {
@@ -172,7 +181,9 @@ describe('AdaptiveFocusRail', () => {
       target: { value: '90' },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Execute selected live' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Execute selected live' }),
+    );
 
     await waitFor(() => {
       expect(apiClientMock.executeCommandChain).toHaveBeenCalledWith(
@@ -219,7 +230,9 @@ describe('AdaptiveFocusRail', () => {
 
     const customLabels = await screen.findAllByText('Custom follow-up');
     expect(customLabels.length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole('button', { name: 'Dry-run selected action' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Dry-run selected action' }),
+    );
 
     await waitFor(() => {
       expect(apiClientMock.executeCommandChain).toHaveBeenCalledWith(
@@ -270,7 +283,9 @@ describe('AdaptiveFocusRail', () => {
       ).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Execute selected live' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Execute selected live' }),
+    );
 
     await waitFor(() => {
       expect(apiClientMock.executeCommandChain).toHaveBeenCalledWith(
@@ -302,13 +317,16 @@ describe('AdaptiveFocusRail', () => {
     const { onRoute } = renderRail();
 
     await screen.findAllByText('Nudge stale assigned delegate lanes');
-    fireEvent.click(screen.getByRole('button', { name: 'Simulate selected in twin' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Simulate selected in twin' }),
+    );
 
     await waitFor(() => {
       expect(apiClientMock.simulateScenarioBranch).toHaveBeenCalledWith(
         expect.objectContaining({
           label: 'Focus Nudge stale assigned delegate lanes',
-          chain: 'triage -> escalate-stale-lanes -> delegate-triage-batch -> apply-batch-policy',
+          chain:
+            'triage -> escalate-stale-lanes -> delegate-triage-batch -> apply-batch-policy',
           source: 'adaptive-focus',
           expectedImpact: 'deadline-risk-control',
           confidence: 0.95,

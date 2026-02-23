@@ -128,9 +128,7 @@ vi.mock('../account-db.js', () => {
           ruleSuggestionsStore[row.id as string] = row;
           return { changes: 1 };
         }
-        if (
-          sql.includes('UPDATE ai_rule_suggestions SET hit_count')
-        ) {
+        if (sql.includes('UPDATE ai_rule_suggestions SET hit_count')) {
           const id = params?.[0] as string;
           if (ruleSuggestionsStore[id]) {
             (ruleSuggestionsStore[id].hit_count as number)++;
@@ -153,16 +151,10 @@ vi.mock('../account-db.js', () => {
 });
 
 vi.mock('../util/middlewares.js', () => ({
-  requestLoggerMiddleware: (
-    _req: unknown,
-    _res: unknown,
-    next: () => void,
-  ) => next(),
-  validateSessionMiddleware: (
-    _req: unknown,
-    _res: unknown,
-    next: () => void,
-  ) => next(),
+  requestLoggerMiddleware: (_req: unknown, _res: unknown, next: () => void) =>
+    next(),
+  validateSessionMiddleware: (_req: unknown, _res: unknown, next: () => void) =>
+    next(),
 }));
 
 // Mock the ollama client
@@ -185,7 +177,7 @@ let classifyMockResult = {
   },
 };
 
-let classifyBatchMockResults: typeof classifyMockResult[] = [];
+let classifyBatchMockResults: (typeof classifyMockResult)[] = [];
 
 vi.mock('./classifier.js', () => ({
   classifyTransaction: vi.fn(async () => classifyMockResult),
@@ -317,7 +309,12 @@ describe('AI Classification API', () => {
       const res = await request(app)
         .post('/ai/classify')
         .send({
-          transaction: { id: 'tx-1', payee: 'REWE', amount: -2350, date: '2026-01-15' },
+          transaction: {
+            id: 'tx-1',
+            payee: 'REWE',
+            amount: -2350,
+            date: '2026-01-15',
+          },
           categories: [{ id: 'cat-groceries', name: 'Groceries' }],
           fileId: 'file-1',
         });
@@ -396,7 +393,9 @@ describe('AI Classification API', () => {
       const res = await request(app)
         .post('/ai/classify-batch')
         .send({
-          transactions: [{ id: 'tx-1', payee: 'REWE', amount: -2350, date: '2026-01-15' }],
+          transactions: [
+            { id: 'tx-1', payee: 'REWE', amount: -2350, date: '2026-01-15' },
+          ],
           categories: [{ id: 'cat-groceries', name: 'Groceries' }],
           fileId: 'file-1',
         });
@@ -418,14 +417,14 @@ describe('AI Classification API', () => {
       await request(app)
         .post('/ai/classify-batch')
         .send({
-          transactions: [{ id: 'tx-1', payee: 'REWE', amount: -2350, date: '2026-01-15' }],
+          transactions: [
+            { id: 'tx-1', payee: 'REWE', amount: -2350, date: '2026-01-15' },
+          ],
           categories: [{ id: 'cat-groceries', name: 'Groceries' }],
           fileId: 'file-1',
         });
 
-      const batchLog = auditLogStore.find(
-        l => l.action === 'classify-batch',
-      );
+      const batchLog = auditLogStore.find(l => l.action === 'classify-batch');
       expect(batchLog).toBeDefined();
     });
   });
@@ -611,9 +610,7 @@ describe('AI Classification API', () => {
     });
 
     it('returns suggestions with hit_count >= default threshold (3)', async () => {
-      const res = await request(app).get(
-        '/ai/rule-suggestions?fileId=file-1',
-      );
+      const res = await request(app).get('/ai/rule-suggestions?fileId=file-1');
       expect(res.status).toBe(200);
       // rs-1 has 5 hits (pending), rs-2 has 2 (below threshold), rs-3 has 10 (accepted, filtered out)
       expect(res.body.data).toHaveLength(1);

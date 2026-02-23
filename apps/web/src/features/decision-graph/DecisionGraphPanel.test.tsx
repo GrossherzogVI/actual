@@ -1,8 +1,12 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { AppRecommendation, WorkflowCommandExecution } from '../../core/types';
+import type {
+  AppRecommendation,
+  WorkflowCommandExecution,
+} from '../../core/types';
+
 import { DecisionGraphPanel } from './DecisionGraphPanel';
 
 const apiClientMock = vi.hoisted(() => ({
@@ -158,11 +162,16 @@ describe('DecisionGraphPanel', () => {
 
     await screen.findByText(/Recommendation explanation/i);
 
-    fireEvent.change(screen.getByLabelText('decision rollback window minutes'), {
-      target: { value: '90' },
-    });
+    fireEvent.change(
+      screen.getByLabelText('decision rollback window minutes'),
+      {
+        target: { value: '90' },
+      },
+    );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Dry-run recommendation' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Dry-run recommendation' }),
+    );
 
     await waitFor(() => {
       expect(apiClientMock.executeCommandChain).toHaveBeenCalledWith(
@@ -204,7 +213,9 @@ describe('DecisionGraphPanel', () => {
 
   it('renders fallback empty state when no recommendations exist', () => {
     renderPanel([]);
-    expect(screen.getByText('No recommendations available yet.')).toBeInTheDocument();
+    expect(
+      screen.getByText('No recommendations available yet.'),
+    ).toBeInTheDocument();
   });
 
   it('creates a scenario simulation from the selected recommendation', async () => {
@@ -218,7 +229,9 @@ describe('DecisionGraphPanel', () => {
 
     await screen.findByText(/Recommendation explanation/i);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Simulate recommendation branch' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Simulate recommendation branch' }),
+    );
 
     await waitFor(() => {
       expect(apiClientMock.simulateScenarioBranch).toHaveBeenCalledWith(
@@ -229,7 +242,8 @@ describe('DecisionGraphPanel', () => {
           expectedImpact: 'cost-avoidance',
           confidence: 0.8,
           recommendationId: 'rec-contract-expiring',
-          notes: 'Generated from decision graph. Recommendation: rec-contract-expiring.',
+          notes:
+            'Generated from decision graph. Recommendation: rec-contract-expiring.',
         }),
       );
     });

@@ -64,7 +64,11 @@ function createCapturedApp(): CapturedApp {
   return {
     routes,
     prefixed(prefix: string) {
-      function add(method: 'GET' | 'POST', path: string, handler: CapturedRoute['handler']) {
+      function add(
+        method: 'GET' | 'POST',
+        path: string,
+        handler: CapturedRoute['handler'],
+      ) {
         routes.set(`${method} ${prefix}${path}`, {
           method,
           path: `${prefix}${path}`,
@@ -252,7 +256,8 @@ describe('gateway HTTP contract/runtime', () => {
     await queue.init();
 
     const service = createGatewayService(repository, queue);
-    const playbookId = (await service.listPlaybooks())[0]?.id ?? 'missing-playbook';
+    const playbookId =
+      (await service.listPlaybooks())[0]?.id ?? 'missing-playbook';
     const seededRun =
       (await service.runPlaybook(
         playbookId,
@@ -279,14 +284,27 @@ describe('gateway HTTP contract/runtime', () => {
     const app = createCapturedApp();
 
     await registerLedgerRoutes(app.prefixed('/ledger/v1') as never, service);
-    await registerWorkflowRoutes(app.prefixed('/workflow/v1') as never, service, {
-      internalToken: options?.internalToken,
-    });
+    await registerWorkflowRoutes(
+      app.prefixed('/workflow/v1') as never,
+      service,
+      {
+        internalToken: options?.internalToken,
+      },
+    );
     await registerFocusRoutes(app.prefixed('/focus/v1') as never, service);
-    await registerScenarioRoutes(app.prefixed('/scenario/v1') as never, service);
-    await registerDelegateRoutes(app.prefixed('/delegate/v1') as never, service);
+    await registerScenarioRoutes(
+      app.prefixed('/scenario/v1') as never,
+      service,
+    );
+    await registerDelegateRoutes(
+      app.prefixed('/delegate/v1') as never,
+      service,
+    );
     await registerPolicyRoutes(app.prefixed('/policy/v1') as never, service);
-    await registerIntelligenceRoutes(app.prefixed('/intelligence/v1') as never, service);
+    await registerIntelligenceRoutes(
+      app.prefixed('/intelligence/v1') as never,
+      service,
+    );
 
     const seeds: RuntimeSeeds = {
       playbookId,
@@ -323,7 +341,12 @@ describe('gateway HTTP contract/runtime', () => {
       }
 
       const { envelope: _envelope, ...withoutEnvelope } = payload;
-      const response = await invoke(app, entry.method, entry.path, withoutEnvelope);
+      const response = await invoke(
+        app,
+        entry.method,
+        entry.path,
+        withoutEnvelope,
+      );
 
       expect(response.statusCode).toBe(400);
     }
@@ -381,12 +404,17 @@ describe('gateway HTTP contract/runtime', () => {
     );
     expect(rollbackCommandRun.statusCode).toBe(404);
 
-    const applyMutation = await invoke(app, 'POST', '/scenario/v1/apply-mutation', {
-      envelope: shared.envelope,
-      branchId: shared.branchId,
-      mutationKind: shared.mutationKind,
-      payload: shared.payload,
-    });
+    const applyMutation = await invoke(
+      app,
+      'POST',
+      '/scenario/v1/apply-mutation',
+      {
+        envelope: shared.envelope,
+        branchId: shared.branchId,
+        mutationKind: shared.mutationKind,
+        payload: shared.payload,
+      },
+    );
     expect(applyMutation.statusCode).toBe(404);
 
     const adoptBranch = await invoke(app, 'POST', '/scenario/v1/adopt-branch', {
@@ -474,15 +502,23 @@ describe('gateway HTTP contract/runtime', () => {
       executionMode: 'dry-run',
     });
 
-    const filtered = await invoke(app, 'POST', '/workflow/v1/list-command-runs', {
-      limit: 10,
-      actorId: 'delegate',
-      executionMode: 'dry-run',
-    });
+    const filtered = await invoke(
+      app,
+      'POST',
+      '/workflow/v1/list-command-runs',
+      {
+        limit: 10,
+        actorId: 'delegate',
+        executionMode: 'dry-run',
+      },
+    );
 
     expect(filtered.statusCode).toBe(200);
     expect(Array.isArray(filtered.body)).toBe(true);
-    const runs = filtered.body as Array<{ actorId: string; executionMode: string }>;
+    const runs = filtered.body as Array<{
+      actorId: string;
+      executionMode: string;
+    }>;
     expect(runs.length).toBeGreaterThan(0);
     expect(runs.every(run => run.actorId === 'delegate')).toBe(true);
     expect(runs.every(run => run.executionMode === 'dry-run')).toBe(true);
@@ -547,9 +583,14 @@ describe('gateway HTTP contract/runtime', () => {
       period: 'weekly',
     });
 
-    const firstPage = await invoke(app, 'POST', '/workflow/v1/list-ops-activity', {
-      limit: 2,
-    });
+    const firstPage = await invoke(
+      app,
+      'POST',
+      '/workflow/v1/list-ops-activity',
+      {
+        limit: 2,
+      },
+    );
     expect(firstPage.statusCode).toBe(200);
 
     const firstBody = firstPage.body as {
@@ -560,10 +601,15 @@ describe('gateway HTTP contract/runtime', () => {
     expect(firstBody.events.length).toBe(2);
     expect(typeof firstBody.nextCursor).toBe('string');
 
-    const secondPage = await invoke(app, 'POST', '/workflow/v1/list-ops-activity', {
-      limit: 2,
-      cursor: firstBody.nextCursor,
-    });
+    const secondPage = await invoke(
+      app,
+      'POST',
+      '/workflow/v1/list-ops-activity',
+      {
+        limit: 2,
+        cursor: firstBody.nextCursor,
+      },
+    );
     expect(secondPage.statusCode).toBe(200);
     const secondBody = secondPage.body as {
       events: Array<{ id: string }>;
@@ -590,9 +636,14 @@ describe('gateway HTTP contract/runtime', () => {
     expect(typeof metricsBody.opsActivityEvents).toBe('number');
     expect(typeof metricsBody.workerFingerprintClaimEvents).toBe('number');
 
-    const backfill = await invoke(app, 'POST', '/workflow/v1/backfill-ops-activity', {
-      limitPerPlane: 200,
-    });
+    const backfill = await invoke(
+      app,
+      'POST',
+      '/workflow/v1/backfill-ops-activity',
+      {
+        limitPerPlane: 200,
+      },
+    );
     expect(backfill.statusCode).toBe(200);
     const backfillBody = backfill.body as { attempted: number; total: number };
     expect(backfillBody.attempted).toBeGreaterThan(0);
@@ -608,7 +659,10 @@ describe('gateway HTTP contract/runtime', () => {
       },
     );
     expect(maintenance.statusCode).toBe(200);
-    const maintenanceBody = maintenance.body as { removed: number; total: number };
+    const maintenanceBody = maintenance.body as {
+      removed: number;
+      total: number;
+    };
     expect(typeof maintenanceBody.removed).toBe('number');
     expect(maintenanceBody.total).toBeLessThanOrEqual(5);
 
@@ -687,7 +741,9 @@ describe('gateway HTTP contract/runtime', () => {
       },
     );
     expect(claimedFingerprint.statusCode).toBe(200);
-    const claimedFingerprintBody = claimedFingerprint.body as { status: string };
+    const claimedFingerprintBody = claimedFingerprint.body as {
+      status: string;
+    };
     expect(claimedFingerprintBody.status).toBe('acquired');
 
     const fingerprintCheck = await invoke(
@@ -699,7 +755,9 @@ describe('gateway HTTP contract/runtime', () => {
       },
     );
     expect(fingerprintCheck.statusCode).toBe(200);
-    const fingerprintBody = fingerprintCheck.body as { alreadyProcessed: boolean };
+    const fingerprintBody = fingerprintCheck.body as {
+      alreadyProcessed: boolean;
+    };
     expect(fingerprintBody.alreadyProcessed).toBe(false);
 
     const requeueExpired = await invoke(
@@ -718,11 +776,16 @@ describe('gateway HTTP contract/runtime', () => {
   it('enforces internal token on queue control endpoints when configured', async () => {
     const { app } = await createHarness({ internalToken: 'internal-secret' });
 
-    const unauthorized = await invoke(app, 'POST', '/workflow/v1/claim-queue-jobs', {
-      workerId: 'worker-http',
-      maxJobs: 1,
-      visibilityTimeoutMs: 5_000,
-    });
+    const unauthorized = await invoke(
+      app,
+      'POST',
+      '/workflow/v1/claim-queue-jobs',
+      {
+        workerId: 'worker-http',
+        maxJobs: 1,
+        visibilityTimeoutMs: 5_000,
+      },
+    );
     expect(unauthorized.statusCode).toBe(401);
 
     const authorized = await invoke(
@@ -828,10 +891,15 @@ describe('gateway HTTP contract/runtime', () => {
   it('returns 409 for invalid delegate status transitions', async () => {
     const { app, seeds } = await createHarness();
 
-    const invalidTransition = await invoke(app, 'POST', '/delegate/v1/complete-lane', {
-      envelope: envelope(),
-      laneId: seeds.laneId,
-    });
+    const invalidTransition = await invoke(
+      app,
+      'POST',
+      '/delegate/v1/complete-lane',
+      {
+        envelope: envelope(),
+        laneId: seeds.laneId,
+      },
+    );
 
     expect(invalidTransition.statusCode).toBe(409);
   });
@@ -850,11 +918,16 @@ describe('gateway HTTP contract/runtime', () => {
     });
     expect(mutation.statusCode).toBe(200);
 
-    const blockedAdopt = await invoke(app, 'POST', '/scenario/v1/adopt-branch', {
-      envelope: envelope(),
-      branchId: seeds.branchId,
-      force: false,
-    });
+    const blockedAdopt = await invoke(
+      app,
+      'POST',
+      '/scenario/v1/adopt-branch',
+      {
+        envelope: envelope(),
+        branchId: seeds.branchId,
+        force: false,
+      },
+    );
     expect(blockedAdopt.statusCode).toBe(409);
 
     const forcedAdopt = await invoke(app, 'POST', '/scenario/v1/adopt-branch', {
@@ -868,15 +941,20 @@ describe('gateway HTTP contract/runtime', () => {
   it('simulates scenario branches through the shared simulation endpoint', async () => {
     const { app } = await createHarness();
 
-    const simulated = await invoke(app, 'POST', '/scenario/v1/simulate-branch', {
-      envelope: envelope(),
-      label: 'HTTP simulation',
-      chain: 'triage -> open-review',
-      source: 'decision-graph',
-      expectedImpact: 'risk-reduction',
-      confidence: 0.8,
-      recommendationId: 'rec-http-1',
-    });
+    const simulated = await invoke(
+      app,
+      'POST',
+      '/scenario/v1/simulate-branch',
+      {
+        envelope: envelope(),
+        label: 'HTTP simulation',
+        chain: 'triage -> open-review',
+        source: 'decision-graph',
+        expectedImpact: 'risk-reduction',
+        confidence: 0.8,
+        recommendationId: 'rec-http-1',
+      },
+    );
 
     expect(simulated.statusCode).toBe(200);
     const body = simulated.body as {
@@ -897,14 +975,19 @@ describe('gateway HTTP contract/runtime', () => {
   it('promotes simulated scenario branches into workflow command runs', async () => {
     const { app } = await createHarness();
 
-    const simulated = await invoke(app, 'POST', '/scenario/v1/simulate-branch', {
-      envelope: envelope(),
-      label: 'Promotable simulation',
-      chain: 'triage -> open-review',
-      source: 'command-mesh',
-      expectedImpact: 'workflow compression',
-      confidence: 0.9,
-    });
+    const simulated = await invoke(
+      app,
+      'POST',
+      '/scenario/v1/simulate-branch',
+      {
+        envelope: envelope(),
+        label: 'Promotable simulation',
+        chain: 'triage -> open-review',
+        source: 'command-mesh',
+        expectedImpact: 'workflow compression',
+        confidence: 0.9,
+      },
+    );
     expect(simulated.statusCode).toBe(200);
 
     const simulationBody = simulated.body as {
@@ -919,16 +1002,21 @@ describe('gateway HTTP contract/runtime', () => {
       return;
     }
 
-    const promoted = await invoke(app, 'POST', '/scenario/v1/promote-branch-run', {
-      envelope: envelope(),
-      branchId,
-      mutationId,
-      sourceSurface: 'spatial-twin',
-      executionMode: 'live',
-      guardrailProfile: 'strict',
-      rollbackWindowMinutes: 30,
-      rollbackOnFailure: false,
-    });
+    const promoted = await invoke(
+      app,
+      'POST',
+      '/scenario/v1/promote-branch-run',
+      {
+        envelope: envelope(),
+        branchId,
+        mutationId,
+        sourceSurface: 'spatial-twin',
+        executionMode: 'live',
+        guardrailProfile: 'strict',
+        rollbackWindowMinutes: 30,
+        rollbackOnFailure: false,
+      },
+    );
 
     expect(promoted.statusCode).toBe(200);
     const body = promoted.body as {
@@ -960,15 +1048,20 @@ describe('gateway HTTP contract/runtime', () => {
     expect(mutation.statusCode).toBe(200);
 
     const mutationBody = mutation.body as { id?: string };
-    const promoted = await invoke(app, 'POST', '/scenario/v1/promote-branch-run', {
-      envelope: envelope(),
-      branchId: seeds.branchId,
-      mutationId: mutationBody.id,
-      executionMode: 'live',
-      guardrailProfile: 'strict',
-      rollbackWindowMinutes: 60,
-      rollbackOnFailure: false,
-    });
+    const promoted = await invoke(
+      app,
+      'POST',
+      '/scenario/v1/promote-branch-run',
+      {
+        envelope: envelope(),
+        branchId: seeds.branchId,
+        mutationId: mutationBody.id,
+        executionMode: 'live',
+        guardrailProfile: 'strict',
+        rollbackWindowMinutes: 60,
+        rollbackOnFailure: false,
+      },
+    );
 
     expect(promoted.statusCode).toBe(409);
     expect(promoted.body).toEqual({ error: 'source-mutation-chain-missing' });
@@ -980,8 +1073,8 @@ describe('gateway HTTP contract/runtime', () => {
     const ok = await invoke(app, 'GET', '/intelligence/v1/temporal-signals');
     expect(ok.statusCode).toBe(200);
     expect((ok.body as { bundesland?: string }).bundesland).toBeTruthy();
-    expect(
-      Array.isArray((ok.body as { calendar?: unknown[] }).calendar),
-    ).toBe(true);
+    expect(Array.isArray((ok.body as { calendar?: unknown[] }).calendar)).toBe(
+      true,
+    );
   });
 });

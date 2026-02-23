@@ -12,7 +12,9 @@ export type RuntimeCommandEventDetail = {
 
 export const RUNTIME_COMMAND_EVENT = 'financeos.runtime.command';
 
-export function dispatchRuntimeCommand(detail: RuntimeCommandEventDetail): void {
+export function dispatchRuntimeCommand(
+  detail: RuntimeCommandEventDetail,
+): void {
   window.dispatchEvent(
     new CustomEvent<RuntimeCommandEventDetail>(RUNTIME_COMMAND_EVENT, {
       detail,

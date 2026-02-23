@@ -1,4 +1,4 @@
-import { Pool } from 'pg';
+import type { Pool } from 'pg';
 
 import type {
   ActionOutcome,
@@ -23,10 +23,7 @@ import type {
   WorkflowPlaybook,
 } from '../types';
 
-import {
-  decodeLedgerCursor,
-  encodeLedgerCursor,
-} from './ledger-cursor';
+import { decodeLedgerCursor, encodeLedgerCursor } from './ledger-cursor';
 import { POSTGRES_MIGRATIONS } from './postgres-migrations';
 import type {
   CloseRunFilters,
@@ -48,9 +45,7 @@ function asRecord(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-function asDelegateLane(
-  row: Record<string, unknown>,
-): DelegateLane {
+function asDelegateLane(row: Record<string, unknown>): DelegateLane {
   return {
     id: String(row.id),
     title: String(row.title),
@@ -63,14 +58,14 @@ function asDelegateLane(
     updatedAtMs: Number(row.updated_at_ms),
     dueAtMs: row.due_at_ms ? Number(row.due_at_ms) : undefined,
     acceptedAtMs: row.accepted_at_ms ? Number(row.accepted_at_ms) : undefined,
-    completedAtMs: row.completed_at_ms ? Number(row.completed_at_ms) : undefined,
+    completedAtMs: row.completed_at_ms
+      ? Number(row.completed_at_ms)
+      : undefined,
     rejectedAtMs: row.rejected_at_ms ? Number(row.rejected_at_ms) : undefined,
   };
 }
 
-function asDelegateLaneEvent(
-  row: Record<string, unknown>,
-): DelegateLaneEvent {
+function asDelegateLaneEvent(row: Record<string, unknown>): DelegateLaneEvent {
   return {
     id: String(row.id),
     laneId: String(row.lane_id),
@@ -168,9 +163,7 @@ function asRunStatusTimeline(
   ];
 }
 
-function asPlaybookRun(
-  row: Record<string, unknown>,
-): PlaybookRun {
+function asPlaybookRun(row: Record<string, unknown>): PlaybookRun {
   const status = asRunStatus(row.status);
   const startedAtMs = Number(row.started_at_ms || row.created_at_ms || 0);
   const finishedAtMs =
@@ -280,9 +273,7 @@ function asWorkflowCommandRun(
   };
 }
 
-function asCloseRun(
-  row: Record<string, unknown>,
-): CloseRun {
+function asCloseRun(row: Record<string, unknown>): CloseRun {
   return {
     id: String(row.id),
     period: String(row.period) as CloseRun['period'],
@@ -292,9 +283,7 @@ function asCloseRun(
   };
 }
 
-function asActionOutcome(
-  row: Record<string, unknown>,
-): ActionOutcome {
+function asActionOutcome(row: Record<string, unknown>): ActionOutcome {
   return {
     id: String(row.id),
     actionId: String(row.action_id),
@@ -304,9 +293,7 @@ function asActionOutcome(
   };
 }
 
-function asOpsActivityEvent(
-  row: Record<string, unknown>,
-): OpsActivityEvent {
+function asOpsActivityEvent(row: Record<string, unknown>): OpsActivityEvent {
   return {
     id: String(row.id),
     kind: String(row.kind) as OpsActivityEvent['kind'],
@@ -319,15 +306,15 @@ function asOpsActivityEvent(
   };
 }
 
-function asWorkerJobAttempt(
-  row: Record<string, unknown>,
-): WorkerJobAttempt {
+function asWorkerJobAttempt(row: Record<string, unknown>): WorkerJobAttempt {
   return {
     id: String(row.id),
     workerId: String(row.worker_id),
     jobId: String(row.job_id),
     jobName: String(row.job_name),
-    jobFingerprint: row.job_fingerprint ? String(row.job_fingerprint) : undefined,
+    jobFingerprint: row.job_fingerprint
+      ? String(row.job_fingerprint)
+      : undefined,
     receipt: String(row.receipt),
     attempt: Number(row.attempt),
     outcome: String(row.outcome) as WorkerJobAttempt['outcome'],
@@ -341,9 +328,7 @@ function asWorkerJobAttempt(
   };
 }
 
-function asWorkerDeadLetter(
-  row: Record<string, unknown>,
-): WorkerDeadLetter {
+function asWorkerDeadLetter(row: Record<string, unknown>): WorkerDeadLetter {
   return {
     id: String(row.id),
     attemptId: String(row.attempt_id),
@@ -358,7 +343,9 @@ function asWorkerDeadLetter(
       ? Number(row.last_replayed_at_ms)
       : undefined,
     resolvedAtMs: row.resolved_at_ms ? Number(row.resolved_at_ms) : undefined,
-    resolutionNote: row.resolution_note ? String(row.resolution_note) : undefined,
+    resolutionNote: row.resolution_note
+      ? String(row.resolution_note)
+      : undefined,
     errorMessage: row.error_message ? String(row.error_message) : undefined,
     payload: row.payload_json ? asRecord(row.payload_json) : undefined,
     createdAtMs: Number(row.created_at_ms),
@@ -413,7 +400,7 @@ export class PostgresGatewayRepository implements GatewayRepository {
          'default-weekly-compression',
          'Weekly Compression',
          'Resolve urgent queue, scan expiring contracts, run weekly close.',
-         '[{\"verb\":\"resolve-next-action\",\"lane\":\"triage\"},{\"verb\":\"open-expiring-contracts\",\"windowDays\":30},{\"verb\":\"run-close\",\"period\":\"weekly\"}]'::jsonb,
+         '[{"verb":"resolve-next-action","lane":"triage"},{"verb":"open-expiring-contracts","windowDays":30},{"verb":"run-close","period":"weekly"}]'::jsonb,
          $1,
          $1
        )
@@ -431,7 +418,7 @@ export class PostgresGatewayRepository implements GatewayRepository {
          'assigned',
          'assistant',
          'owner',
-         '{\"contractId\":\"mobile-1\",\"deadline\":\"2026-03-05\"}'::jsonb,
+         '{"contractId":"mobile-1","deadline":"2026-03-05"}'::jsonb,
          $1,
          $1,
          $2
@@ -741,10 +728,13 @@ export class PostgresGatewayRepository implements GatewayRepository {
     }
 
     if (typeof filters?.hasErrors === 'boolean') {
-      predicates.push(filters.hasErrors ? 'error_count > 0' : 'error_count = 0');
+      predicates.push(
+        filters.hasErrors ? 'error_count > 0' : 'error_count = 0',
+      );
     }
 
-    const where = predicates.length > 0 ? `WHERE ${predicates.join(' AND ')}` : '';
+    const where =
+      predicates.length > 0 ? `WHERE ${predicates.join(' AND ')}` : '';
     const limitIndex = params.push(limit);
     const result = await this.pool.query(
       `SELECT id, playbook_id, chain, dry_run, execution_mode, guardrail_profile, status, executed_steps, error_count, actor_id, source_surface, started_at_ms, finished_at_ms, rollback_window_until_ms, rollback_eligible, rollback_of_run_id, status_timeline_json, idempotency_key, rollback_on_failure, guardrail_results_json, effect_summaries_json, steps_json, created_at_ms
@@ -755,7 +745,9 @@ export class PostgresGatewayRepository implements GatewayRepository {
       params,
     );
 
-    return result.rows.map(row => asPlaybookRun(row as Record<string, unknown>));
+    return result.rows.map(row =>
+      asPlaybookRun(row as Record<string, unknown>),
+    );
   }
 
   async createCloseRun(run: CloseRun): Promise<CloseRun> {
@@ -763,12 +755,21 @@ export class PostgresGatewayRepository implements GatewayRepository {
       `INSERT INTO workflow_close_runs
          (id, period, exception_count, summary_json, created_at_ms)
        VALUES ($1, $2, $3, $4::jsonb, $5)`,
-      [run.id, run.period, run.exceptionCount, JSON.stringify(run.summary), run.createdAtMs],
+      [
+        run.id,
+        run.period,
+        run.exceptionCount,
+        JSON.stringify(run.summary),
+        run.createdAtMs,
+      ],
     );
     return run;
   }
 
-  async listCloseRuns(limit: number, filters?: CloseRunFilters): Promise<CloseRun[]> {
+  async listCloseRuns(
+    limit: number,
+    filters?: CloseRunFilters,
+  ): Promise<CloseRun[]> {
     const predicates: string[] = [];
     const params: unknown[] = [];
 
@@ -778,10 +779,13 @@ export class PostgresGatewayRepository implements GatewayRepository {
     }
 
     if (typeof filters?.hasExceptions === 'boolean') {
-      predicates.push(filters.hasExceptions ? 'exception_count > 0' : 'exception_count = 0');
+      predicates.push(
+        filters.hasExceptions ? 'exception_count > 0' : 'exception_count = 0',
+      );
     }
 
-    const where = predicates.length > 0 ? `WHERE ${predicates.join(' AND ')}` : '';
+    const where =
+      predicates.length > 0 ? `WHERE ${predicates.join(' AND ')}` : '';
     const limitIndex = params.push(limit);
     const result = await this.pool.query(
       `SELECT id, period, exception_count, summary_json, created_at_ms
@@ -995,10 +999,13 @@ export class PostgresGatewayRepository implements GatewayRepository {
     }
 
     if (typeof filters?.hasErrors === 'boolean') {
-      predicates.push(filters.hasErrors ? 'error_count > 0' : 'error_count = 0');
+      predicates.push(
+        filters.hasErrors ? 'error_count > 0' : 'error_count = 0',
+      );
     }
 
-    const where = predicates.length > 0 ? `WHERE ${predicates.join(' AND ')}` : '';
+    const where =
+      predicates.length > 0 ? `WHERE ${predicates.join(' AND ')}` : '';
     const limitIndex = params.push(limit);
 
     const result = await this.pool.query(
@@ -1010,7 +1017,9 @@ export class PostgresGatewayRepository implements GatewayRepository {
       params,
     );
 
-    return result.rows.map(row => asWorkflowCommandRun(row as Record<string, unknown>));
+    return result.rows.map(row =>
+      asWorkflowCommandRun(row as Record<string, unknown>),
+    );
   }
 
   async listScenarioBranches(): Promise<ScenarioBranch[]> {
@@ -1032,7 +1041,9 @@ export class PostgresGatewayRepository implements GatewayRepository {
     }));
   }
 
-  async getScenarioBranchById(branchId: string): Promise<ScenarioBranch | null> {
+  async getScenarioBranchById(
+    branchId: string,
+  ): Promise<ScenarioBranch | null> {
     const result = await this.pool.query(
       `SELECT id, name, status, base_branch_id, notes, created_at_ms, updated_at_ms, adopted_at_ms
        FROM scenario_branches
@@ -1189,7 +1200,9 @@ export class PostgresGatewayRepository implements GatewayRepository {
       values,
     );
 
-    return result.rows.map(row => asDelegateLane(row as Record<string, unknown>));
+    return result.rows.map(row =>
+      asDelegateLane(row as Record<string, unknown>),
+    );
   }
 
   async getDelegateLaneById(laneId: string): Promise<DelegateLane | null> {
@@ -1265,7 +1278,9 @@ export class PostgresGatewayRepository implements GatewayRepository {
     return lane;
   }
 
-  async createDelegateLaneEvent(event: DelegateLaneEvent): Promise<DelegateLaneEvent> {
+  async createDelegateLaneEvent(
+    event: DelegateLaneEvent,
+  ): Promise<DelegateLaneEvent> {
     await this.pool.query(
       `INSERT INTO delegate_lane_events
          (id, lane_id, event_type, actor_id, message, payload_json, created_at_ms)
@@ -1295,7 +1310,9 @@ export class PostgresGatewayRepository implements GatewayRepository {
        LIMIT $2`,
       [laneId, limit],
     );
-    return result.rows.map(row => asDelegateLaneEvent(row as Record<string, unknown>));
+    return result.rows.map(row =>
+      asDelegateLaneEvent(row as Record<string, unknown>),
+    );
   }
 
   async recordActionOutcome(input: {
@@ -1308,7 +1325,13 @@ export class PostgresGatewayRepository implements GatewayRepository {
     await this.pool.query(
       `INSERT INTO action_outcomes (id, action_id, outcome, notes, recorded_at_ms)
        VALUES ($1, $2, $3, $4, $5)`,
-      [input.id, input.actionId, input.outcome, input.notes ?? null, input.recordedAtMs],
+      [
+        input.id,
+        input.actionId,
+        input.outcome,
+        input.notes ?? null,
+        input.recordedAtMs,
+      ],
     );
 
     return {
@@ -1332,7 +1355,8 @@ export class PostgresGatewayRepository implements GatewayRepository {
       predicates.push(`action_id = $${index}`);
     }
 
-    const where = predicates.length > 0 ? `WHERE ${predicates.join(' AND ')}` : '';
+    const where =
+      predicates.length > 0 ? `WHERE ${predicates.join(' AND ')}` : '';
     const limitIndex = params.push(input.limit);
 
     const result = await this.pool.query(
@@ -1344,10 +1368,14 @@ export class PostgresGatewayRepository implements GatewayRepository {
       params,
     );
 
-    return result.rows.map(row => asActionOutcome(row as Record<string, unknown>));
+    return result.rows.map(row =>
+      asActionOutcome(row as Record<string, unknown>),
+    );
   }
 
-  async appendOpsActivityEvent(event: OpsActivityEvent): Promise<OpsActivityEvent> {
+  async appendOpsActivityEvent(
+    event: OpsActivityEvent,
+  ): Promise<OpsActivityEvent> {
     await this.pool.query(
       `INSERT INTO ops_activity_events
          (id, kind, title, detail, route, severity, created_at_ms, meta_json)
@@ -1399,7 +1427,8 @@ export class PostgresGatewayRepository implements GatewayRepository {
       );
     }
 
-    const where = predicates.length > 0 ? `WHERE ${predicates.join(' AND ')}` : '';
+    const where =
+      predicates.length > 0 ? `WHERE ${predicates.join(' AND ')}` : '';
     const limitIndex = params.push(limit);
     const result = await this.pool.query(
       `SELECT id, kind, title, detail, route, severity, created_at_ms, meta_json
@@ -1410,7 +1439,9 @@ export class PostgresGatewayRepository implements GatewayRepository {
       params,
     );
 
-    return result.rows.map(row => asOpsActivityEvent(row as Record<string, unknown>));
+    return result.rows.map(row =>
+      asOpsActivityEvent(row as Record<string, unknown>),
+    );
   }
 
   async countOpsActivityEvents(): Promise<number> {
@@ -1520,7 +1551,9 @@ export class PostgresGatewayRepository implements GatewayRepository {
     return removed;
   }
 
-  async trimWorkerFingerprintClaimEvents(input: OpsActivityTrimInput): Promise<number> {
+  async trimWorkerFingerprintClaimEvents(
+    input: OpsActivityTrimInput,
+  ): Promise<number> {
     let removed = 0;
 
     if (
@@ -1618,7 +1651,9 @@ export class PostgresGatewayRepository implements GatewayRepository {
     return removed;
   }
 
-  async createWorkerJobAttempt(attempt: WorkerJobAttempt): Promise<WorkerJobAttempt> {
+  async createWorkerJobAttempt(
+    attempt: WorkerJobAttempt,
+  ): Promise<WorkerJobAttempt> {
     const result = await this.pool.query(
       `INSERT INTO worker_job_attempts
          (id, worker_id, job_id, job_name, job_fingerprint, receipt, attempt, outcome, processing_ms, error_message, payload_json, created_at_ms)
@@ -1684,7 +1719,8 @@ export class PostgresGatewayRepository implements GatewayRepository {
       predicates.push(`outcome = ANY($${index}::text[])`);
     }
 
-    const where = predicates.length > 0 ? `WHERE ${predicates.join(' AND ')}` : '';
+    const where =
+      predicates.length > 0 ? `WHERE ${predicates.join(' AND ')}` : '';
     const limitIndex = params.push(limit);
     const result = await this.pool.query(
       `SELECT id, worker_id, job_id, job_name, job_fingerprint, receipt, attempt, outcome, processing_ms, error_message, payload_json, created_at_ms
@@ -1695,7 +1731,9 @@ export class PostgresGatewayRepository implements GatewayRepository {
       params,
     );
 
-    return result.rows.map(row => asWorkerJobAttempt(row as Record<string, unknown>));
+    return result.rows.map(row =>
+      asWorkerJobAttempt(row as Record<string, unknown>),
+    );
   }
 
   async countWorkerJobAttempts(): Promise<number> {
@@ -1705,7 +1743,9 @@ export class PostgresGatewayRepository implements GatewayRepository {
     return Number(result.rows[0]?.count || '0');
   }
 
-  async hasSuccessfulWorkerJobFingerprint(fingerprint: string): Promise<boolean> {
+  async hasSuccessfulWorkerJobFingerprint(
+    fingerprint: string,
+  ): Promise<boolean> {
     if (fingerprint.length === 0) {
       return false;
     }
@@ -1752,7 +1792,9 @@ export class PostgresGatewayRepository implements GatewayRepository {
       ],
     );
 
-    return asWorkerFingerprintClaimEvent(result.rows[0] as Record<string, unknown>);
+    return asWorkerFingerprintClaimEvent(
+      result.rows[0] as Record<string, unknown>,
+    );
   }
 
   async listWorkerFingerprintClaimEvents(
@@ -1785,7 +1827,8 @@ export class PostgresGatewayRepository implements GatewayRepository {
       predicates.push(`stale_recovered = $${index}`);
     }
 
-    const where = predicates.length > 0 ? `WHERE ${predicates.join(' AND ')}` : '';
+    const where =
+      predicates.length > 0 ? `WHERE ${predicates.join(' AND ')}` : '';
     const limitIndex = params.push(limit);
     const result = await this.pool.query(
       `SELECT id, worker_id, fingerprint, lease_key, status, ttl_ms, expires_at_ms, stale_recovered, created_at_ms
@@ -1796,7 +1839,9 @@ export class PostgresGatewayRepository implements GatewayRepository {
       params,
     );
 
-    return result.rows.map(row => asWorkerFingerprintClaimEvent(row as Record<string, unknown>));
+    return result.rows.map(row =>
+      asWorkerFingerprintClaimEvent(row as Record<string, unknown>),
+    );
   }
 
   async countWorkerFingerprintClaimEvents(
@@ -1828,7 +1873,8 @@ export class PostgresGatewayRepository implements GatewayRepository {
       predicates.push(`stale_recovered = $${index}`);
     }
 
-    const where = predicates.length > 0 ? `WHERE ${predicates.join(' AND ')}` : '';
+    const where =
+      predicates.length > 0 ? `WHERE ${predicates.join(' AND ')}` : '';
     const result = await this.pool.query<{ count: string }>(
       `SELECT COUNT(*)::text AS count
        FROM worker_fingerprint_claim_events
@@ -1838,7 +1884,9 @@ export class PostgresGatewayRepository implements GatewayRepository {
     return Number(result.rows[0]?.count || '0');
   }
 
-  async createWorkerDeadLetter(entry: WorkerDeadLetter): Promise<WorkerDeadLetter> {
+  async createWorkerDeadLetter(
+    entry: WorkerDeadLetter,
+  ): Promise<WorkerDeadLetter> {
     const result = await this.pool.query(
       `INSERT INTO worker_dead_letters
          (id, attempt_id, worker_id, job_id, job_name, receipt, attempt, status, replay_count, last_replayed_at_ms, resolved_at_ms, resolution_note, error_message, payload_json, created_at_ms)
@@ -1880,7 +1928,9 @@ export class PostgresGatewayRepository implements GatewayRepository {
     return asWorkerDeadLetter(result.rows[0] as Record<string, unknown>);
   }
 
-  async getWorkerDeadLetterById(deadLetterId: string): Promise<WorkerDeadLetter | null> {
+  async getWorkerDeadLetterById(
+    deadLetterId: string,
+  ): Promise<WorkerDeadLetter | null> {
     const result = await this.pool.query(
       `SELECT id, attempt_id, worker_id, job_id, job_name, receipt, attempt, status, replay_count, last_replayed_at_ms, resolved_at_ms, resolution_note, error_message, payload_json, created_at_ms
        FROM worker_dead_letters
@@ -1914,7 +1964,8 @@ export class PostgresGatewayRepository implements GatewayRepository {
       predicates.push(`job_name = $${index}`);
     }
 
-    const where = predicates.length > 0 ? `WHERE ${predicates.join(' AND ')}` : '';
+    const where =
+      predicates.length > 0 ? `WHERE ${predicates.join(' AND ')}` : '';
     const limitIndex = params.push(limit);
 
     const result = await this.pool.query(
@@ -1925,10 +1976,14 @@ export class PostgresGatewayRepository implements GatewayRepository {
        LIMIT $${limitIndex}`,
       params,
     );
-    return result.rows.map(row => asWorkerDeadLetter(row as Record<string, unknown>));
+    return result.rows.map(row =>
+      asWorkerDeadLetter(row as Record<string, unknown>),
+    );
   }
 
-  async updateWorkerDeadLetter(entry: WorkerDeadLetter): Promise<WorkerDeadLetter> {
+  async updateWorkerDeadLetter(
+    entry: WorkerDeadLetter,
+  ): Promise<WorkerDeadLetter> {
     const result = await this.pool.query(
       `UPDATE worker_dead_letters
           SET attempt_id = $2,
@@ -2001,9 +2056,11 @@ export class PostgresGatewayRepository implements GatewayRepository {
     return result.rows.length > 0;
   }
 
-  async getSystemLease(input: {
+  async getSystemLease(input: { leaseKey: string }): Promise<{
     leaseKey: string;
-  }): Promise<{ leaseKey: string; ownerId: string; expiresAtMs: number } | null> {
+    ownerId: string;
+    expiresAtMs: number;
+  } | null> {
     const result = await this.pool.query<{
       lease_key: string;
       owner_id: string;
@@ -2053,7 +2110,9 @@ export class PostgresGatewayRepository implements GatewayRepository {
       allowedProviders: Array.isArray(row.allowed_providers_json)
         ? (row.allowed_providers_json as string[])
         : [],
-      redactionMode: String(row.redaction_mode) as EgressPolicy['redactionMode'],
+      redactionMode: String(
+        row.redaction_mode,
+      ) as EgressPolicy['redactionMode'],
     };
   }
 

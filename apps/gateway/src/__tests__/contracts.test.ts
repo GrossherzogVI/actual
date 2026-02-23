@@ -43,7 +43,9 @@ function parseServiceAndRpcs(protoContents: string) {
   );
 
   if (serviceName === '') {
-    throw new Error(`Unable to parse service declaration in proto:\n${protoContents}`);
+    throw new Error(
+      `Unable to parse service declaration in proto:\n${protoContents}`,
+    );
   }
 
   return {
@@ -73,7 +75,10 @@ describe('proto to endpoint contract registry', () => {
     const missing: string[] = [];
 
     for (const relativeProtoFile of listProtoFiles()) {
-      const contents = readFileSync(join(protoRoot, relativeProtoFile), 'utf-8');
+      const contents = readFileSync(
+        join(protoRoot, relativeProtoFile),
+        'utf-8',
+      );
       const parsed = parseServiceAndRpcs(contents);
 
       for (const rpc of parsed.rpcs) {
@@ -91,7 +96,9 @@ describe('proto to endpoint contract registry', () => {
     for (const entry of rpcRegistry) {
       expect(entry.method === 'GET' || entry.method === 'POST').toBe(true);
       expect(entry.path.startsWith('/')).toBe(true);
-      expect(entry.path.includes(`/${entry.service.split('.')[0]}/v1/`)).toBe(true);
+      expect(entry.path.includes(`/${entry.service.split('.')[0]}/v1/`)).toBe(
+        true,
+      );
     }
   });
 });
@@ -213,15 +220,15 @@ describe('command envelope enforcement', () => {
           payload: {},
           name: 'x',
           description: '',
-        commands: [],
-        playbookId: 'playbook-1',
-        runId: 'run-1',
-        executionMode: 'dry-run',
-        guardrailProfile: 'strict',
-        rollbackWindowMinutes: 60,
-        rollbackOnFailure: true,
-        idempotencyKey: 'contract-idempotency',
-        period: 'weekly',
+          commands: [],
+          playbookId: 'playbook-1',
+          runId: 'run-1',
+          executionMode: 'dry-run',
+          guardrailProfile: 'strict',
+          rollbackWindowMinutes: 60,
+          rollbackOnFailure: true,
+          idempotencyKey: 'contract-idempotency',
+          period: 'weekly',
           ids: ['id-1'],
           status: 'completed',
           resolvedAction: 'batch-policy',

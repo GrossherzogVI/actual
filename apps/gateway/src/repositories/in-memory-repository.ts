@@ -21,10 +21,7 @@ import type {
   WorkflowPlaybook,
 } from '../types';
 
-import {
-  decodeLedgerCursor,
-  encodeLedgerCursor,
-} from './ledger-cursor';
+import { decodeLedgerCursor, encodeLedgerCursor } from './ledger-cursor';
 import type {
   CloseRunFilters,
   DelegateLaneFilters,
@@ -67,7 +64,10 @@ export class InMemoryGatewayRepository implements GatewayRepository {
   private readonly opsActivityEvents = new Map<string, OpsActivityEvent>();
   private readonly workerJobAttempts = new Map<string, WorkerJobAttempt>();
   private readonly workerDeadLetters = new Map<string, WorkerDeadLetter>();
-  private readonly workerFingerprintClaimEvents = new Map<string, WorkerFingerprintClaimEvent>();
+  private readonly workerFingerprintClaimEvents = new Map<
+    string,
+    WorkerFingerprintClaimEvent
+  >();
   private readonly systemLeases = new Map<string, StoredSystemLease>();
 
   private readonly egressAudit: EgressAuditEntry[] = [];
@@ -94,7 +94,8 @@ export class InMemoryGatewayRepository implements GatewayRepository {
     const initialPlaybook: WorkflowPlaybook = {
       id: nanoid(),
       name: 'Weekly Compression',
-      description: 'Resolve urgent queue, scan expiring contracts, run weekly close.',
+      description:
+        'Resolve urgent queue, scan expiring contracts, run weekly close.',
       commands: [
         { verb: 'resolve-next-action', lane: 'triage' },
         { verb: 'open-expiring-contracts', windowDays: 30 },
@@ -152,7 +153,9 @@ export class InMemoryGatewayRepository implements GatewayRepository {
   }
 
   async listPlaybooks(): Promise<WorkflowPlaybook[]> {
-    return [...this.playbooks.values()].sort((a, b) => b.updatedAtMs - a.updatedAtMs);
+    return [...this.playbooks.values()].sort(
+      (a, b) => b.updatedAtMs - a.updatedAtMs,
+    );
   }
 
   async getPlaybookById(playbookId: string): Promise<WorkflowPlaybook | null> {
@@ -211,7 +214,9 @@ export class InMemoryGatewayRepository implements GatewayRepository {
       rollbackEligible: false,
       rollbackOfRunId: rollbackRunId || existing.rollbackOfRunId,
       statusTimeline: [
-        ...(Array.isArray(existing.statusTimeline) ? existing.statusTimeline : []),
+        ...(Array.isArray(existing.statusTimeline)
+          ? existing.statusTimeline
+          : []),
         {
           status: 'rolled_back',
           atMs: rolledBackAtMs,
@@ -235,7 +240,10 @@ export class InMemoryGatewayRepository implements GatewayRepository {
         if (filters?.actorId && run.actorId !== filters.actorId) {
           return false;
         }
-        if (filters?.sourceSurface && run.sourceSurface !== filters.sourceSurface) {
+        if (
+          filters?.sourceSurface &&
+          run.sourceSurface !== filters.sourceSurface
+        ) {
           return false;
         }
         if (
@@ -244,7 +252,10 @@ export class InMemoryGatewayRepository implements GatewayRepository {
         ) {
           return false;
         }
-        if (typeof filters?.status === 'string' && run.status !== filters.status) {
+        if (
+          typeof filters?.status === 'string' &&
+          run.status !== filters.status
+        ) {
           return false;
         }
         if (
@@ -255,7 +266,7 @@ export class InMemoryGatewayRepository implements GatewayRepository {
         }
         if (
           typeof filters?.hasErrors === 'boolean' &&
-          (run.errorCount > 0) !== filters.hasErrors
+          run.errorCount > 0 !== filters.hasErrors
         ) {
           return false;
         }
@@ -270,7 +281,10 @@ export class InMemoryGatewayRepository implements GatewayRepository {
     return run;
   }
 
-  async listCloseRuns(limit: number, filters?: CloseRunFilters): Promise<CloseRun[]> {
+  async listCloseRuns(
+    limit: number,
+    filters?: CloseRunFilters,
+  ): Promise<CloseRun[]> {
     return [...this.closeRuns.values()]
       .filter(run => {
         if (filters?.period && run.period !== filters.period) {
@@ -278,7 +292,7 @@ export class InMemoryGatewayRepository implements GatewayRepository {
         }
         if (
           typeof filters?.hasExceptions === 'boolean' &&
-          (run.exceptionCount > 0) !== filters.hasExceptions
+          run.exceptionCount > 0 !== filters.hasExceptions
         ) {
           return false;
         }
@@ -327,7 +341,9 @@ export class InMemoryGatewayRepository implements GatewayRepository {
       rollbackEligible: false,
       rollbackOfRunId: rollbackRunId || existing.rollbackOfRunId,
       statusTimeline: [
-        ...(Array.isArray(existing.statusTimeline) ? existing.statusTimeline : []),
+        ...(Array.isArray(existing.statusTimeline)
+          ? existing.statusTimeline
+          : []),
         {
           status: 'rolled_back',
           atMs: rolledBackAtMs,
@@ -379,7 +395,10 @@ export class InMemoryGatewayRepository implements GatewayRepository {
         ) {
           return false;
         }
-        if (typeof filters?.status === 'string' && run.status !== filters.status) {
+        if (
+          typeof filters?.status === 'string' &&
+          run.status !== filters.status
+        ) {
           return false;
         }
         if (
@@ -390,7 +409,7 @@ export class InMemoryGatewayRepository implements GatewayRepository {
         }
         if (
           typeof filters?.hasErrors === 'boolean' &&
-          (run.errorCount > 0) !== filters.hasErrors
+          run.errorCount > 0 !== filters.hasErrors
         ) {
           return false;
         }
@@ -406,7 +425,9 @@ export class InMemoryGatewayRepository implements GatewayRepository {
     );
   }
 
-  async getScenarioBranchById(branchId: string): Promise<ScenarioBranch | null> {
+  async getScenarioBranchById(
+    branchId: string,
+  ): Promise<ScenarioBranch | null> {
     return this.scenarioBranches.get(branchId) || null;
   }
 
@@ -499,7 +520,9 @@ export class InMemoryGatewayRepository implements GatewayRepository {
     return lane;
   }
 
-  async createDelegateLaneEvent(event: DelegateLaneEvent): Promise<DelegateLaneEvent> {
+  async createDelegateLaneEvent(
+    event: DelegateLaneEvent,
+  ): Promise<DelegateLaneEvent> {
     const list = this.delegateLaneEvents.get(event.laneId) || [];
     list.push(event);
     this.delegateLaneEvents.set(event.laneId, list);
@@ -548,7 +571,9 @@ export class InMemoryGatewayRepository implements GatewayRepository {
       .slice(0, input.limit);
   }
 
-  async appendOpsActivityEvent(event: OpsActivityEvent): Promise<OpsActivityEvent> {
+  async appendOpsActivityEvent(
+    event: OpsActivityEvent,
+  ): Promise<OpsActivityEvent> {
     this.opsActivityEvents.set(event.id, event);
     return event;
   }
@@ -557,12 +582,14 @@ export class InMemoryGatewayRepository implements GatewayRepository {
     limit: number,
     filters?: OpsActivityFilters,
   ): Promise<OpsActivityEvent[]> {
-    const kinds = filters?.kinds && filters.kinds.length > 0
-      ? new Set(filters.kinds)
-      : null;
-    const severities = filters?.severities && filters.severities.length > 0
-      ? new Set(filters.severities)
-      : null;
+    const kinds =
+      filters?.kinds && filters.kinds.length > 0
+        ? new Set(filters.kinds)
+        : null;
+    const severities =
+      filters?.severities && filters.severities.length > 0
+        ? new Set(filters.severities)
+        : null;
     const cursor = filters?.cursor;
 
     return [...this.opsActivityEvents.values()]
@@ -708,7 +735,9 @@ export class InMemoryGatewayRepository implements GatewayRepository {
     return removed;
   }
 
-  async trimWorkerFingerprintClaimEvents(input: OpsActivityTrimInput): Promise<number> {
+  async trimWorkerFingerprintClaimEvents(
+    input: OpsActivityTrimInput,
+  ): Promise<number> {
     let removed = 0;
     const olderThanMs = input.olderThanMs;
     if (typeof olderThanMs === 'number' && Number.isFinite(olderThanMs)) {
@@ -742,7 +771,9 @@ export class InMemoryGatewayRepository implements GatewayRepository {
     return removed;
   }
 
-  async createWorkerJobAttempt(attempt: WorkerJobAttempt): Promise<WorkerJobAttempt> {
+  async createWorkerJobAttempt(
+    attempt: WorkerJobAttempt,
+  ): Promise<WorkerJobAttempt> {
     this.workerJobAttempts.set(attempt.id, attempt);
     return attempt;
   }
@@ -751,9 +782,10 @@ export class InMemoryGatewayRepository implements GatewayRepository {
     limit: number,
     filters?: WorkerJobAttemptFilters,
   ): Promise<WorkerJobAttempt[]> {
-    const outcomes = filters?.outcomes && filters.outcomes.length > 0
-      ? new Set(filters.outcomes)
-      : null;
+    const outcomes =
+      filters?.outcomes && filters.outcomes.length > 0
+        ? new Set(filters.outcomes)
+        : null;
 
     return [...this.workerJobAttempts.values()]
       .filter(attempt => {
@@ -783,7 +815,9 @@ export class InMemoryGatewayRepository implements GatewayRepository {
     return this.workerJobAttempts.size;
   }
 
-  async hasSuccessfulWorkerJobFingerprint(fingerprint: string): Promise<boolean> {
+  async hasSuccessfulWorkerJobFingerprint(
+    fingerprint: string,
+  ): Promise<boolean> {
     if (fingerprint.length === 0) {
       return false;
     }
@@ -811,9 +845,10 @@ export class InMemoryGatewayRepository implements GatewayRepository {
     limit: number,
     filters?: WorkerFingerprintClaimFilters,
   ): Promise<WorkerFingerprintClaimEvent[]> {
-    const statuses = filters?.statuses && filters.statuses.length > 0
-      ? new Set(filters.statuses)
-      : null;
+    const statuses =
+      filters?.statuses && filters.statuses.length > 0
+        ? new Set(filters.statuses)
+        : null;
 
     return [...this.workerFingerprintClaimEvents.values()]
       .filter(event => {
@@ -852,12 +887,16 @@ export class InMemoryGatewayRepository implements GatewayRepository {
     return events.length;
   }
 
-  async createWorkerDeadLetter(entry: WorkerDeadLetter): Promise<WorkerDeadLetter> {
+  async createWorkerDeadLetter(
+    entry: WorkerDeadLetter,
+  ): Promise<WorkerDeadLetter> {
     this.workerDeadLetters.set(entry.id, entry);
     return entry;
   }
 
-  async getWorkerDeadLetterById(deadLetterId: string): Promise<WorkerDeadLetter | null> {
+  async getWorkerDeadLetterById(
+    deadLetterId: string,
+  ): Promise<WorkerDeadLetter | null> {
     return this.workerDeadLetters.get(deadLetterId) || null;
   }
 
@@ -882,7 +921,9 @@ export class InMemoryGatewayRepository implements GatewayRepository {
       .slice(0, limit);
   }
 
-  async updateWorkerDeadLetter(entry: WorkerDeadLetter): Promise<WorkerDeadLetter> {
+  async updateWorkerDeadLetter(
+    entry: WorkerDeadLetter,
+  ): Promise<WorkerDeadLetter> {
     this.workerDeadLetters.set(entry.id, entry);
     return entry;
   }
@@ -913,9 +954,11 @@ export class InMemoryGatewayRepository implements GatewayRepository {
     return true;
   }
 
-  async getSystemLease(input: {
+  async getSystemLease(input: { leaseKey: string }): Promise<{
     leaseKey: string;
-  }): Promise<{ leaseKey: string; ownerId: string; expiresAtMs: number } | null> {
+    ownerId: string;
+    expiresAtMs: number;
+  } | null> {
     const current = this.systemLeases.get(input.leaseKey);
     if (!current) {
       return null;
@@ -940,7 +983,10 @@ export class InMemoryGatewayRepository implements GatewayRepository {
   }
 
   async getEgressPolicy(): Promise<EgressPolicy> {
-    return { ...this.egressPolicy, allowedProviders: [...this.egressPolicy.allowedProviders] };
+    return {
+      ...this.egressPolicy,
+      allowedProviders: [...this.egressPolicy.allowedProviders],
+    };
   }
 
   async setEgressPolicy(policy: EgressPolicy): Promise<EgressPolicy> {

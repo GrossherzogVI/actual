@@ -20,17 +20,24 @@ type WorkerConfig = {
 };
 
 const config: WorkerConfig = {
-  workerId: process.env.WORKER_ID || `worker-${Math.random().toString(16).slice(2, 8)}`,
+  workerId:
+    process.env.WORKER_ID || `worker-${Math.random().toString(16).slice(2, 8)}`,
   gatewayUrl: process.env.FINANCE_GATEWAY_URL || 'http://localhost:7070',
   gatewayInternalToken: process.env.FINANCE_GATEWAY_INTERNAL_TOKEN || '',
   aiPolicyUrl: process.env.AI_POLICY_URL || 'http://localhost:7072',
   projectionIntervalMs: Number(process.env.PROJECTION_INTERVAL_MS || 30_000),
   anomalyIntervalMs: Number(process.env.ANOMALY_INTERVAL_MS || 60_000),
-  closeRoutineIntervalMs: Number(process.env.CLOSE_ROUTINE_INTERVAL_MS || 60_000),
+  closeRoutineIntervalMs: Number(
+    process.env.CLOSE_ROUTINE_INTERVAL_MS || 60_000,
+  ),
   modelIntervalMs: Number(process.env.MODEL_INTERVAL_MS || 90_000),
   queuePollIntervalMs: Number(process.env.QUEUE_POLL_INTERVAL_MS || 1_500),
-  queueRequeueIntervalMs: Number(process.env.QUEUE_REQUEUE_INTERVAL_MS || 5_000),
-  queueVisibilityTimeoutMs: Number(process.env.QUEUE_VISIBILITY_TIMEOUT_MS || 30_000),
+  queueRequeueIntervalMs: Number(
+    process.env.QUEUE_REQUEUE_INTERVAL_MS || 5_000,
+  ),
+  queueVisibilityTimeoutMs: Number(
+    process.env.QUEUE_VISIBILITY_TIMEOUT_MS || 30_000,
+  ),
   queueMaxJobs: Number(process.env.QUEUE_MAX_JOBS || 25),
   queueRequeueLimit: Number(process.env.QUEUE_REQUEUE_LIMIT || 100),
   queueMaxAttempts: Number(process.env.QUEUE_MAX_ATTEMPTS || 6),
@@ -108,31 +115,32 @@ function internalGatewayHeaders(): Record<string, string> | undefined {
 }
 
 async function claimQueueJobs(): Promise<QueueClaimResult> {
-  return fetchJson<QueueClaimResult>(`${config.gatewayUrl}/workflow/v1/claim-queue-jobs`, {
-    method: 'POST',
-    headers: internalGatewayHeaders(),
-    body: JSON.stringify({
-      workerId: config.workerId,
-      maxJobs: config.queueMaxJobs,
-      visibilityTimeoutMs: config.queueVisibilityTimeoutMs,
-    }),
-  });
+  return fetchJson<QueueClaimResult>(
+    `${config.gatewayUrl}/workflow/v1/claim-queue-jobs`,
+    {
+      method: 'POST',
+      headers: internalGatewayHeaders(),
+      body: JSON.stringify({
+        workerId: config.workerId,
+        maxJobs: config.queueMaxJobs,
+        visibilityTimeoutMs: config.queueVisibilityTimeoutMs,
+      }),
+    },
+  );
 }
 
-async function ackQueueJob(
-  input: {
-    receipt: string;
-    success: boolean;
-    requeue?: boolean;
-    jobId: string;
-    jobName: string;
-    jobFingerprint?: string;
-    attempt: number;
-    processingMs: number;
-    errorMessage?: string;
-    payload?: Record<string, unknown>;
-  },
-): Promise<void> {
+async function ackQueueJob(input: {
+  receipt: string;
+  success: boolean;
+  requeue?: boolean;
+  jobId: string;
+  jobName: string;
+  jobFingerprint?: string;
+  attempt: number;
+  processingMs: number;
+  errorMessage?: string;
+  payload?: Record<string, unknown>;
+}): Promise<void> {
   await fetchJson<Record<string, unknown>>(
     `${config.gatewayUrl}/workflow/v1/ack-queue-job`,
     {
@@ -290,7 +298,10 @@ async function modelTask() {
   console.log(`[${nowIso()}][worker:model] policy decision`, decision);
 }
 
-function payloadString(payload: Record<string, unknown>, key: string): string | undefined {
+function payloadString(
+  payload: Record<string, unknown>,
+  key: string,
+): string | undefined {
   const value = payload[key];
   return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
@@ -326,10 +337,12 @@ function stableStringify(value: unknown): string {
 
 function computeJobFingerprint(job: ClaimedQueueJob): string {
   const hash = createHash('sha256');
-  hash.update(stableStringify({
-    name: job.name,
-    payload: job.payload,
-  }));
+  hash.update(
+    stableStringify({
+      name: job.name,
+      payload: job.payload,
+    }),
+  );
   return hash.digest('hex');
 }
 
@@ -348,7 +361,8 @@ async function processQueueJob(job: ClaimedQueueJob) {
       await projectionTask();
       return;
     case 'ledger.command.submitted': {
-      const workspaceId = payloadString(job.payload, 'workspaceId') || 'default';
+      const workspaceId =
+        payloadString(job.payload, 'workspaceId') || 'default';
       await fetchJson<Record<string, unknown>>(
         `${config.gatewayUrl}/ledger/v1/projection-snapshot`,
         {
@@ -451,7 +465,9 @@ async function queueMaintenanceTask() {
 
   const moved = await requeueExpiredQueueJobs();
   if (moved > 0) {
-    console.log(`[${nowIso()}][worker:queue] requeued expired claims moved=${moved}`);
+    console.log(
+      `[${nowIso()}][worker:queue] requeued expired claims moved=${moved}`,
+    );
   }
 }
 
@@ -472,13 +488,21 @@ function scheduleTask(task: WorkerTask): NodeJS.Timeout {
 
 async function main() {
   const tasks: WorkerTask[] = [
-    { name: 'queue-drain', intervalMs: config.queuePollIntervalMs, run: queueDrainTask },
+    {
+      name: 'queue-drain',
+      intervalMs: config.queuePollIntervalMs,
+      run: queueDrainTask,
+    },
     {
       name: 'queue-requeue',
       intervalMs: config.queueRequeueIntervalMs,
       run: queueMaintenanceTask,
     },
-    { name: 'projection', intervalMs: config.projectionIntervalMs, run: projectionTask },
+    {
+      name: 'projection',
+      intervalMs: config.projectionIntervalMs,
+      run: projectionTask,
+    },
     { name: 'anomaly', intervalMs: config.anomalyIntervalMs, run: anomalyTask },
     {
       name: 'close-routine',

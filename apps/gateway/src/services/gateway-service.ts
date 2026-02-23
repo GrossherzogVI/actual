@@ -1,16 +1,17 @@
-import { customAlphabet } from 'nanoid';
-
 import {
   buildGermanHolidaySet,
   isBusinessDay,
   parseCommandChain,
   rankRecommendations,
-  type CommandParseStep,
-  type Recommendation,
 } from '@finance-os/domain-kernel';
+import type {
+  CommandParseStep,
+  Recommendation,
+} from '@finance-os/domain-kernel';
+import { customAlphabet } from 'nanoid';
 
-import type { GatewayRepository } from '../repositories/types';
 import type { GatewayQueue, QueueJob } from '../queue/types';
+import type { GatewayRepository } from '../repositories/types';
 import type {
   ActionOutcome,
   CloseRun,
@@ -48,8 +49,8 @@ import type {
   ScenarioMutation,
   ScenarioSimulationResult,
   TemporalLaneSignal,
-  TemporalSignalSeverity,
   TemporalSignals,
+  TemporalSignalSeverity,
   WorkerDeadLetter,
   WorkerJobFingerprintClaimResult,
   WorkerQueueHealth,
@@ -59,7 +60,12 @@ import type {
   WorkflowCommandExecutionStep,
   WorkflowPlaybook,
 } from '../types';
-import { buildStepEffectSummary, isStepReversible, toRollbackEffectSummaries } from './autopilot/effects';
+
+import {
+  buildStepEffectSummary,
+  isStepReversible,
+  toRollbackEffectSummaries,
+} from './autopilot/effects';
 import { evaluateGuardrails } from './autopilot/guardrails';
 import {
   computeRollbackWindowUntil,
@@ -142,7 +148,9 @@ const BUNDESLAND_CODES = [
   'SH',
   'TH',
 ] as const;
-type KernelBundesland = NonNullable<Parameters<typeof buildGermanHolidaySet>[1]>;
+type KernelBundesland = NonNullable<
+  Parameters<typeof buildGermanHolidaySet>[1]
+>;
 
 function workerFingerprintLeaseKey(fingerprint: string): string {
   return `${WORKER_FINGERPRINT_LEASE_KEY_PREFIX}:${fingerprint}`;
@@ -187,7 +195,10 @@ function parseLaneDeadline(lane: DelegateLane): {
   }
 
   const rawDeadline = lane.payload?.deadline;
-  if (typeof rawDeadline === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawDeadline)) {
+  if (
+    typeof rawDeadline === 'string' &&
+    /^\d{4}-\d{2}-\d{2}$/.test(rawDeadline)
+  ) {
     const parsed = Date.parse(`${rawDeadline}T00:00:00`);
     if (Number.isFinite(parsed)) {
       return {
@@ -247,10 +258,7 @@ function severitySortValue(severity: TemporalSignalSeverity): number {
   return 2;
 }
 
-function isLaneStaleForEscalation(
-  lane: DelegateLane,
-  nowMs: number,
-): boolean {
+function isLaneStaleForEscalation(lane: DelegateLane, nowMs: number): boolean {
   if (lane.status !== 'assigned') {
     return false;
   }
@@ -275,7 +283,9 @@ function createEmptyOpsTaskStatus(): OpsActivityTaskStatus {
   };
 }
 
-function cloneOpsTaskStatus(status: OpsActivityTaskStatus): OpsActivityTaskStatus {
+function cloneOpsTaskStatus(
+  status: OpsActivityTaskStatus,
+): OpsActivityTaskStatus {
   return {
     running: status.running,
     runCount: status.runCount,
@@ -373,8 +383,12 @@ function deriveSimulationDelta(input: {
   const derivedRisk = Math.round(riskBaseline * confidence);
 
   return {
-    amountDelta: hasExplicitAmount ? Math.round(explicitAmount as number) : derivedAmount,
-    riskDelta: hasExplicitRisk ? Math.round(explicitRisk as number) : derivedRisk,
+    amountDelta: hasExplicitAmount
+      ? Math.round(explicitAmount as number)
+      : derivedAmount,
+    riskDelta: hasExplicitRisk
+      ? Math.round(explicitRisk as number)
+      : derivedRisk,
   };
 }
 
@@ -594,7 +608,8 @@ function toScenarioAdoptionActivity(
       typeof riskScore === 'number' ? ` Risk score ${riskScore}.` : ''
     }`,
     route: '/ops#spatial-twin',
-    severity: typeof riskScore === 'number' && riskScore >= 80 ? 'warn' : 'info',
+    severity:
+      typeof riskScore === 'number' && riskScore >= 80 ? 'warn' : 'info',
     createdAtMs,
     meta: {
       branchId: branch.id,
@@ -746,7 +761,10 @@ export function createGatewayService(
     task.lastResult = undefined;
   }
 
-  function finishOpsTask(task: OpsActivityTaskStatus, result: Record<string, number>) {
+  function finishOpsTask(
+    task: OpsActivityTaskStatus,
+    result: Record<string, number>,
+  ) {
     const finishedAtMs = Date.now();
     task.running = false;
     task.lastFinishedAtMs = finishedAtMs;
@@ -774,7 +792,12 @@ export function createGatewayService(
     workerId: string;
     fingerprint: string;
     leaseKey: string;
-    status: 'acquired' | 'already-processed' | 'already-claimed' | 'released' | 'release-miss';
+    status:
+      | 'acquired'
+      | 'already-processed'
+      | 'already-claimed'
+      | 'released'
+      | 'release-miss';
     ttlMs: number;
     expiresAtMs?: number;
     staleRecovered?: boolean;
@@ -839,7 +862,9 @@ export function createGatewayService(
       status: 'assigned',
     });
     const dueSoon = openLanes.filter(
-      lane => typeof lane.dueAtMs === 'number' && lane.dueAtMs <= now + 72 * 60 * 60 * 1000,
+      lane =>
+        typeof lane.dueAtMs === 'number' &&
+        lane.dueAtMs <= now + 72 * 60 * 60 * 1000,
     ).length;
     const latestClose = (await repository.listCloseRuns(1))[0];
 
@@ -852,7 +877,9 @@ export function createGatewayService(
         : 'No close history yet.',
     ];
 
-    const actionHints = recs.slice(0, 3).map(recommendation => recommendation.title);
+    const actionHints = recs
+      .slice(0, 3)
+      .map(recommendation => recommendation.title);
 
     return {
       summary:
@@ -881,7 +908,10 @@ export function createGatewayService(
       hasErrors?: boolean;
     },
   ) {
-    return repository.listPlaybookRuns(Math.max(1, Math.min(limit, 200)), filters);
+    return repository.listPlaybookRuns(
+      Math.max(1, Math.min(limit, 200)),
+      filters,
+    );
   }
 
   async function listWorkflowCommandRuns(
@@ -906,9 +936,7 @@ export function createGatewayService(
   ): Promise<WorkflowCommandExecution[]> {
     const normalized = Array.from(
       new Set(
-        runIds
-          .map(runId => runId.trim())
-          .filter(runId => runId.length > 0),
+        runIds.map(runId => runId.trim()).filter(runId => runId.length > 0),
       ),
     ).slice(0, 200);
 
@@ -1005,7 +1033,11 @@ export function createGatewayService(
       ? parseCommandChain(chain)
       : ({ steps: [], errors: [] } as {
           steps: CommandParseStep[];
-          errors: Array<{ code: 'empty-command' | 'unknown-token'; index: number; raw: string }>;
+          errors: Array<{
+            code: 'empty-command' | 'unknown-token';
+            index: number;
+            raw: string;
+          }>;
         });
 
     const opsState = await repository.getOpsState();
@@ -1025,7 +1057,8 @@ export function createGatewayService(
       nonReversibleStepIds,
     });
     const shouldBlock =
-      options.executionMode === 'live' && guardrailEvaluation.hasBlockingFailure;
+      options.executionMode === 'live' &&
+      guardrailEvaluation.hasBlockingFailure;
 
     const plannedStatusTimeline: RunStatusTransition[] = [
       {
@@ -1121,7 +1154,10 @@ export function createGatewayService(
     const fallbackEffects: EffectSummary[] = steps.map((step, index) =>
       buildStepEffectSummary({
         effectId: `playbook-effect-${index + 1}`,
-        stepId: typeof step.command.verb === 'string' ? step.command.verb : `step-${step.index}`,
+        stepId:
+          typeof step.command.verb === 'string'
+            ? step.command.verb
+            : `step-${step.index}`,
         detail: step.detail || `Step ${step.index + 1}`,
         mode: options.executionMode,
         stepStatus: step.status === 'error' ? 'error' : 'ok',
@@ -1188,7 +1224,9 @@ export function createGatewayService(
     }
     await queue.enqueue(
       queueJob(
-        run.status === 'blocked' ? 'autopilot-run-blocked' : 'autopilot-run-completed',
+        run.status === 'blocked'
+          ? 'autopilot-run-blocked'
+          : 'autopilot-run-completed',
         {
           scope: 'playbook',
           runId: run.id,
@@ -1253,7 +1291,8 @@ export function createGatewayService(
       previousRun.playbookId,
       {
         executionMode: input.executionMode || previousRun.executionMode,
-        guardrailProfile: input.guardrailProfile || previousRun.guardrailProfile,
+        guardrailProfile:
+          input.guardrailProfile || previousRun.guardrailProfile,
         rollbackWindowMinutes:
           typeof input.rollbackWindowMinutes === 'number'
             ? input.rollbackWindowMinutes
@@ -1261,7 +1300,8 @@ export function createGatewayService(
               ? Math.max(
                   1,
                   Math.trunc(
-                    (previousRun.rollbackWindowUntilMs - previousRun.startedAtMs) /
+                    (previousRun.rollbackWindowUntilMs -
+                      previousRun.startedAtMs) /
                       60_000,
                   ),
                 )
@@ -1277,7 +1317,9 @@ export function createGatewayService(
     );
   }
 
-  async function runCloseRoutine(period: 'weekly' | 'monthly'): Promise<CloseRun> {
+  async function runCloseRoutine(
+    period: 'weekly' | 'monthly',
+  ): Promise<CloseRun> {
     const state = await repository.getOpsState();
     const run: CloseRun = {
       id: nanoid(),
@@ -1386,7 +1428,8 @@ export function createGatewayService(
       nonReversibleStepIds,
     });
     const shouldBlock =
-      options.executionMode === 'live' && guardrailEvaluation.hasBlockingFailure;
+      options.executionMode === 'live' &&
+      guardrailEvaluation.hasBlockingFailure;
     const effectSummaries: EffectSummary[] = [];
 
     const plannedStatusTimeline: RunStatusTransition[] = [
@@ -1692,9 +1735,11 @@ export function createGatewayService(
           }
         } else if (step.id === 'escalate-stale-lanes') {
           const now = Date.now();
-          const staleLanes = (await repository.listDelegateLanes(500, {
-            status: 'assigned',
-          })).filter(lane => isLaneStaleForEscalation(lane, now));
+          const staleLanes = (
+            await repository.listDelegateLanes(500, {
+              status: 'assigned',
+            })
+          ).filter(lane => isLaneStaleForEscalation(lane, now));
 
           if (options.executionMode === 'dry-run') {
             result = {
@@ -1713,7 +1758,9 @@ export function createGatewayService(
                   'Autopilot escalation: lane stale for >48h. Please acknowledge or complete.',
                 payload: {
                   source: 'workflow.escalate-stale-lanes',
-                  staleHours: Math.round((now - lane.updatedAtMs) / (60 * 60 * 1000)),
+                  staleHours: Math.round(
+                    (now - lane.updatedAtMs) / (60 * 60 * 1000),
+                  ),
                 },
               });
             }
@@ -1749,7 +1796,11 @@ export function createGatewayService(
               { length: Math.max(1, Math.min(5, currentState.pendingReviews)) },
               (_, itemIndex) => `review-${itemIndex + 1}`,
             );
-            const applied = await applyBatchPolicy(ids, 'accepted', 'batch-policy');
+            const applied = await applyBatchPolicy(
+              ids,
+              'accepted',
+              'batch-policy',
+            );
             result = {
               id: step.id,
               raw: step.raw,
@@ -1837,7 +1888,9 @@ export function createGatewayService(
       }
       await queue.enqueue(
         queueJob(
-          run.status === 'blocked' ? 'autopilot-run-blocked' : 'autopilot-run-completed',
+          run.status === 'blocked'
+            ? 'autopilot-run-blocked'
+            : 'autopilot-run-completed',
           {
             scope: 'command',
             runId: run.id,
@@ -1941,7 +1994,11 @@ export function createGatewayService(
     };
 
     await repository.createWorkflowCommandRun(rollbackRun);
-    await repository.markWorkflowCommandRunRolledBack(run.id, now, rollbackRun.id);
+    await repository.markWorkflowCommandRunRolledBack(
+      run.id,
+      now,
+      rollbackRun.id,
+    );
     await queue.enqueue(
       queueJob('autopilot-run-rolled-back', {
         scope: 'command',
@@ -2036,10 +2093,14 @@ export function createGatewayService(
       lane => lane.status === 'assigned' || lane.status === 'accepted',
     );
     const dueSoonLanes = openLanes.filter(
-      lane => typeof lane.dueAtMs === 'number' && lane.dueAtMs <= now + 72 * 60 * 60 * 1000,
+      lane =>
+        typeof lane.dueAtMs === 'number' &&
+        lane.dueAtMs <= now + 72 * 60 * 60 * 1000,
     );
     const staleAssignedLanes = openLanes.filter(
-      lane => lane.status === 'assigned' && now - lane.updatedAtMs >= 48 * 60 * 60 * 1000,
+      lane =>
+        lane.status === 'assigned' &&
+        now - lane.updatedAtMs >= 48 * 60 * 60 * 1000,
     );
     const recentOutcomes = await repository.listActionOutcomes({ limit: 120 });
     const latestOutcomeByAction = new Map<string, ActionOutcome>();
@@ -2099,7 +2160,8 @@ export function createGatewayService(
           dueSoonLanes.length > 0
             ? `${dueSoonLanes.length} mission lane(s) are close to deadline.`
             : 'No due-soon mission lanes.',
-        recommendedChain: 'triage -> delegate-triage-batch -> apply-batch-policy',
+        recommendedChain:
+          'triage -> delegate-triage-batch -> apply-batch-policy',
         recommendedAssignee: 'delegate',
         recommendedExecutionMode: 'live',
         recommendedGuardrailProfile: 'balanced',
@@ -2127,43 +2189,43 @@ export function createGatewayService(
 
     const actions = baseActions
       .map(action => {
-      const latest = latestOutcomeByAction.get(action.id);
-      if (!latest) {
+        const latest = latestOutcomeByAction.get(action.id);
+        if (!latest) {
+          return action;
+        }
+
+        const hoursSince = (now - latest.recordedAtMs) / (60 * 60 * 1000);
+        if (
+          (latest.outcome === 'accepted' ||
+            latest.outcome === 'completed' ||
+            latest.outcome === 'done') &&
+          hoursSince < 24
+        ) {
+          return {
+            ...action,
+            score: action.score * 0.35,
+            reason: `${action.reason} Cooldown after recent completion.`,
+          };
+        }
+
+        if (latest.outcome === 'deferred' && hoursSince < 72) {
+          return {
+            ...action,
+            score: action.score * 1.15,
+            reason: `${action.reason} Previously deferred.`,
+          };
+        }
+
+        if (latest.outcome === 'ignored' && hoursSince < 72) {
+          return {
+            ...action,
+            score: action.score * 1.25,
+            reason: `${action.reason} Previously ignored.`,
+          };
+        }
+
         return action;
-      }
-
-      const hoursSince = (now - latest.recordedAtMs) / (60 * 60 * 1000);
-      if (
-        (latest.outcome === 'accepted' ||
-          latest.outcome === 'completed' ||
-          latest.outcome === 'done') &&
-        hoursSince < 24
-      ) {
-        return {
-          ...action,
-          score: action.score * 0.35,
-          reason: `${action.reason} Cooldown after recent completion.`,
-        };
-      }
-
-      if (latest.outcome === 'deferred' && hoursSince < 72) {
-        return {
-          ...action,
-          score: action.score * 1.15,
-          reason: `${action.reason} Previously deferred.`,
-        };
-      }
-
-      if (latest.outcome === 'ignored' && hoursSince < 72) {
-        return {
-          ...action,
-          score: action.score * 1.25,
-          reason: `${action.reason} Previously ignored.`,
-        };
-      }
-
-      return action;
-    })
+      })
       .filter(action => action.score > 0)
       .sort((a, b) => b.score - a.score);
 
@@ -2221,9 +2283,9 @@ export function createGatewayService(
       nextCursor:
         hasMore && last
           ? encodeOpsActivityCursor({
-            createdAtMs: last.createdAtMs,
-            id: last.id,
-          })
+              createdAtMs: last.createdAtMs,
+              id: last.id,
+            })
           : undefined,
     };
   }
@@ -2244,10 +2306,14 @@ export function createGatewayService(
     }
     beginOpsTask(opsActivityPipelineState.backfill);
 
-    const limitPerPlane = Math.max(1, Math.min(input?.limitPerPlane ?? 500, 5_000));
+    const limitPerPlane = Math.max(
+      1,
+      Math.min(input?.limitPerPlane ?? 500, 5_000),
+    );
     let attempted = 0;
     try {
-      const commandRuns = await repository.listWorkflowCommandRuns(limitPerPlane);
+      const commandRuns =
+        await repository.listWorkflowCommandRuns(limitPerPlane);
       for (const run of commandRuns) {
         await appendOpsActivityEvent(toCommandRunActivity(run));
         attempted += 1;
@@ -2280,7 +2346,9 @@ export function createGatewayService(
           limitPerPlane,
         );
         for (const laneEvent of laneEvents) {
-          await appendOpsActivityEvent(toDelegateLaneEventActivity(lane, laneEvent));
+          await appendOpsActivityEvent(
+            toDelegateLaneEventActivity(lane, laneEvent),
+          );
           attempted += 1;
         }
       }
@@ -2355,7 +2423,8 @@ export function createGatewayService(
         ? Math.max(0, Math.trunc(input.maxRows))
         : undefined;
     const retentionDays =
-      typeof input?.retentionDays === 'number' && Number.isFinite(input.retentionDays)
+      typeof input?.retentionDays === 'number' &&
+      Number.isFinite(input.retentionDays)
         ? Math.max(0, input.retentionDays)
         : undefined;
     const olderThanMs =
@@ -2368,37 +2437,35 @@ export function createGatewayService(
         removedWorkerJobAttempts,
         removedWorkerDeadLetters,
         removedWorkerFingerprintClaimEvents,
-      ] =
-        await Promise.all([
-          repository.trimOpsActivityEvents({
-            maxRows,
-            olderThanMs,
-          }),
-          repository.trimWorkerJobAttempts({
-            maxRows,
-            olderThanMs,
-          }),
-          repository.trimWorkerDeadLetters({
-            maxRows,
-            olderThanMs,
-          }),
-          repository.trimWorkerFingerprintClaimEvents({
-            maxRows,
-            olderThanMs,
-          }),
-        ]);
+      ] = await Promise.all([
+        repository.trimOpsActivityEvents({
+          maxRows,
+          olderThanMs,
+        }),
+        repository.trimWorkerJobAttempts({
+          maxRows,
+          olderThanMs,
+        }),
+        repository.trimWorkerDeadLetters({
+          maxRows,
+          olderThanMs,
+        }),
+        repository.trimWorkerFingerprintClaimEvents({
+          maxRows,
+          olderThanMs,
+        }),
+      ]);
       const [
         total,
         totalWorkerJobAttempts,
         totalWorkerDeadLetters,
         totalWorkerFingerprintClaimEvents,
-      ] =
-        await Promise.all([
-          repository.countOpsActivityEvents(),
-          repository.countWorkerJobAttempts(),
-          repository.countWorkerDeadLetters(),
-          repository.countWorkerFingerprintClaimEvents(),
-        ]);
+      ] = await Promise.all([
+        repository.countOpsActivityEvents(),
+        repository.countWorkerJobAttempts(),
+        repository.countWorkerDeadLetters(),
+        repository.countWorkerFingerprintClaimEvents(),
+      ]);
       finishOpsTask(opsActivityPipelineState.maintenance, {
         removed,
         total,
@@ -2525,7 +2592,9 @@ export function createGatewayService(
     }
 
     if (preferredBaseBranchId) {
-      const preferred = branches.find(branch => branch.id === preferredBaseBranchId);
+      const preferred = branches.find(
+        branch => branch.id === preferredBaseBranchId,
+      );
       if (preferred) {
         return preferred;
       }
@@ -2559,7 +2628,9 @@ export function createGatewayService(
     actorId?: string;
   }): Promise<ScenarioSimulationResult> {
     const now = Date.now();
-    const baseBranch = await selectSimulationBaseBranch(input.preferredBaseBranchId);
+    const baseBranch = await selectSimulationBaseBranch(
+      input.preferredBaseBranchId,
+    );
     const delta = deriveSimulationDelta({
       expectedImpact: input.expectedImpact,
       confidence: input.confidence,
@@ -2573,9 +2644,13 @@ export function createGatewayService(
         : undefined,
       `Source: ${input.source}`,
       `Chain: ${input.chain}`,
-      input.recommendationId ? `Recommendation: ${input.recommendationId}` : undefined,
+      input.recommendationId
+        ? `Recommendation: ${input.recommendationId}`
+        : undefined,
     ]
-      .filter((part): part is string => typeof part === 'string' && part.length > 0)
+      .filter(
+        (part): part is string => typeof part === 'string' && part.length > 0,
+      )
       .join('\n');
 
     const branch = await createScenarioBranch({
@@ -2597,7 +2672,8 @@ export function createGatewayService(
         chain: input.chain,
         expectedImpact: input.expectedImpact,
         confidence:
-          typeof input.confidence === 'number' && Number.isFinite(input.confidence)
+          typeof input.confidence === 'number' &&
+          Number.isFinite(input.confidence)
             ? input.confidence
             : undefined,
         recommendationId: input.recommendationId,
@@ -2706,7 +2782,8 @@ export function createGatewayService(
       mutationKind: 'run-promotion-link',
       payload: {
         sourceMutationId: sourceMutation.id,
-        source: typeof source === 'string' && source.length > 0 ? source : 'manual',
+        source:
+          typeof source === 'string' && source.length > 0 ? source : 'manual',
         recommendationId:
           typeof recommendationId === 'string' && recommendationId.length > 0
             ? recommendationId
@@ -2781,7 +2858,9 @@ export function createGatewayService(
     return branch;
   }
 
-  async function listScenarioMutations(branchId: string): Promise<ScenarioMutation[]> {
+  async function listScenarioMutations(
+    branchId: string,
+  ): Promise<ScenarioMutation[]> {
     return repository.listScenarioMutations(branchId);
   }
 
@@ -2908,7 +2987,10 @@ export function createGatewayService(
     let againstBranchId = input.againstBranchId;
     if (!againstBranchId) {
       const adoptedBaseline = (await repository.listScenarioBranches())
-        .filter(candidate => candidate.status === 'adopted' && candidate.id !== branch.id)
+        .filter(
+          candidate =>
+            candidate.status === 'adopted' && candidate.id !== branch.id,
+        )
         .sort(
           (a, b) =>
             (b.adoptedAtMs || 0) - (a.adoptedAtMs || 0) ||
@@ -2917,7 +2999,10 @@ export function createGatewayService(
       againstBranchId = adoptedBaseline?.id;
     }
 
-    const comparison = await compareScenarioOutcomes(branch.id, againstBranchId);
+    const comparison = await compareScenarioOutcomes(
+      branch.id,
+      againstBranchId,
+    );
     if (!comparison) return null;
 
     const mutations = await repository.listScenarioMutations(branch.id);
@@ -2934,7 +3019,9 @@ export function createGatewayService(
       blockers.push('Scenario lineage cycle detected.');
     }
     if (mutations.length === 0) {
-      warnings.push('Branch has no mutations; adoption has no measurable change.');
+      warnings.push(
+        'Branch has no mutations; adoption has no measurable change.',
+      );
     }
     if (lineage.nodes.length >= 6) {
       warnings.push(
@@ -2954,7 +3041,9 @@ export function createGatewayService(
       warnings.push(`Projected cashflow delta is negative (${amountDelta}).`);
     }
     if (amountDelta <= -2000) {
-      blockers.push(`Projected cashflow downside exceeds threshold (${amountDelta}).`);
+      blockers.push(
+        `Projected cashflow downside exceeds threshold (${amountDelta}).`,
+      );
     }
 
     const riskScoreRaw = Math.round(
@@ -2999,7 +3088,11 @@ export function createGatewayService(
     againstBranchId?: string;
   }): Promise<
     | { ok: true; branch: ScenarioBranch; check: ScenarioAdoptionCheck }
-    | { ok: false; error: 'branch-not-found' | 'adoption-blocked'; check?: ScenarioAdoptionCheck }
+    | {
+        ok: false;
+        error: 'branch-not-found' | 'adoption-blocked';
+        check?: ScenarioAdoptionCheck;
+      }
   > {
     const check = await getScenarioAdoptionCheck({
       branchId: input.branchId,
@@ -3020,7 +3113,10 @@ export function createGatewayService(
     }
 
     const adoptedAtMs = Date.now();
-    const branch = await repository.adoptScenarioBranch(input.branchId, adoptedAtMs);
+    const branch = await repository.adoptScenarioBranch(
+      input.branchId,
+      adoptedAtMs,
+    );
     if (!branch) {
       return {
         ok: false,
@@ -3039,7 +3135,10 @@ export function createGatewayService(
       }),
     );
 
-    const adoptionActivity = toScenarioAdoptionActivity(branch, check.riskScore);
+    const adoptionActivity = toScenarioAdoptionActivity(
+      branch,
+      check.riskScore,
+    );
     await appendOpsActivityEvent({
       ...adoptionActivity,
       meta: {
@@ -3183,7 +3282,9 @@ export function createGatewayService(
       }),
     );
 
-    await appendOpsActivityEvent(toDelegateLaneEventActivity(updated, laneEvent));
+    await appendOpsActivityEvent(
+      toDelegateLaneEventActivity(updated, laneEvent),
+    );
 
     return { ok: true, lane: updated };
   }
@@ -3221,7 +3322,9 @@ export function createGatewayService(
       }),
     );
 
-    await appendOpsActivityEvent(toDelegateLaneEventActivity(updatedLane, event));
+    await appendOpsActivityEvent(
+      toDelegateLaneEventActivity(updatedLane, event),
+    );
 
     return event;
   }
@@ -3350,7 +3453,10 @@ export function createGatewayService(
     horizonDays?: number;
   }): Promise<TemporalSignals> {
     const bundesland = normalizeBundesland(input?.bundesland);
-    const horizonDays = Math.max(7, Math.min(45, Math.trunc(input?.horizonDays ?? 14)));
+    const horizonDays = Math.max(
+      7,
+      Math.min(45, Math.trunc(input?.horizonDays ?? 14)),
+    );
     const today = startOfDay(new Date());
     const todayMs = today.getTime();
 
@@ -3428,7 +3534,8 @@ export function createGatewayService(
       .map(entry => entry.signal);
 
     const summary = {
-      critical: laneSignals.filter(signal => signal.severity === 'critical').length,
+      critical: laneSignals.filter(signal => signal.severity === 'critical')
+        .length,
       warn: laneSignals.filter(signal => signal.severity === 'warn').length,
       info: laneSignals.filter(signal => signal.severity === 'info').length,
       businessDays: calendar.filter(day => day.isBusinessDay).length,
@@ -3442,7 +3549,10 @@ export function createGatewayService(
     const closeSafeAmountDelta = criticalWeight * 180 + warnWeight * 95;
     const closeSafeRiskDelta = -Math.max(1, criticalWeight * 2 + warnWeight);
     const delegateBatchAmountDelta = criticalWeight * 260 + warnWeight * 120;
-    const delegateBatchRiskDelta = -Math.max(1, criticalWeight * 3 + warnWeight);
+    const delegateBatchRiskDelta = -Math.max(
+      1,
+      criticalWeight * 3 + warnWeight,
+    );
     const reviewAmountDelta = urgentWeight * 70;
     const reviewRiskDelta = -Math.max(1, urgentWeight);
     const recommendedChains = [
@@ -3459,7 +3569,8 @@ export function createGatewayService(
       {
         id: 'temporal-delegate-batch',
         label: 'Batch delegate deadline triage',
-        chain: 'triage -> escalate-stale-lanes -> delegate-triage-batch -> apply-batch-policy',
+        chain:
+          'triage -> escalate-stale-lanes -> delegate-triage-batch -> apply-batch-policy',
         reason:
           summary.critical + summary.warn > 0
             ? `${summary.critical} critical and ${summary.warn} warning lane(s) need coordinated action.`
@@ -3612,7 +3723,10 @@ export function createGatewayService(
     const ownerId = input.workerId;
     const ttlMs = Math.max(
       1_000,
-      Math.min(input.ttlMs ?? DEFAULT_QUEUE_VISIBILITY_TIMEOUT_MS, 10 * 60 * 1000),
+      Math.min(
+        input.ttlMs ?? DEFAULT_QUEUE_VISIBILITY_TIMEOUT_MS,
+        10 * 60 * 1000,
+      ),
     );
     const leaseKey = workerFingerprintLeaseKey(fingerprint);
     const now = Date.now();
@@ -3878,9 +3992,7 @@ export function createGatewayService(
         continue;
       }
 
-      await queue.enqueue(
-        queueJob(entry.jobName, entry.payload || {}),
-      );
+      await queue.enqueue(queueJob(entry.jobName, entry.payload || {}));
       replayed += 1;
 
       await repository.createWorkerJobAttempt({
@@ -3922,7 +4034,9 @@ export function createGatewayService(
     operatorId?: string;
     resolutionNote?: string;
   }): Promise<WorkerDeadLetter | null> {
-    const existing = await repository.getWorkerDeadLetterById(input.deadLetterId);
+    const existing = await repository.getWorkerDeadLetterById(
+      input.deadLetterId,
+    );
     if (!existing) {
       return null;
     }
@@ -3943,7 +4057,9 @@ export function createGatewayService(
     operatorId?: string;
     note?: string;
   }): Promise<WorkerDeadLetter | null> {
-    const existing = await repository.getWorkerDeadLetterById(input.deadLetterId);
+    const existing = await repository.getWorkerDeadLetterById(
+      input.deadLetterId,
+    );
     if (!existing) {
       return null;
     }
@@ -3964,8 +4080,14 @@ export function createGatewayService(
     workerId?: string;
     jobName?: string;
   }): Promise<WorkerQueueHealth> {
-    const windowMs = Math.max(60_000, Math.min(input?.windowMs ?? 60 * 60 * 1000, 7 * 24 * 60 * 60 * 1000));
-    const sampleLimit = Math.max(1, Math.min(input?.sampleLimit ?? 5000, 20_000));
+    const windowMs = Math.max(
+      60_000,
+      Math.min(input?.windowMs ?? 60 * 60 * 1000, 7 * 24 * 60 * 60 * 1000),
+    );
+    const sampleLimit = Math.max(
+      1,
+      Math.min(input?.sampleLimit ?? 5000, 20_000),
+    );
     const sinceMs = Date.now() - windowMs;
 
     const attempts = await repository.listWorkerJobAttempts(sampleLimit, {
@@ -4002,9 +4124,12 @@ export function createGatewayService(
     const throughputPerMinute =
       windowMs > 0 ? Number(((sampleSize * 60_000) / windowMs).toFixed(2)) : 0;
     const failureCount = counts.dropped + counts.ackMiss;
-    const failureRate = sampleSize > 0 ? Number((failureCount / sampleSize).toFixed(4)) : 0;
-    const retryRate = sampleSize > 0 ? Number((counts.requeued / sampleSize).toFixed(4)) : 0;
-    const deadLetterRate = sampleSize > 0 ? Number((counts.dropped / sampleSize).toFixed(4)) : 0;
+    const failureRate =
+      sampleSize > 0 ? Number((failureCount / sampleSize).toFixed(4)) : 0;
+    const retryRate =
+      sampleSize > 0 ? Number((counts.requeued / sampleSize).toFixed(4)) : 0;
+    const deadLetterRate =
+      sampleSize > 0 ? Number((counts.dropped / sampleSize).toFixed(4)) : 0;
 
     return {
       windowMs,

@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Trans } from 'react-i18next';
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { apiClient } from '../../core/api/client';
 import type {
   ExecutionMode,
   GuardrailProfile,
@@ -8,13 +11,10 @@ import type {
   PlaybookRun,
   WorkflowCommandExecution,
 } from '../../core/types';
-import { apiClient } from '../../core/api/client';
+import { RUN_DETAILS_COMMAND_EVENT } from '../runtime/run-details-commands';
+import type { RunDetailsCommandEventDetail, RunDetailsSelector } from '../runtime/run-details-commands';
 import { RunDetailsDrawer } from '../runtime/RunDetailsDrawer';
-import {
-  type RunDetailsCommandEventDetail,
-  type RunDetailsSelector,
-  RUN_DETAILS_COMMAND_EVENT,
-} from '../runtime/run-details-commands';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -109,22 +109,22 @@ const PLAYBOOK_TEMPLATES: Array<{
   label: string;
   tokens: string[];
 }> = [
-    {
-      id: 'morning',
-      label: 'Morning Loop',
-      tokens: ['triage', 'open-review', 'close-weekly', 'refresh'],
-    },
-    {
-      id: 'expiring-contracts',
-      label: 'Contract Pressure',
-      tokens: ['triage', 'expiring<30d', 'batch-renegotiate', 'refresh'],
-    },
-    {
-      id: 'close-weekly',
-      label: 'Close Sprint',
-      tokens: ['triage', 'close-weekly', 'refresh'],
-    },
-  ];
+  {
+    id: 'morning',
+    label: 'Morning Loop',
+    tokens: ['triage', 'open-review', 'close-weekly', 'refresh'],
+  },
+  {
+    id: 'expiring-contracts',
+    label: 'Contract Pressure',
+    tokens: ['triage', 'expiring<30d', 'batch-renegotiate', 'refresh'],
+  },
+  {
+    id: 'close-weekly',
+    label: 'Close Sprint',
+    tokens: ['triage', 'close-weekly', 'refresh'],
+  },
+];
 
 function tokenizeChain(chain: string): string[] {
   return chain
@@ -195,8 +195,12 @@ function statusColorClass(run: PlaybookRun): string {
   return run.executionMode === 'live' ? 'fo-log-live' : '';
 }
 
-function previewStepClass(step: WorkflowCommandExecution['steps'][number]): string {
-  return step.status === 'error' ? 'fo-preview-step fo-preview-step-error' : 'fo-preview-step';
+function previewStepClass(
+  step: WorkflowCommandExecution['steps'][number],
+): string {
+  return step.status === 'error'
+    ? 'fo-preview-step fo-preview-step-error'
+    : 'fo-preview-step';
 }
 
 function mutationErrorMessage(error: unknown, fallback: string): string {
@@ -222,7 +226,9 @@ function commandToToken(command: Record<string, unknown>): string | null {
 function playbookToChain(playbook: Playbook): string {
   const tokens = playbook.commands
     .map(command => commandToToken(command))
-    .filter((token): token is string => typeof token === 'string' && token.length > 0);
+    .filter(
+      (token): token is string => typeof token === 'string' && token.length > 0,
+    );
   if (tokens.length === 0) {
     return 'triage -> refresh';
   }
@@ -235,7 +241,8 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
   const [playbookChain, setPlaybookChain] = useState(CHAIN_HINT);
   const [selectedPlaybookId, setSelectedPlaybookId] = useState('');
   const [runModeFilter, setRunModeFilter] = useState<RunModeFilter>('all');
-  const [previewResult, setPreviewResult] = useState<WorkflowCommandExecution | null>(null);
+  const [previewResult, setPreviewResult] =
+    useState<WorkflowCommandExecution | null>(null);
   const [previewChain, setPreviewChain] = useState('');
   const [executionMode, setExecutionMode] = useState<ExecutionMode>('dry-run');
   const [guardrailProfile, setGuardrailProfile] =
@@ -247,8 +254,14 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
   const [pendingRunDetailsSelector, setPendingRunDetailsSelector] =
     useState<RunDetailsSelector | null>(null);
 
-  const parsed = useMemo(() => parsePlaybookChain(playbookChain), [playbookChain]);
-  const normalizedChain = useMemo(() => joinChain(parsed.tokens), [parsed.tokens]);
+  const parsed = useMemo(
+    () => parsePlaybookChain(playbookChain),
+    [playbookChain],
+  );
+  const normalizedChain = useMemo(
+    () => joinChain(parsed.tokens),
+    [parsed.tokens],
+  );
 
   useEffect(() => {
     setPreviewResult(null);
@@ -257,7 +270,8 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
 
   useEffect(() => {
     const onRunDetailsCommand = (event: Event) => {
-      const detail = (event as CustomEvent<RunDetailsCommandEventDetail>).detail;
+      const detail = (event as CustomEvent<RunDetailsCommandEventDetail>)
+        .detail;
       if (!detail || detail.scope !== 'playbook') {
         return;
       }
@@ -312,8 +326,10 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
   });
 
   const create = useMutation({
-    mutationFn: async (input: { name: string; commands: Array<Record<string, unknown>> }) =>
-      apiClient.createPlaybook(input.name, input.commands),
+    mutationFn: async (input: {
+      name: string;
+      commands: Array<Record<string, unknown>>;
+    }) => apiClient.createPlaybook(input.name, input.commands),
     onSuccess: async created => {
       setPlaybookName('');
       setSelectedPlaybookId(created.id);
@@ -326,7 +342,10 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
   });
 
   const run = useMutation({
-    mutationFn: async (input: { playbookId: string; executionMode: ExecutionMode }) =>
+    mutationFn: async (input: {
+      playbookId: string;
+      executionMode: ExecutionMode;
+    }) =>
       apiClient.runPlaybook(input.playbookId, {
         executionMode: input.executionMode,
         guardrailProfile,
@@ -350,7 +369,10 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
   });
 
   const replay = useMutation({
-    mutationFn: async (input: { runId: string; executionMode: ExecutionMode }) =>
+    mutationFn: async (input: {
+      runId: string;
+      executionMode: ExecutionMode;
+    }) =>
       apiClient.replayPlaybookRun(input.runId, {
         executionMode: input.executionMode,
         guardrailProfile,
@@ -405,7 +427,11 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
   });
 
   const simulate = useMutation({
-    mutationFn: async (input: { label: string; chain: string; expectedImpact: string }) =>
+    mutationFn: async (input: {
+      label: string;
+      chain: string;
+      expectedImpact: string;
+    }) =>
       apiClient.simulateScenarioBranch({
         label: input.label,
         chain: input.chain,
@@ -423,7 +449,9 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
         queryClient.invalidateQueries({ queryKey: ['scenario-branches'] }),
         queryClient.invalidateQueries({ queryKey: ['scenario-mutations'] }),
         queryClient.invalidateQueries({ queryKey: ['scenario-compare'] }),
-        queryClient.invalidateQueries({ queryKey: ['scenario-adoption-check'] }),
+        queryClient.invalidateQueries({
+          queryKey: ['scenario-adoption-check'],
+        }),
         queryClient.invalidateQueries({ queryKey: ['scenario-lineage'] }),
       ]);
     },
@@ -459,12 +487,15 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
     setPlaybookChain(joinChain(template.tokens));
   };
 
-  const canPreview = parsed.commands.length > 0 && parsed.invalidTokens.length === 0;
+  const canPreview =
+    parsed.commands.length > 0 && parsed.invalidTokens.length === 0;
   const showPreview = previewResult && previewChain === normalizedChain;
   const selectedRun = useMemo<PlaybookRun | null>(
     () =>
       selectedRunId
-        ? (playbookRuns.data || []).find(runItem => runItem.id === selectedRunId) || null
+        ? (playbookRuns.data || []).find(
+            runItem => runItem.id === selectedRunId,
+          ) || null
         : null,
     [playbookRuns.data, selectedRunId],
   );
@@ -486,22 +517,27 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
           : pendingRunDetailsSelector === 'latest-blocked'
             ? runs.find(runItem => runItem.status === 'blocked')
             : runs.find(
-              runItem =>
-                runItem.rollbackEligible &&
-                (runItem.status === 'completed' || runItem.status === 'failed') &&
-                typeof runItem.rollbackWindowUntilMs === 'number' &&
-                runItem.rollbackWindowUntilMs > now,
-            );
+                runItem =>
+                  runItem.rollbackEligible &&
+                  (runItem.status === 'completed' ||
+                    runItem.status === 'failed') &&
+                  typeof runItem.rollbackWindowUntilMs === 'number' &&
+                  runItem.rollbackWindowUntilMs > now,
+              );
 
     if (!candidate) {
-      onStatus(`No ${pendingRunDetailsSelector.replace('latest-', '')} playbook run found.`);
+      onStatus(
+        `No ${pendingRunDetailsSelector.replace('latest-', '')} playbook run found.`,
+      );
       setPendingRunDetailsSelector(null);
       return;
     }
 
     setSelectedRunId(candidate.id);
     setPendingRunDetailsSelector(null);
-    onStatus(`Opened details for playbook run ${candidate.id} (${candidate.status}).`);
+    onStatus(
+      `Opened details for playbook run ${candidate.id} (${candidate.status}).`,
+    );
   }, [
     onStatus,
     pendingRunDetailsSelector,
@@ -513,14 +549,17 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
     <section className="fo-panel">
       <header className="fo-panel-header">
         <h2>Ops Playbooks v2</h2>
-        <small>Visual chain composer, guardrail-aware execution controls, and rollback-ready history.</small>
+        <small>
+          Visual chain composer, guardrail-aware execution controls, and
+          rollback-ready history.
+        </small>
       </header>
 
       <div className="fo-stack">
         <Input
           value={playbookName}
           onChange={event => setPlaybookName(event.target.value)}
-          placeholder="Playbook name"
+          placeholder={t("Playbook name")}
         />
 
         <div className="fo-row fo-playbook-templates">
@@ -552,7 +591,9 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
 
         <div className="fo-playbook-chain-grid">
           {parsed.tokens.length === 0 ? (
-            <small className="fo-muted-line">Add chain blocks from the token bank.</small>
+            <small className="fo-muted-line">
+              Add chain blocks from the token bank.
+            </small>
           ) : (
             parsed.tokens.map((token, index) => {
               const step = STEP_BY_TOKEN.get(token);
@@ -572,8 +613,13 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
                       x
                     </button>
                   </div>
-                  <small>{step?.description || 'Unknown token - remove or fix manually.'}</small>
-                  {index < parsed.tokens.length - 1 ? <small className="fo-playbook-chain-arrow">then</small> : null}
+                  <small>
+                    {step?.description ||
+                      'Unknown token - remove or fix manually.'}
+                  </small>
+                  {index < parsed.tokens.length - 1 ? (
+                    <small className="fo-playbook-chain-arrow">then</small>
+                  ) : null}
                 </article>
               );
             })
@@ -589,7 +635,9 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
         />
         <small>
           Parsed steps: {parsed.commands.length} | invalid tokens:{' '}
-          {parsed.invalidTokens.length > 0 ? parsed.invalidTokens.join(', ') : 'none'}
+          {parsed.invalidTokens.length > 0
+            ? parsed.invalidTokens.join(', ')
+            : 'none'}
         </small>
 
         <div className="fo-row">
@@ -598,7 +646,7 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
             onValueChange={value => setExecutionMode(value as ExecutionMode)}
           >
             <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Mode" />
+              <SelectValue placeholder={t("Mode")} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="dry-run">dry-run</SelectItem>
@@ -607,10 +655,12 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
           </Select>
           <Select
             value={guardrailProfile}
-            onValueChange={value => setGuardrailProfile(value as GuardrailProfile)}
+            onValueChange={value =>
+              setGuardrailProfile(value as GuardrailProfile)
+            }
           >
             <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Guardrail" />
+              <SelectValue placeholder={t("Guardrail")} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="strict">strict</SelectItem>
@@ -630,7 +680,7 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
                 Math.max(1, Math.min(1440, Number(event.target.value) || 60)),
               )
             }
-            title="Rollback window minutes"
+            title={t("Rollback window minutes")}
           />
           <label className="fo-row">
             <input
@@ -656,7 +706,7 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
             disabled={!canPreview || preview.isPending}
             onClick={() => preview.mutate(normalizedChain)}
           >
-            {preview.isPending ? 'Previewing...' : 'Run Dry-run Preview'}
+            {preview.isPending ? 'Previewing...' : t('Run Dry-run Preview')}
           </Button>
           <Button
             variant="secondary"
@@ -669,7 +719,7 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
               })
             }
           >
-            {simulate.isPending ? 'Simulating...' : 'Simulate Chain'}
+            {simulate.isPending ? 'Simulating...' : t('Simulate Chain')}
           </Button>
 
           <Button
@@ -686,7 +736,7 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
               })
             }
           >
-            {create.isPending ? 'Creating...' : 'Create Playbook'}
+            {create.isPending ? 'Creating...' : t('Create Playbook')}
           </Button>
         </div>
       </div>
@@ -694,14 +744,20 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
       {showPreview ? (
         <section className="fo-preview-panel">
           <div className="fo-space-between">
-            <strong>Dry-run Step Diff Preview</strong>
+            <strong>
+              <Trans>Dry-run Step Diff Preview</Trans>
+            </strong>
             <small>
-              steps: {previewResult.steps.length} | errors: {previewResult.errorCount}
+              steps: {previewResult.steps.length} | errors:{' '}
+              {previewResult.errorCount}
             </small>
           </div>
           <div className="fo-preview-steps">
             {previewResult.steps.map((step, index) => (
-              <article key={step.id || `${step.canonical}-${index}`} className={previewStepClass(step)}>
+              <article
+                key={step.id || `${step.canonical}-${index}`}
+                className={previewStepClass(step)}
+              >
                 <div className="fo-space-between">
                   <strong>{step.canonical || step.raw}</strong>
                   <small>{step.status}</small>
@@ -721,24 +777,31 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
               <small>{playbook.commands.length} steps</small>
             </div>
             <small>{playbook.description}</small>
-            <small>{playbook.commands.map(command => String(command.verb || '?')).join(' -> ')}</small>
+            <small>
+              {playbook.commands
+                .map(command => String(command.verb || '?'))
+                .join(' -> ')}
+            </small>
             <div className="fo-row mt-2">
               <Button
                 size="sm"
                 variant="secondary"
                 onClick={() => setSelectedPlaybookId(playbook.id)}
-              >
+              ><Trans>
                 History
-              </Button>
+              </Trans></Button>
               <Button
                 size="sm"
                 variant="secondary"
                 onClick={() =>
-                  run.mutate({ playbookId: playbook.id, executionMode: 'dry-run' })
+                  run.mutate({
+                    playbookId: playbook.id,
+                    executionMode: 'dry-run',
+                  })
                 }
-              >
+              ><Trans>
                 Dry-run
-              </Button>
+              </Trans></Button>
               <Button
                 size="sm"
                 variant="secondary"
@@ -751,30 +814,30 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
                   })
                 }
               >
-                {simulate.isPending ? 'Simulating...' : 'Simulate'}
+                {simulate.isPending ? 'Simulating...' : t('Simulate')}
               </Button>
               <Button
                 size="sm"
                 onClick={() =>
                   run.mutate({ playbookId: playbook.id, executionMode: 'live' })
                 }
-              >
+              ><Trans>
                 Execute Live
-              </Button>
+              </Trans></Button>
             </div>
           </article>
         ))}
       </div>
 
       <div className="fo-space-between">
-        <strong>Playbook run timeline</strong>
+        <strong><Trans>Playbook run timeline</Trans></strong>
         <div className="fo-row">
           <Select
             value={runModeFilter}
             onValueChange={value => setRunModeFilter(value as RunModeFilter)}
           >
             <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Mode" />
+              <SelectValue placeholder={t('Mode')} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">all</SelectItem>
@@ -791,20 +854,24 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
 
       <div className="fo-log-list">
         {(playbookRuns.data || []).map(runItem => (
-          <article key={runItem.id} className={`fo-log ${statusColorClass(runItem)}`}>
+          <article
+            key={runItem.id}
+            className={`fo-log ${statusColorClass(runItem)}`}
+          >
             <div className="fo-space-between">
               <strong>{runItem.playbookId}</strong>
               <small>{new Date(runItem.createdAtMs).toLocaleString()}</small>
             </div>
             <small>
-              {runItem.executionMode} | status: {runItem.status} | {runItem.executedSteps}{' '}
-              steps | {runItem.errorCount} errors
+              {runItem.executionMode} | status: {runItem.status} |{' '}
+              {runItem.executedSteps} steps | {runItem.errorCount} errors
             </small>
             <small>
               actor: {runItem.actorId} | surface: {runItem.sourceSurface}
             </small>
             <small>
-              timeline: {new Date(runItem.startedAtMs).toLocaleTimeString()} -&gt;{' '}
+              timeline: {new Date(runItem.startedAtMs).toLocaleTimeString()}{' '}
+              -&gt;{' '}
               {runItem.finishedAtMs
                 ? new Date(runItem.finishedAtMs).toLocaleTimeString()
                 : 'running'}
@@ -812,14 +879,16 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
             {runItem.statusTimeline.length > 0 ? (
               <small>
                 status path:{' '}
-                {runItem.statusTimeline.map(transition => transition.status).join(' -> ')}
+                {runItem.statusTimeline
+                  .map(transition => transition.status)
+                  .join(' -> ')}
               </small>
             ) : null}
             <small>
               rollback:{' '}
               {runItem.rollbackEligible &&
-                runItem.rollbackWindowUntilMs &&
-                runItem.rollbackWindowUntilMs > Date.now()
+              runItem.rollbackWindowUntilMs &&
+              runItem.rollbackWindowUntilMs > Date.now()
                 ? `eligible until ${new Date(runItem.rollbackWindowUntilMs).toLocaleTimeString()}`
                 : 'not eligible'}
             </small>
@@ -828,7 +897,10 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
               <small>
                 guardrails:{' '}
                 {runItem.guardrailResults
-                  .map(result => `${result.ruleId}:${result.passed ? 'pass' : 'fail'}`)
+                  .map(
+                    result =>
+                      `${result.ruleId}:${result.passed ? 'pass' : 'fail'}`,
+                  )
                   .join(', ')}
               </small>
             ) : null}
@@ -845,18 +917,18 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
                 size="sm"
                 variant="secondary"
                 onClick={() => setSelectedRunId(runItem.id)}
-              >
+              ><Trans>
                 Details
-              </Button>
+              </Trans></Button>
               <Button
                 size="sm"
                 variant="secondary"
                 onClick={() =>
                   replay.mutate({ runId: runItem.id, executionMode: 'dry-run' })
                 }
-              >
+              ><Trans>
                 Replay dry-run
-              </Button>
+              </Trans></Button>
               <Button
                 size="sm"
                 variant="secondary"
@@ -869,7 +941,7 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
                   })
                 }
               >
-                {simulate.isPending ? 'Simulating...' : 'Simulate'}
+                {simulate.isPending ? 'Simulating...' : t('Simulate')}
               </Button>
               <Button
                 size="sm"
@@ -877,23 +949,26 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
                 onClick={() =>
                   replay.mutate({ runId: runItem.id, executionMode: 'live' })
                 }
-              >
+              ><Trans>
                 Replay live
-              </Button>
+              </Trans></Button>
               <Button
                 size="sm"
                 variant="secondary"
                 disabled={
                   rollback.isPending ||
                   !runItem.rollbackEligible ||
-                  !(runItem.status === 'completed' || runItem.status === 'failed') ||
+                  !(
+                    runItem.status === 'completed' ||
+                    runItem.status === 'failed'
+                  ) ||
                   (runItem.rollbackWindowUntilMs
                     ? runItem.rollbackWindowUntilMs <= Date.now()
                     : true)
                 }
                 onClick={() => rollback.mutate(runItem.id)}
               >
-                {rollback.isPending ? 'Rolling back...' : 'Rollback'}
+                {rollback.isPending ? 'Rolling back...' : t('Rollback')}
               </Button>
             </div>
           </article>

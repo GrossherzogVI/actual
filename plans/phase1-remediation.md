@@ -1,7 +1,7 @@
 ---
 planStatus:
   planId: plan-phase1-remediation
-  title: "Phase 1 Remediation: Make It Actually Work"
+  title: 'Phase 1 Remediation: Make It Actually Work'
   status: draft
   planType: bug-fix
   priority: high
@@ -12,10 +12,11 @@ planStatus:
     - remediation
     - ux
     - actually-works
-  created: "2026-02-22"
-  updated: "2026-02-22T02:10:00.000Z"
+  created: '2026-02-22'
+  updated: '2026-02-22T02:10:00.000Z'
   progress: 0
 ---
+
 # Phase 1 Remediation: Make It Actually Work
 
 ## Problem Statement
@@ -40,6 +41,7 @@ Phase 1 was implemented across 132 files (~12K lines added) but delivers **zero 
 **Philosophy: Depth over breadth.** Fix the features that create the most impact, make them work end-to-end. Leave scaffolded features honestly disabled.
 
 **Priority features:**
+
 1. **Dashboard** — The first thing you see. Wire it to real Actual data.
 2. **Quick Add** — The daily workflow improvement. Wire it, make it submit real transactions.
 3. **Calendar** — Integrate with Actual's schedule engine.
@@ -80,7 +82,8 @@ paymentCalendar: true,
 extendedCommandBar: true,
 ```
 
-**Leave as ****`false`****:**
+**Leave as \*\***`false`\***\*:**
+
 - `aiSmartMatching` — needs Ollama running
 - `reviewQueue` — needs AI to populate
 - `quickAdd` — will be enabled in Sprint 3 after it's wired
@@ -95,6 +98,7 @@ extendedCommandBar: true,
 **WHAT TO REMOVE:** Three `<View style={{ opacity: ... }}>` wrappers that dim nav items.
 
 **Change 1 — Contracts (lines 112-117):**
+
 ```typescript
 // BEFORE:
 <View
@@ -173,6 +177,7 @@ if (!enabled) {
 ```
 
 Also remove the now-unused import:
+
 ```typescript
 // DELETE:
 import { useFeatureFlag } from '@desktop-client/hooks/useFeatureFlag';
@@ -235,7 +240,7 @@ const spentCents = useSheetValue<'envelope-budget', 'total-spent'>(
 );
 ```
 
-**How ****`useSheetValue`**** works:** It takes a binding (string field name or `{ name, query }` object) and returns the numeric value from the spreadsheet engine. For budget bindings (string fields like `'total-income'`), the sheet context is provided by `SheetNameProvider`. For account bindings (objects with `query`), the sheet name is embedded in the binding itself.
+**How \*\***`useSheetValue`\***\* works:** It takes a binding (string field name or `{ name, query }` object) and returns the numeric value from the spreadsheet engine. For budget bindings (string fields like `'total-income'`), the sheet context is provided by `SheetNameProvider`. For account bindings (objects with `query`), the sheet name is embedded in the binding itself.
 
 **REFERENCE PATTERN:** See `packages/desktop-client/src/components/budget/BalanceWithCarryover.tsx:119-122` — uses `useSheetValue(carryover)` etc. in exactly this way.
 
@@ -255,13 +260,19 @@ import { useSheetValue } from '@desktop-client/hooks/useSheetValue';
 import { allAccountBalance } from '@desktop-client/spreadsheet/bindings';
 
 // Inside the component, add:
-const totalBalance = useSheetValue<'account', 'accounts-balance'>(allAccountBalance());
+const totalBalance = useSheetValue<'account', 'accounts-balance'>(
+  allAccountBalance(),
+);
 
 // Then use totalBalance instead of the currentBalanceCents prop.
 // Replace the line:
 //   if (summary?.total_monthly && summary.total_monthly > 0 && currentBalanceCents != null) {
 // With:
-if (summary?.total_monthly && summary.total_monthly > 0 && totalBalance != null) {
+if (
+  summary?.total_monthly &&
+  summary.total_monthly > 0 &&
+  totalBalance != null
+) {
   const dailyCostCents = summary.total_monthly / 30;
   const days = Math.floor(totalBalance / dailyCostCents);
   // ... rest stays the same
@@ -485,9 +496,17 @@ export function BalanceProjectionWidget({ upcomingPayments }: Props) {
 
 ```typescript
 // DashboardPage.tsx, change:
-const { grouped, loading: paymentsLoading, error: paymentsError } = useUpcomingPayments(14);
+const {
+  grouped,
+  loading: paymentsLoading,
+  error: paymentsError,
+} = useUpcomingPayments(14);
 // To:
-const { grouped, loading: paymentsLoading, error: paymentsError } = useUpcomingPayments(30);
+const {
+  grouped,
+  loading: paymentsLoading,
+  error: paymentsError,
+} = useUpcomingPayments(30);
 ```
 
 **Verification:** Should show today's balance and projected balances at +7, +14, +30 days.
@@ -635,8 +654,12 @@ const handleKeys = (e: KeyboardEvent) => {
 
   if (financeOS) {
     switch (e.key) {
-      case '1': void navigate('/dashboard'); break;
-      case '2': void navigate('/accounts'); break;
+      case '1':
+        void navigate('/dashboard');
+        break;
+      case '2':
+        void navigate('/accounts');
+        break;
       // ... rest of financeOS cases stay the same
     }
     return;
@@ -644,7 +667,9 @@ const handleKeys = (e: KeyboardEvent) => {
 
   // Default mode shortcuts stay the same
   switch (e.key) {
-    case '1': void navigate('/budget'); break;
+    case '1':
+      void navigate('/budget');
+      break;
     // ... rest stays the same
   }
 };
@@ -733,9 +758,9 @@ const submitTransaction = useCallback(async (): Promise<boolean> => {
 
   const transaction = {
     id: uuidv4(),
-    date: form.date,               // YYYY-MM-DD string
-    amount: -Math.abs(amount),      // IntegerAmount (cents), negative = expense
-    account: accountId,             // AccountEntity['id'] — REQUIRED
+    date: form.date, // YYYY-MM-DD string
+    amount: -Math.abs(amount), // IntegerAmount (cents), negative = expense
+    account: accountId, // AccountEntity['id'] — REQUIRED
     category: form.categoryId || undefined,
     payee: payeeId || undefined,
     notes: form.notes || undefined,
@@ -752,6 +777,7 @@ const submitTransaction = useCallback(async (): Promise<boolean> => {
 ```
 
 **CRITICAL NOTES FOR AGENTS:**
+
 - `transaction-add` is in the typed `Handlers` union — use `send()` directly, NOT `(send as Function)`
 - `id` MUST be a v4 UUID string (import from `uuid` package, already in project dependencies)
 - `account` is REQUIRED — transactions MUST have an account
@@ -787,7 +813,8 @@ const { data: accounts = [] } = useQuery(accountQueries.listOnBudget());
 const defaultAccountId = accounts[0]?.id;
 
 // Change useQuickAdd call:
-const { form, setField, resetForm, prefill, submitTransaction } = useQuickAdd(defaultAccountId);
+const { form, setField, resetForm, prefill, submitTransaction } =
+  useQuickAdd(defaultAccountId);
 ```
 
 ### Task 3.5: Enable quickAdd flag
@@ -817,6 +844,7 @@ quickAdd: true,
 Currently only fetches contracts with hand-rolled date math. Should ALSO use Actual's schedule engine.
 
 **APPROACH:** The hook should merge two data sources:
+
 1. Contracts via `send('contract-list', { status: 'active' })` (existing)
 2. Actual schedules via `useSchedules` hook
 
@@ -824,7 +852,10 @@ Currently only fetches contracts with hand-rolled date math. Should ALSO use Act
 
 ```typescript
 // Add imports:
-import { useSchedules, getSchedulesQuery } from '@desktop-client/hooks/useSchedules';
+import {
+  useSchedules,
+  getSchedulesQuery,
+} from '@desktop-client/hooks/useSchedules';
 
 // Inside the hook, add:
 const { schedules, isLoading: schedulesLoading } = useSchedules({
@@ -853,7 +884,10 @@ This is a custom hook (not a component), so it can't use `useSchedules` directly
 **Option A (recommended):** Convert `useUpcomingPayments` to use `useSchedules` hook since it's already called from React components:
 
 ```typescript
-import { useSchedules, getSchedulesQuery } from '@desktop-client/hooks/useSchedules';
+import {
+  useSchedules,
+  getSchedulesQuery,
+} from '@desktop-client/hooks/useSchedules';
 
 // Add inside the hook:
 const { schedules } = useSchedules({ query: getSchedulesQuery() });
@@ -870,6 +904,7 @@ The hand-rolled date math (`getNextPaymentDate`, `getPaymentDatesWithinDays`) sh
 **File:** `packages/desktop-client/src/components/calendar/CalendarPage.tsx` (or the PaymentItem subcomponent)
 
 When displaying payments, show a subtle badge indicating the source:
+
 - Contract entries: small "Contract" badge
 - Schedule entries: small "Schedule" badge (or the schedule name)
 
@@ -901,27 +936,31 @@ Step 6: Done (was step 5)
 ```
 
 **Step type changes:**
+
 ```typescript
 type Step = 1 | 2 | 3 | 4 | 5 | 6;
 ```
 
 **New Step 2 UI:** Show two options:
+
 1. **"Add a Cash Account"** — inline name + starting balance form, creates account via `send('account-create', { name, balance, offBudget: false })`
 2. **"I'll connect a bank later"** — skip button, navigates to next step
 
 **Account creation pattern** (from `packages/desktop-client/src/accounts/mutations.ts`):
+
 ```typescript
 import { send } from 'loot-core/platform/client/connection';
 
 // Create account:
 const accountId = await send('account-create', {
-  name: accountName,      // string, e.g. "Cash Wallet"
-  balance: balanceCents,   // IntegerAmount in cents, e.g. 50000 for €500
-  offBudget: false,        // boolean — on-budget by default
+  name: accountName, // string, e.g. "Cash Wallet"
+  balance: balanceCents, // IntegerAmount in cents, e.g. 50000 for €500
+  offBudget: false, // boolean — on-budget by default
 });
 ```
 
 **Inline form fields:**
+
 - Account name (text input, default: "Bargeld" / "Cash Wallet" based on language)
 - Starting balance (number input in EUR, convert to cents for API)
 - Off-budget toggle (default: unchecked = on-budget)
@@ -929,10 +968,11 @@ const accountId = await send('account-create', {
 **Reference:** `packages/desktop-client/src/components/modals/CreateLocalAccountModal.tsx` shows the existing form pattern — name, balance, off-budget toggle, uses `useCreateAccountMutation()`.
 
 **Steps array update:**
+
 ```typescript
 const steps = [
   { label: t('Welcome') },
-  { label: t('Account') },    // NEW
+  { label: t('Account') }, // NEW
   { label: t('Categories') },
   { label: t('Import') },
   { label: t('Review') },
@@ -973,6 +1013,7 @@ function CreateAccountCard() {
 ```
 
 **Add to the card grid (around line 189):**
+
 ```typescript
 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16 }}>
   <ImportCard ... /> {/* Finanzguru */}
@@ -1049,8 +1090,9 @@ Small change, visible improvement. Don't over-engineer.
 Add a left border accent for the active item:
 
 Find the active state styling and add:
+
 ```css
-borderLeft: '3px solid [theme.buttonPrimaryBackground]'
+borderleft: '3px solid [theme.buttonPrimaryBackground]';
 ```
 
 with corresponding padding adjustment to prevent layout shift.
@@ -1075,14 +1117,14 @@ This requires reading the `financeOS` flag inside the route. Use `useFeatureFlag
 
 These stay scaffolded and will work once their data sources exist:
 
-| Feature | Status | Why it's OK to defer |
-| --- | --- | --- |
-| Review Queue | Backend API exists, frontend exists | Needs AI classification to populate. Works when Ollama produces review items. |
-| German Category Tree | Handler + install button exist | One-click install on Import page. Works already. |
-| Finanzguru Import | Wizard exists | Needs real XLSX parsing. Current UI is ready for backend work. |
-| CSV Import | Wizard exists | Same — UI ready, needs bank format parsers. |
-| AI Smart Matching | Handlers exist | Needs Ollama running + transaction data. Gated by flag. |
-| Contract Discovery | Backend stub | Needs transaction pattern analysis. Future sprint. |
+| Feature              | Status                              | Why it's OK to defer                                                          |
+| -------------------- | ----------------------------------- | ----------------------------------------------------------------------------- |
+| Review Queue         | Backend API exists, frontend exists | Needs AI classification to populate. Works when Ollama produces review items. |
+| German Category Tree | Handler + install button exist      | One-click install on Import page. Works already.                              |
+| Finanzguru Import    | Wizard exists                       | Needs real XLSX parsing. Current UI is ready for backend work.                |
+| CSV Import           | Wizard exists                       | Same — UI ready, needs bank format parsers.                                   |
+| AI Smart Matching    | Handlers exist                      | Needs Ollama running + transaction data. Gated by flag.                       |
+| Contract Discovery   | Backend stub                        | Needs transaction pattern analysis. Future sprint.                            |
 
 ---
 
@@ -1092,35 +1134,35 @@ These stay scaffolded and will work once their data sources exist:
 
 Sprints 1-5 can be run in this order. Sprint 6 depends on all others.
 
-| Sprint | Estimated effort | Can parallelize? |
-| --- | --- | --- |
-| Sprint 1: Remove Gates | Small | No — do first |
-| Sprint 2: Dashboard Wiring | Medium | Yes, with Sprint 3 |
-| Sprint 3: Quick Add Wiring | Medium | Yes, with Sprint 2 |
-| Sprint 4: Calendar Integration | Medium | Yes, with Sprint 2/3 |
-| Sprint 5: Cash Account Onboarding | Small | Yes, with Sprint 2/3/4 |
-| Sprint 6: Visual Polish | Small | No — do last |
+| Sprint                            | Estimated effort | Can parallelize?       |
+| --------------------------------- | ---------------- | ---------------------- |
+| Sprint 1: Remove Gates            | Small            | No — do first          |
+| Sprint 2: Dashboard Wiring        | Medium           | Yes, with Sprint 3     |
+| Sprint 3: Quick Add Wiring        | Medium           | Yes, with Sprint 2     |
+| Sprint 4: Calendar Integration    | Medium           | Yes, with Sprint 2/3   |
+| Sprint 5: Cash Account Onboarding | Small            | Yes, with Sprint 2/3/4 |
+| Sprint 6: Visual Polish           | Small            | No — do last           |
 
 ### File ownership per sprint
 
-| Sprint | Files touched |
-| --- | --- |
-| 1 | `useFeatureFlag.ts`, `PrimaryButtons.tsx`, `ImportPage.tsx` |
-| 2 | `ThisMonthWidget.tsx`, `CashRunwayWidget.tsx`, `AccountBalancesWidget.tsx`, `BalanceProjectionWidget.tsx`, `QuickAddWidget.tsx`, `DashboardPage.tsx` |
-| 3 | `GlobalKeys.ts`, `FinancesApp.tsx`, `useQuickAdd.ts`, `QuickAddOverlay.tsx`, `useFeatureFlag.ts` |
-| 4 | `useCalendarData.ts`, `useUpcomingPayments.ts`, `CalendarPage.tsx` |
-| 5 | `GettingStartedWizard.tsx`, `ImportPage.tsx`, `DashboardPage.tsx` |
-| 6 | `WidgetCard.tsx`, `Item.tsx`, `FinancesApp.tsx` |
+| Sprint | Files touched                                                                                                                                        |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1      | `useFeatureFlag.ts`, `PrimaryButtons.tsx`, `ImportPage.tsx`                                                                                          |
+| 2      | `ThisMonthWidget.tsx`, `CashRunwayWidget.tsx`, `AccountBalancesWidget.tsx`, `BalanceProjectionWidget.tsx`, `QuickAddWidget.tsx`, `DashboardPage.tsx` |
+| 3      | `GlobalKeys.ts`, `FinancesApp.tsx`, `useQuickAdd.ts`, `QuickAddOverlay.tsx`, `useFeatureFlag.ts`                                                     |
+| 4      | `useCalendarData.ts`, `useUpcomingPayments.ts`, `CalendarPage.tsx`                                                                                   |
+| 5      | `GettingStartedWizard.tsx`, `ImportPage.tsx`, `DashboardPage.tsx`                                                                                    |
+| 6      | `WidgetCard.tsx`, `Item.tsx`, `FinancesApp.tsx`                                                                                                      |
 
 **CONFLICTS:** Sprint 2 and Sprint 5 both touch `DashboardPage.tsx`. Sprint 1 and Sprint 3 both touch `useFeatureFlag.ts`. Sprint 3 and Sprint 6 both touch `FinancesApp.tsx`. Run Sprint 1 first, then parallelize 2-5, then run 6 last.
 
 ### Critical patterns (agents MUST follow)
 
-- **Import ****`useParams`**** from ****`'react-router'`**, not `'react-router-dom'`
-- **Button uses ****`isDisabled`**, not `disabled` (react-aria)
-- **Button ****`onPress`** receives `PressEvent`, not `MouseEvent`
+- **Import \*\***`useParams`\***\* from \*\***`'react-router'`\*\*, not `'react-router-dom'`
+- **Button uses \*\***`isDisabled`\*\*, not `disabled` (react-aria)
+- **Button \*\***`onPress`\*\* receives `PressEvent`, not `MouseEvent`
 - **`useSheetValue(binding)`** — for budget bindings (string fields), component must be inside `<SheetNameProvider>`. For account bindings (objects with `query` key), no provider needed.
-- **`send()`**** type safety** — use `(send as Function)` for fork handlers not in the Handlers union. For existing Actual handlers like `transaction-add`, `accounts-get`, `payees-get-or-create-payee`, use typed `send()` directly.
+- **`send()`\*\*** type safety\*\* — use `(send as Function)` for fork handlers not in the Handlers union. For existing Actual handlers like `transaction-add`, `accounts-get`, `payees-get-or-create-payee`, use typed `send()` directly.
 - **NO lazy routes** — use eager imports + `element={}`
 - **Styling** — `@emotion/css` only, no Tailwind. Use `theme.X` tokens from `@actual-app/components/theme`
 - **Account data** — use `useQuery(accountQueries.listActive())` from `@desktop-client/accounts`. Returns `AccountEntity[]` with `id`, `name`, `offbudget`, `closed`.
@@ -1129,6 +1171,7 @@ Sprints 1-5 can be run in this order. Sprint 6 depends on all others.
 ### Verification checklist
 
 After ALL sprints complete, verify:
+
 1. [ ] Sidebar shows Finance OS layout by default (no flag flipping needed)
 2. [ ] All sidebar items are clickable (no dimming)
 3. [ ] Dashboard shows real account balances

@@ -32,35 +32,56 @@ export async function buildGatewayApp(context: GatewayContext) {
     return context.service.getRuntimeMetrics();
   });
 
-  await app.register(async scoped => {
-    await registerLedgerRoutes(scoped, context.service);
-  }, { prefix: '/ledger/v1' });
+  await app.register(
+    async scoped => {
+      await registerLedgerRoutes(scoped, context.service);
+    },
+    { prefix: '/ledger/v1' },
+  );
 
-  await app.register(async scoped => {
-    await registerWorkflowRoutes(scoped, context.service, {
-      internalToken: context.config.FINANCE_GATEWAY_INTERNAL_TOKEN,
-    });
-  }, { prefix: '/workflow/v1' });
+  await app.register(
+    async scoped => {
+      await registerWorkflowRoutes(scoped, context.service, {
+        internalToken: context.config.FINANCE_GATEWAY_INTERNAL_TOKEN,
+      });
+    },
+    { prefix: '/workflow/v1' },
+  );
 
-  await app.register(async scoped => {
-    await registerFocusRoutes(scoped, context.service);
-  }, { prefix: '/focus/v1' });
+  await app.register(
+    async scoped => {
+      await registerFocusRoutes(scoped, context.service);
+    },
+    { prefix: '/focus/v1' },
+  );
 
-  await app.register(async scoped => {
-    await registerScenarioRoutes(scoped, context.service);
-  }, { prefix: '/scenario/v1' });
+  await app.register(
+    async scoped => {
+      await registerScenarioRoutes(scoped, context.service);
+    },
+    { prefix: '/scenario/v1' },
+  );
 
-  await app.register(async scoped => {
-    await registerDelegateRoutes(scoped, context.service);
-  }, { prefix: '/delegate/v1' });
+  await app.register(
+    async scoped => {
+      await registerDelegateRoutes(scoped, context.service);
+    },
+    { prefix: '/delegate/v1' },
+  );
 
-  await app.register(async scoped => {
-    await registerPolicyRoutes(scoped, context.service);
-  }, { prefix: '/policy/v1' });
+  await app.register(
+    async scoped => {
+      await registerPolicyRoutes(scoped, context.service);
+    },
+    { prefix: '/policy/v1' },
+  );
 
-  await app.register(async scoped => {
-    await registerIntelligenceRoutes(scoped, context.service);
-  }, { prefix: '/intelligence/v1' });
+  await app.register(
+    async scoped => {
+      await registerIntelligenceRoutes(scoped, context.service);
+    },
+    { prefix: '/intelligence/v1' },
+  );
 
   return app;
 }

@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { Trans } from 'react-i18next';
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { apiClient } from '../../core/api/client';
@@ -11,6 +13,7 @@ import type {
 } from '../../core/types';
 
 import { dispatchRuntimeCommand } from './runtime-commands';
+
 import { Button } from '@/components/ui/button';
 
 type RuntimeIncidentTimelinePanelProps = {
@@ -72,7 +75,8 @@ function buildDerivedIncidents(input: {
   const incidents: RuntimeIncident[] = [];
   const now = Date.now();
   const contentionRate = input.metrics?.workerFingerprintContentionRate ?? 0;
-  const staleRecoveryRate = input.metrics?.workerFingerprintStaleRecoveryRate ?? 0;
+  const staleRecoveryRate =
+    input.metrics?.workerFingerprintStaleRecoveryRate ?? 0;
   const queueFailureRate = input.queueHealth?.failureRate ?? 0;
   const queueP95 = input.queueHealth?.processingMs.p95 ?? 0;
   const queueInFlight = input.metrics?.queueInFlight ?? 0;
@@ -188,9 +192,7 @@ function buildDerivedIncidents(input: {
     });
   }
 
-  return incidents
-    .sort((a, b) => b.createdAtMs - a.createdAtMs)
-    .slice(0, 40);
+  return incidents.sort((a, b) => b.createdAtMs - a.createdAtMs).slice(0, 40);
 }
 
 export function RuntimeIncidentTimelinePanel({
@@ -286,10 +288,14 @@ export function RuntimeIncidentTimelinePanel({
     return incidents.filter(incident => incident.severity === filter);
   }, [filter, incidents]);
 
-  const criticalCount = incidents.filter(item => item.severity === 'critical').length;
+  const criticalCount = incidents.filter(
+    item => item.severity === 'critical',
+  ).length;
   const warnCount = incidents.filter(item => item.severity === 'warn').length;
 
-  const runTimelineCommand = (command: 'stabilize' | 'requeue-expired' | 'replay-dead-letters') => {
+  const runTimelineCommand = (
+    command: 'stabilize' | 'requeue-expired' | 'replay-dead-letters',
+  ) => {
     dispatchRuntimeCommand({
       command,
       source: 'timeline',
@@ -320,8 +326,13 @@ export function RuntimeIncidentTimelinePanel({
   return (
     <section className="fo-panel" id="runtime-incidents">
       <header className="fo-panel-header">
-        <h2>Runtime Incident Timeline</h2>
-        <small>Correlates dead letters, queue pressure, contention spikes, and pipeline failures.</small>
+        <h2>
+          <Trans>Runtime Incident Timeline</Trans>
+        </h2>
+        <small>
+          Correlates dead letters, queue pressure, contention spikes, and
+          pipeline failures.
+        </small>
       </header>
 
       <div className="fo-space-between">
@@ -367,23 +378,37 @@ export function RuntimeIncidentTimelinePanel({
       </div>
 
       <div className="fo-row">
-        <Button variant="secondary" onClick={() => runTimelineCommand('stabilize')}>
+        <Button
+          variant="secondary"
+          onClick={() => runTimelineCommand('stabilize')}
+        ><Trans>
           Stabilize
-        </Button>
-        <Button variant="secondary" onClick={() => runTimelineCommand('requeue-expired')}>
+        </Trans></Button>
+        <Button
+          variant="secondary"
+          onClick={() => runTimelineCommand('requeue-expired')}
+        ><Trans>
           Requeue Expired
-        </Button>
-        <Button variant="secondary" onClick={() => runTimelineCommand('replay-dead-letters')}>
+        </Trans></Button>
+        <Button
+          variant="secondary"
+          onClick={() => runTimelineCommand('replay-dead-letters')}
+        ><Trans>
           Replay Dead Letters
-        </Button>
+        </Trans></Button>
       </div>
 
       <div className="fo-incident-list">
         {filteredIncidents.length === 0 ? (
-          <small className="fo-muted-line">No incidents matching current filter.</small>
+          <small className="fo-muted-line">
+            No incidents matching current filter.
+          </small>
         ) : null}
         {filteredIncidents.map(incident => (
-          <article key={incident.id} className={`fo-incident-item fo-incident-${incident.severity}`}>
+          <article
+            key={incident.id}
+            className={`fo-incident-item fo-incident-${incident.severity}`}
+          >
             <div className="fo-space-between">
               <strong>{incident.title}</strong>
               <small>{relativeAge(incident.createdAtMs)}</small>
@@ -391,15 +416,19 @@ export function RuntimeIncidentTimelinePanel({
             <small>{incident.detail}</small>
             <div className="fo-space-between">
               <small>
-                {incident.source} | {new Date(incident.createdAtMs).toLocaleTimeString()}
+                {incident.source} |{' '}
+                {new Date(incident.createdAtMs).toLocaleTimeString()}
               </small>
               <Button
                 size="sm"
                 variant="secondary"
-                disabled={replayDeadLetter.isPending && incident.action === 'replay-dead-letter'}
+                disabled={
+                  replayDeadLetter.isPending &&
+                  incident.action === 'replay-dead-letter'
+                }
                 onClick={() => handleIncidentAction(incident)}
               >
-                {incident.actionLabel || 'Execute'}
+                {incident.actionLabel || t('Execute')}
               </Button>
             </div>
           </article>

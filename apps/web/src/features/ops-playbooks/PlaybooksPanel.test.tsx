@@ -1,9 +1,14 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { Playbook, PlaybookRun, WorkflowCommandExecution } from '../../core/types';
+import type {
+  Playbook,
+  PlaybookRun,
+  WorkflowCommandExecution,
+} from '../../core/types';
 import { dispatchRunDetailsCommand } from '../runtime/run-details-commands';
+
 import { PlaybooksPanel } from './PlaybooksPanel';
 
 const apiClientMock = vi.hoisted(() => ({
@@ -21,9 +26,7 @@ vi.mock('../../core/api/client', () => ({
   apiClient: apiClientMock,
 }));
 
-function createPlaybookRun(
-  overrides: Partial<PlaybookRun> = {},
-): PlaybookRun {
+function createPlaybookRun(overrides: Partial<PlaybookRun> = {}): PlaybookRun {
   const now = Date.now();
   return {
     id: 'playbook-run',
@@ -192,9 +195,12 @@ describe('PlaybooksPanel', () => {
 
     await screen.findByText('Morning Loop');
 
-    fireEvent.change(screen.getByLabelText('playbook rollback window minutes'), {
-      target: { value: '45' },
-    });
+    fireEvent.change(
+      screen.getByLabelText('playbook rollback window minutes'),
+      {
+        target: { value: '45' },
+      },
+    );
     fireEvent.click(screen.getByLabelText('playbook rollback on failure'));
     fireEvent.change(screen.getByLabelText('playbook idempotency key'), {
       target: { value: 'playbook-key-001' },
@@ -235,7 +241,9 @@ describe('PlaybooksPanel', () => {
     fireEvent.click(rollbackButtons[1]!);
 
     await waitFor(() => {
-      expect(apiClientMock.rollbackPlaybookRun).toHaveBeenCalledWith('run-failed');
+      expect(apiClientMock.rollbackPlaybookRun).toHaveBeenCalledWith(
+        'run-failed',
+      );
     });
   });
 
@@ -253,7 +261,9 @@ describe('PlaybooksPanel', () => {
 
     renderPanel();
 
-    const detailsButton = await screen.findByRole('button', { name: 'Details' });
+    const detailsButton = await screen.findByRole('button', {
+      name: 'Details',
+    });
     fireEvent.click(detailsButton);
 
     expect(
@@ -263,10 +273,14 @@ describe('PlaybooksPanel', () => {
     expect(screen.getByText('Guardrails')).toBeInTheDocument();
     expect(screen.getByText('Effects')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Rollback from details' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Rollback from details' }),
+    );
 
     await waitFor(() => {
-      expect(apiClientMock.rollbackPlaybookRun).toHaveBeenCalledWith('run-detail');
+      expect(apiClientMock.rollbackPlaybookRun).toHaveBeenCalledWith(
+        'run-detail',
+      );
     });
   });
 
@@ -305,7 +319,8 @@ describe('PlaybooksPanel', () => {
       expect(apiClientMock.simulateScenarioBranch).toHaveBeenCalledWith(
         expect.objectContaining({
           label: 'Playbook Draft simulation',
-          chain: 'triage -> expiring<30d -> batch-renegotiate -> close-weekly -> refresh',
+          chain:
+            'triage -> expiring<30d -> batch-renegotiate -> close-weekly -> refresh',
           source: 'manual',
           expectedImpact: 'playbook execution rehearsal',
           confidence: 0.82,

@@ -1,11 +1,13 @@
 import type { FastifyReply } from 'fastify';
 import type { ZodTypeAny } from 'zod';
-import * as z from 'zod';
+import type * as z from 'zod';
 
 function issuePath(issuePath: PropertyKey[]): string {
   if (!issuePath.length) return '(root)';
   return issuePath
-    .map(segment => (typeof segment === 'symbol' ? segment.toString() : String(segment)))
+    .map(segment =>
+      typeof segment === 'symbol' ? segment.toString() : String(segment),
+    )
     .join('.');
 }
 
@@ -30,10 +32,7 @@ export function parseRequestBody<T extends ZodTypeAny>(
   return null;
 }
 
-export function sendNotFound(
-  reply: FastifyReply,
-  error: string,
-): null {
+export function sendNotFound(reply: FastifyReply, error: string): null {
   reply.code(404).send({
     error,
   });
@@ -41,10 +40,7 @@ export function sendNotFound(
   return null;
 }
 
-export function sendConflict(
-  reply: FastifyReply,
-  error: string,
-): null {
+export function sendConflict(reply: FastifyReply, error: string): null {
   reply.code(409).send({
     error,
   });
@@ -52,10 +48,7 @@ export function sendConflict(
   return null;
 }
 
-export function sendUnauthorized(
-  reply: FastifyReply,
-  error: string,
-): null {
+export function sendUnauthorized(reply: FastifyReply, error: string): null {
   reply.code(401).send({
     error,
   });

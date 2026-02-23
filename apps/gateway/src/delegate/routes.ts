@@ -1,9 +1,12 @@
+import { commandEnvelopeSchema } from '@finance-os/domain-kernel';
 import type { FastifyInstance } from 'fastify';
 import * as z from 'zod';
 
-import { commandEnvelopeSchema } from '@finance-os/domain-kernel';
-
-import { parseRequestBody, sendConflict, sendNotFound } from '../http/route-utils';
+import {
+  parseRequestBody,
+  sendConflict,
+  sendNotFound,
+} from '../http/route-utils';
 import type { GatewayService } from '../services/gateway-service';
 
 type RequestLike = { body?: unknown };
@@ -21,7 +24,9 @@ export const delegateSchemas = {
   }),
   listLanes: z.object({
     limit: z.number().int().min(1).max(200).default(50),
-    status: z.enum(['assigned', 'accepted', 'completed', 'rejected']).optional(),
+    status: z
+      .enum(['assigned', 'accepted', 'completed', 'rejected'])
+      .optional(),
     assignee: z.string().min(1).optional(),
     assignedBy: z.string().min(1).optional(),
     priority: z.enum(['low', 'normal', 'high', 'critical']).optional(),
@@ -48,7 +53,10 @@ export async function registerDelegateRoutes(
   service: GatewayService,
 ) {
   app.get('/lanes', async request => {
-    const query = ((request as QueryLike).query || {}) as Record<string, unknown>;
+    const query = ((request as QueryLike).query || {}) as Record<
+      string,
+      unknown
+    >;
     const parsed = delegateSchemas.listLanes.safeParse({
       limit:
         typeof query.limit === 'string'
@@ -84,7 +92,10 @@ export async function registerDelegateRoutes(
   });
 
   app.get('/lane-events', async request => {
-    const query = ((request as QueryLike).query || {}) as Record<string, unknown>;
+    const query = ((request as QueryLike).query || {}) as Record<
+      string,
+      unknown
+    >;
     const parsed = delegateSchemas.listLaneEvents.safeParse({
       laneId: typeof query.laneId === 'string' ? query.laneId : '',
       limit:

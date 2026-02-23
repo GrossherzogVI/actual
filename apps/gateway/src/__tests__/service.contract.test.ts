@@ -34,7 +34,9 @@ describe('gateway service contract behavior', () => {
     expect(run?.executedSteps).toBe(1);
 
     const queued = await queue.dequeue(10);
-    expect(queued.some(job => job.name === 'workflow.playbook.created')).toBe(true);
+    expect(queued.some(job => job.name === 'workflow.playbook.created')).toBe(
+      true,
+    );
     expect(queued.some(job => job.name === 'workflow.playbook.run')).toBe(true);
     expect(
       queued.some(
@@ -74,7 +76,9 @@ describe('gateway service contract behavior', () => {
       visibilityTimeoutMs: 10_000,
     });
     expect(claimed.jobs.length).toBeGreaterThan(0);
-    expect(claimed.jobs.every(job => typeof job.receipt === 'string')).toBe(true);
+    expect(claimed.jobs.every(job => typeof job.receipt === 'string')).toBe(
+      true,
+    );
 
     const first = claimed.jobs[0];
     expect(first).toBeDefined();
@@ -277,7 +281,9 @@ describe('gateway service contract behavior', () => {
     ]);
 
     const acquired = claims.filter(claim => claim.status === 'acquired');
-    const alreadyClaimed = claims.filter(claim => claim.status === 'already-claimed');
+    const alreadyClaimed = claims.filter(
+      claim => claim.status === 'already-claimed',
+    );
 
     expect(acquired.length).toBe(1);
     expect(alreadyClaimed.length).toBe(2);
@@ -364,8 +370,12 @@ describe('gateway service contract behavior', () => {
     const metrics = await service.getRuntimeMetrics();
     expect(metrics.workerFingerprintClaimEvents).toBeGreaterThanOrEqual(4);
     expect(metrics.workerFingerprintClaimAcquired).toBeGreaterThanOrEqual(2);
-    expect(metrics.workerFingerprintClaimAlreadyClaimed).toBeGreaterThanOrEqual(1);
-    expect(metrics.workerFingerprintClaimAlreadyProcessed).toBeGreaterThanOrEqual(1);
+    expect(metrics.workerFingerprintClaimAlreadyClaimed).toBeGreaterThanOrEqual(
+      1,
+    );
+    expect(
+      metrics.workerFingerprintClaimAlreadyProcessed,
+    ).toBeGreaterThanOrEqual(1);
     expect(metrics.workerFingerprintStaleRecoveries).toBeGreaterThanOrEqual(1);
     expect(metrics.workerFingerprintDuplicateSkipRate).toBeGreaterThan(0);
     expect(metrics.workerFingerprintContentionRate).toBeGreaterThan(0);
@@ -551,7 +561,10 @@ describe('gateway service contract behavior', () => {
     const playbook = await service.createPlaybook({
       name: 'Replayable Playbook',
       description: 'for replay tests',
-      commands: [{ verb: 'resolve-next-action' }, { verb: 'refresh-command-center' }],
+      commands: [
+        { verb: 'resolve-next-action' },
+        { verb: 'refresh-command-center' },
+      ],
     });
 
     const first = await service.runPlaybook(
@@ -583,7 +596,11 @@ describe('gateway service contract behavior', () => {
     const { service, repository } = await createHarness();
     const before = await repository.getOpsState();
 
-    const result = await service.applyBatchPolicy(['a', 'b'], 'accepted', 'batch');
+    const result = await service.applyBatchPolicy(
+      ['a', 'b'],
+      'accepted',
+      'batch',
+    );
     expect(result.updatedCount).toBeGreaterThanOrEqual(0);
 
     const after = await repository.getOpsState();
@@ -598,7 +615,9 @@ describe('gateway service contract behavior', () => {
     const weekly = await service.listCloseRuns(20, { period: 'weekly' });
     expect(weekly.every(run => run.period === 'weekly')).toBe(true);
 
-    const withExceptions = await service.listCloseRuns(20, { hasExceptions: true });
+    const withExceptions = await service.listCloseRuns(20, {
+      hasExceptions: true,
+    });
     expect(withExceptions.every(run => run.exceptionCount > 0)).toBe(true);
   });
 
@@ -633,7 +652,9 @@ describe('gateway service contract behavior', () => {
     ]);
 
     const queued = await queue.dequeue(10);
-    expect(queued.filter(job => job.name === 'workflow.close.run')).toHaveLength(1);
+    expect(
+      queued.filter(job => job.name === 'workflow.close.run'),
+    ).toHaveLength(1);
   });
 
   it('stores command chain runs for audit retrieval', async () => {
@@ -654,7 +675,9 @@ describe('gateway service contract behavior', () => {
     expect(recentRuns.some(run => run.id === firstRun.id)).toBe(true);
     expect(recentRuns.some(run => run.id === secondRun.id)).toBe(true);
     expect(recentRuns.every(run => typeof run.actorId === 'string')).toBe(true);
-    expect(recentRuns.every(run => typeof run.sourceSurface === 'string')).toBe(true);
+    expect(recentRuns.every(run => typeof run.sourceSurface === 'string')).toBe(
+      true,
+    );
   });
 
   it('adapts focus scores based on recent action outcomes', async () => {
@@ -662,7 +685,8 @@ describe('gateway service contract behavior', () => {
 
     const before = await service.getAdaptiveFocusPanel();
     const urgentBefore =
-      before.actions.find(action => action.id === 'focus-urgent-review')?.score || 0;
+      before.actions.find(action => action.id === 'focus-urgent-review')
+        ?.score || 0;
 
     await service.recordActionOutcome({
       actionId: 'focus-urgent-review',
@@ -672,7 +696,8 @@ describe('gateway service contract behavior', () => {
 
     const after = await service.getAdaptiveFocusPanel();
     const urgentAfter =
-      after.actions.find(action => action.id === 'focus-urgent-review')?.score || 0;
+      after.actions.find(action => action.id === 'focus-urgent-review')
+        ?.score || 0;
 
     expect(urgentAfter).toBeLessThanOrEqual(urgentBefore);
   });
@@ -798,41 +823,45 @@ describe('gateway service contract behavior', () => {
         );
       }),
     ).toBe(true);
-    expect(events.events.some(event => event.kind === 'workflow-command-run')).toBe(
+    expect(
+      events.events.some(event => event.kind === 'workflow-command-run'),
+    ).toBe(true);
+    expect(
+      events.events.some(event => event.kind === 'workflow-playbook-run'),
+    ).toBe(true);
+    expect(
+      events.events.some(event => event.kind === 'workflow-close-run'),
+    ).toBe(true);
+    expect(
+      events.events.some(event => event.kind === 'focus-action-outcome'),
+    ).toBe(true);
+    expect(
+      events.events.some(event => event.kind === 'scenario-adoption'),
+    ).toBe(true);
+    expect(events.events.some(event => event.kind === 'delegate-lane')).toBe(
       true,
     );
-    expect(events.events.some(event => event.kind === 'workflow-playbook-run')).toBe(
+    expect(events.events.some(event => event.kind === 'policy-egress')).toBe(
       true,
     );
-    expect(events.events.some(event => event.kind === 'workflow-close-run')).toBe(
-      true,
-    );
-    expect(events.events.some(event => event.kind === 'focus-action-outcome')).toBe(
-      true,
-    );
-    expect(events.events.some(event => event.kind === 'scenario-adoption')).toBe(
-      true,
-    );
-    expect(events.events.some(event => event.kind === 'delegate-lane')).toBe(true);
-    expect(events.events.some(event => event.kind === 'policy-egress')).toBe(true);
 
     const delegateOnly = await service.listOpsActivity({
       limit: 20,
       kinds: ['delegate-lane'],
     });
     expect(delegateOnly.events.length).toBeGreaterThan(0);
-    expect(delegateOnly.events.every(event => event.kind === 'delegate-lane')).toBe(
-      true,
-    );
+    expect(
+      delegateOnly.events.every(event => event.kind === 'delegate-lane'),
+    ).toBe(true);
 
     const criticalOnly = await service.listOpsActivity({
       limit: 20,
       severities: ['critical'],
     });
     expect(criticalOnly.events.length).toBeGreaterThan(0);
-    expect(criticalOnly.events.every(event => event.severity === 'critical')).toBe(
-      true,
-    );
+    expect(
+      criticalOnly.events.every(event => event.severity === 'critical'),
+    ).toBe(true);
   });
 
   it('backfills and trims materialized ops activity events', async () => {
@@ -895,13 +924,17 @@ describe('gateway service contract behavior', () => {
       createdAtMs: Date.now() - 1_000,
     });
 
-    const firstBackfill = await service.backfillOpsActivity({ limitPerPlane: 200 });
+    const firstBackfill = await service.backfillOpsActivity({
+      limitPerPlane: 200,
+    });
     const afterFirst = await service.getRuntimeMetrics();
 
     expect(firstBackfill.attempted).toBeGreaterThan(0);
     expect(afterFirst.opsActivityEvents).toBeGreaterThan(0);
 
-    const secondBackfill = await service.backfillOpsActivity({ limitPerPlane: 200 });
+    const secondBackfill = await service.backfillOpsActivity({
+      limitPerPlane: 200,
+    });
     const afterSecond = await service.getRuntimeMetrics();
 
     expect(secondBackfill.attempted).toBeGreaterThan(0);
@@ -976,7 +1009,10 @@ describe('gateway service contract behavior', () => {
     });
 
     const lineage = await service.getScenarioLineage(child.id);
-    expect(lineage?.nodes.map(node => node.branchId)).toEqual([root.id, child.id]);
+    expect(lineage?.nodes.map(node => node.branchId)).toEqual([
+      root.id,
+      child.id,
+    ]);
 
     const check = await service.getScenarioAdoptionCheck({
       branchId: child.id,
@@ -1035,7 +1071,9 @@ describe('gateway service contract behavior', () => {
     });
 
     const mutations = await service.listScenarioMutations(simulation.branch.id);
-    expect(mutations.some(mutation => mutation.id === simulation.mutation.id)).toBe(true);
+    expect(
+      mutations.some(mutation => mutation.id === simulation.mutation.id),
+    ).toBe(true);
   });
 
   it('promotes simulation branches into command runs with traceable linkage', async () => {
@@ -1078,7 +1116,9 @@ describe('gateway service contract behavior', () => {
       runExecutionMode: 'live',
     });
 
-    const branchMutations = await service.listScenarioMutations(simulation.branch.id);
+    const branchMutations = await service.listScenarioMutations(
+      simulation.branch.id,
+    );
     expect(
       branchMutations.some(
         mutation => mutation.id === promoted.result.promotionMutation.id,
@@ -1164,7 +1204,9 @@ describe('gateway service contract behavior', () => {
     expect(dryRuns.some(run => run.id === delegateDryRun.id)).toBe(true);
     expect(dryRuns.some(run => run.id === ownerLive.id)).toBe(false);
 
-    const errorsOnly = await service.listWorkflowCommandRuns(20, { hasErrors: true });
+    const errorsOnly = await service.listWorkflowCommandRuns(20, {
+      hasErrors: true,
+    });
     expect(errorsOnly.some(run => run.id === blocked.id)).toBe(true);
     expect(errorsOnly.every(run => run.errorCount > 0)).toBe(true);
   });
@@ -1209,13 +1251,15 @@ describe('gateway service contract behavior', () => {
     });
 
     expect(run.errorCount).toBe(0);
-    expect(run.steps.every(step => step.detail.toLowerCase().includes('dry-run'))).toBe(
-      true,
-    );
+    expect(
+      run.steps.every(step => step.detail.toLowerCase().includes('dry-run')),
+    ).toBe(true);
 
     const queued = await queue.dequeue(20);
     expect(queued.some(job => job.name === 'workflow.close.run')).toBe(false);
-    expect(queued.some(job => job.name === 'delegate.lane.assigned')).toBe(false);
+    expect(queued.some(job => job.name === 'delegate.lane.assigned')).toBe(
+      false,
+    );
   });
 
   it('escalates only stale assigned lanes during live chain execution', async () => {
@@ -1308,9 +1352,11 @@ describe('gateway service contract behavior', () => {
       },
     });
     expect(strictRun.status).toBe('blocked');
-    expect(strictRun.guardrailResults.some(result => result.blocking && !result.passed)).toBe(
-      true,
-    );
+    expect(
+      strictRun.guardrailResults.some(
+        result => result.blocking && !result.passed,
+      ),
+    ).toBe(true);
     expect(strictRun.statusTimeline.at(-1)?.status).toBe('blocked');
 
     const balancedRun = await service.executeWorkflowCommandChain({
@@ -1365,11 +1411,9 @@ describe('gateway service contract behavior', () => {
     expect(rollback).not.toBeNull();
     expect(rollback?.rollbackOfRunId).toBe(run.id);
     expect(rollback?.status).toBe('completed');
-    expect(rollback?.statusTimeline.map(transition => transition.status)).toEqual([
-      'planned',
-      'running',
-      'completed',
-    ]);
+    expect(
+      rollback?.statusTimeline.map(transition => transition.status),
+    ).toEqual(['planned', 'running', 'completed']);
   });
 
   it('rejects rollback when command run is not rollback-eligible', async () => {
@@ -1420,11 +1464,9 @@ describe('gateway service contract behavior', () => {
     expect(original?.status).toBe('rolled_back');
     expect(rollback).toBeDefined();
     expect(rollback?.status).toBe('completed');
-    expect(rollback?.statusTimeline.map(transition => transition.status)).toEqual([
-      'planned',
-      'running',
-      'completed',
-    ]);
+    expect(
+      rollback?.statusTimeline.map(transition => transition.status),
+    ).toEqual(['planned', 'running', 'completed']);
   });
 
   it('rejects rollback when rollback window has expired', async () => {
@@ -1456,7 +1498,11 @@ describe('gateway service contract behavior', () => {
       statusTimeline: [
         { status: 'planned', atMs: now - 120_000, note: 'Execution accepted.' },
         { status: 'running', atMs: now - 119_999, note: 'Execution started.' },
-        { status: 'completed', atMs: now - 119_000, note: 'Execution completed.' },
+        {
+          status: 'completed',
+          atMs: now - 119_000,
+          note: 'Execution completed.',
+        },
       ],
       guardrailResults: [],
       effectSummaries: [
@@ -1769,10 +1815,13 @@ describe('gateway service contract behavior', () => {
     const contentionP95 = contentionP95Durations[contentionP95Index] || 0;
     expect(contentionP95).toBeLessThanOrEqual(60);
 
-    const acquiredClaim = contentionClaims.find(entry => entry.claim.status === 'acquired');
+    const acquiredClaim = contentionClaims.find(
+      entry => entry.claim.status === 'acquired',
+    );
     expect(acquiredClaim).toBeDefined();
     expect(
-      contentionClaims.filter(entry => entry.claim.status === 'already-claimed').length,
+      contentionClaims.filter(entry => entry.claim.status === 'already-claimed')
+        .length,
     ).toBe(contentionRuns - 1);
 
     if (!acquiredClaim) {
@@ -1823,7 +1872,9 @@ describe('gateway service contract behavior', () => {
       }),
     );
     expect(
-      duplicateClaims.every(entry => entry.claim.status === 'already-processed'),
+      duplicateClaims.every(
+        entry => entry.claim.status === 'already-processed',
+      ),
     ).toBe(true);
 
     const duplicateP95Durations = duplicateClaims
@@ -1907,6 +1958,8 @@ describe('gateway service contract behavior', () => {
     expect(signals.recommendedChains.length).toBeGreaterThan(0);
     expect(signals.nextBusinessDay).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(signals.laneSignals.length).toBeGreaterThan(0);
-    expect(signals.laneSignals[0]?.recommendedChain.includes('triage')).toBe(true);
+    expect(signals.laneSignals[0]?.recommendedChain.includes('triage')).toBe(
+      true,
+    );
   });
 });

@@ -108,8 +108,10 @@ export const COMMAND_MESH_HINTS: CommandMeshHint[] = [
     description: 'Open expiring contracts and assign renegotiation lane.',
   },
   {
-    command: 'triage -> escalate-stale-lanes -> delegate-triage-batch -> apply-batch-policy',
-    description: 'Escalate stale lanes, delegate triage batch, and apply policy in one chain.',
+    command:
+      'triage -> escalate-stale-lanes -> delegate-triage-batch -> apply-batch-policy',
+    description:
+      'Escalate stale lanes, delegate triage batch, and apply policy in one chain.',
   },
 ];
 

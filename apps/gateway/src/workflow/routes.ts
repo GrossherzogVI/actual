@@ -1,7 +1,6 @@
+import { commandEnvelopeSchema } from '@finance-os/domain-kernel';
 import type { FastifyInstance } from 'fastify';
 import * as z from 'zod';
-
-import { commandEnvelopeSchema } from '@finance-os/domain-kernel';
 
 import {
   parseRequestBody,
@@ -55,10 +54,7 @@ function parseCsvList(value: unknown): string[] {
     .filter(token => token.length > 0);
 }
 
-function hasValidInternalToken(
-  request: HeaderLike,
-  token?: string,
-): boolean {
+function hasValidInternalToken(request: HeaderLike, token?: string): boolean {
   if (!token) {
     return true;
   }
@@ -177,7 +173,12 @@ export const workflowSchemas = {
   claimQueueJobs: z.object({
     workerId: z.string().min(1).default('worker'),
     maxJobs: z.number().int().min(1).max(200).default(25),
-    visibilityTimeoutMs: z.number().int().min(1000).max(600_000).default(60_000),
+    visibilityTimeoutMs: z
+      .number()
+      .int()
+      .min(1000)
+      .max(600_000)
+      .default(60_000),
   }),
   claimWorkerJobFingerprint: z.object({
     workerId: z.string().min(1).default('worker'),
@@ -277,7 +278,10 @@ export async function registerWorkflowRoutes(
   });
 
   app.get('/close-runs', async request => {
-    const query = ((request as QueryLike).query || {}) as Record<string, unknown>;
+    const query = ((request as QueryLike).query || {}) as Record<
+      string,
+      unknown
+    >;
     const parsed = workflowSchemas.listCloseRuns.safeParse({
       limit:
         typeof query.limit === 'string'
@@ -331,7 +335,10 @@ export async function registerWorkflowRoutes(
   });
 
   app.get('/playbook-runs', async request => {
-    const query = ((request as QueryLike).query || {}) as Record<string, unknown>;
+    const query = ((request as QueryLike).query || {}) as Record<
+      string,
+      unknown
+    >;
     const parsed = workflowSchemas.listPlaybookRuns.safeParse({
       limit:
         typeof query.limit === 'string'
@@ -405,7 +412,10 @@ export async function registerWorkflowRoutes(
   });
 
   app.get('/command-runs', async request => {
-    const query = ((request as QueryLike).query || {}) as Record<string, unknown>;
+    const query = ((request as QueryLike).query || {}) as Record<
+      string,
+      unknown
+    >;
     const parsed = workflowSchemas.listCommandRuns.safeParse({
       limit:
         typeof query.limit === 'string'
@@ -456,7 +466,10 @@ export async function registerWorkflowRoutes(
   });
 
   app.get('/ops-activity', async request => {
-    const query = ((request as QueryLike).query || {}) as Record<string, unknown>;
+    const query = ((request as QueryLike).query || {}) as Record<
+      string,
+      unknown
+    >;
     const parsed = workflowSchemas.listOpsActivity.safeParse({
       limit:
         typeof query.limit === 'string'

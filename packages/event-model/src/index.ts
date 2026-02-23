@@ -13,7 +13,7 @@ export type LedgerEvent<TPayload = Record<string, unknown>> = {
   version: number;
 };
 
-export interface EventStore {
+export type EventStore = {
   append<TPayload>(
     aggregateId: string,
     aggregateType: string,
@@ -23,7 +23,7 @@ export interface EventStore {
   ): LedgerEvent<TPayload>;
   stream(aggregateId: string): LedgerEvent[];
   streamAll(limit?: number): LedgerEvent[];
-}
+};
 
 export class InMemoryEventStore implements EventStore {
   private readonly eventsByAggregate = new Map<string, LedgerEvent[]>();

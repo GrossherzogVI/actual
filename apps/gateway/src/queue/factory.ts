@@ -9,7 +9,9 @@ async function createInMemoryQueue(): Promise<GatewayQueue> {
   return inMemoryQueue;
 }
 
-export async function createGatewayQueue(config: GatewayConfig): Promise<GatewayQueue> {
+export async function createGatewayQueue(
+  config: GatewayConfig,
+): Promise<GatewayQueue> {
   if (config.FINANCE_GATEWAY_QUEUE === 'memory') {
     return createInMemoryQueue();
   }

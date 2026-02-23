@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Trans } from 'react-i18next';
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { apiClient } from '../../core/api/client';
 import type {
   AppRecommendation,
   ExecutionMode,
   GuardrailProfile,
 } from '../../core/types';
-import { apiClient } from '../../core/api/client';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -145,7 +148,9 @@ export function DecisionGraphPanel({
     }
     if (
       selectedRecommendationId &&
-      !recommendations.some(recommendation => recommendation.id === selectedRecommendationId)
+      !recommendations.some(
+        recommendation => recommendation.id === selectedRecommendationId,
+      )
     ) {
       setSelectedRecommendationId(recommendations[0]?.id || '');
     }
@@ -166,7 +171,8 @@ export function DecisionGraphPanel({
 
   const explanation = useQuery({
     queryKey: ['recommendation-explain', selected?.id],
-    queryFn: () => apiClient.explainRecommendation(selected as AppRecommendation),
+    queryFn: () =>
+      apiClient.explainRecommendation(selected as AppRecommendation),
     enabled: !!selected,
   });
 
@@ -188,7 +194,8 @@ export function DecisionGraphPanel({
       }
 
       const nextRoute =
-        run.steps.find(step => typeof step.route === 'string')?.route || blueprint.route;
+        run.steps.find(step => typeof step.route === 'string')?.route ||
+        blueprint.route;
       onRoute(nextRoute);
       onStatus(
         `Decision executed: ${selected.title} -> ${run.status} (${run.errorCount} errors).`,
@@ -200,7 +207,7 @@ export function DecisionGraphPanel({
           'executed',
           `Decision graph execution (${run.executionMode}) run=${run.id}`,
         )
-        .catch(() => { });
+        .catch(() => {});
 
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['command-runs'] }),
@@ -237,7 +244,11 @@ export function DecisionGraphPanel({
       if (!selected) {
         throw new Error('No selected recommendation');
       }
-      return apiClient.recordActionOutcome(selected.id, input.outcome, input.notes);
+      return apiClient.recordActionOutcome(
+        selected.id,
+        input.outcome,
+        input.notes,
+      );
     },
     onSuccess: async (_result, input) => {
       if (!selected) return;
@@ -274,7 +285,9 @@ export function DecisionGraphPanel({
         queryClient.invalidateQueries({ queryKey: ['scenario-branches'] }),
         queryClient.invalidateQueries({ queryKey: ['scenario-mutations'] }),
         queryClient.invalidateQueries({ queryKey: ['scenario-compare'] }),
-        queryClient.invalidateQueries({ queryKey: ['scenario-adoption-check'] }),
+        queryClient.invalidateQueries({
+          queryKey: ['scenario-adoption-check'],
+        }),
         queryClient.invalidateQueries({ queryKey: ['scenario-lineage'] }),
       ]);
     },
@@ -287,8 +300,12 @@ export function DecisionGraphPanel({
     return (
       <section className="fo-panel">
         <header className="fo-panel-header">
-          <h2>Decision Graph</h2>
-          <small>Causal explainability, confidence, and reversible outcomes.</small>
+          <h2>
+            <Trans>Decision Graph</Trans>
+          </h2>
+          <small>
+            Causal explainability, confidence, and reversible outcomes.
+          </small>
         </header>
         <small>No recommendations available yet.</small>
       </section>
@@ -298,9 +315,10 @@ export function DecisionGraphPanel({
   return (
     <section className="fo-panel">
       <header className="fo-panel-header">
-        <h2>Decision Graph</h2>
+        <h2><Trans>Decision Graph</Trans></h2>
         <small>
-          Explainable intelligence with direct execution, simulation, and outcome capture.
+          Explainable intelligence with direct execution, simulation, and
+          outcome capture.
         </small>
       </header>
 
@@ -310,7 +328,7 @@ export function DecisionGraphPanel({
           onValueChange={value => setSelectedRecommendationId(value)}
         >
           <SelectTrigger className="w-[240px]">
-            <SelectValue placeholder="Recommendation" />
+            <SelectValue placeholder={t('Recommendation')} />
           </SelectTrigger>
           <SelectContent>
             {(recommendations || []).map(recommendation => (
@@ -325,7 +343,7 @@ export function DecisionGraphPanel({
           onValueChange={value => setExecutionMode(value as ExecutionMode)}
         >
           <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder="Mode" />
+            <SelectValue placeholder={t('Mode')} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="dry-run">dry-run</SelectItem>
@@ -334,10 +352,12 @@ export function DecisionGraphPanel({
         </Select>
         <Select
           value={guardrailProfile}
-          onValueChange={value => setGuardrailProfile(value as GuardrailProfile)}
+          onValueChange={value =>
+            setGuardrailProfile(value as GuardrailProfile)
+          }
         >
           <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder="Guardrail" />
+            <SelectValue placeholder={t('Guardrail')} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="strict">strict</SelectItem>
@@ -361,12 +381,9 @@ export function DecisionGraphPanel({
             )
           }
         />
-        <Button
-          variant="secondary"
-          onClick={() => onRoute(blueprint.route)}
-        >
+        <Button variant="secondary" onClick={() => onRoute(blueprint.route)}><Trans>
           Open impacted surface
-        </Button>
+        </Trans></Button>
         <Button
           variant="secondary"
           disabled={simulateRecommendation.isPending}
@@ -374,12 +391,17 @@ export function DecisionGraphPanel({
         >
           {simulateRecommendation.isPending
             ? 'Simulating...'
-            : 'Simulate recommendation branch'}
+            : t('Simulate recommendation branch')}
         </Button>
       </div>
 
       <div className="fo-decision-graph">
-        <svg width="100%" height="280" viewBox="0 0 620 280" preserveAspectRatio="xMidYMid meet">
+        <svg
+          width="100%"
+          height="280"
+          viewBox="0 0 620 280"
+          preserveAspectRatio="xMidYMid meet"
+        >
           <defs>
             <marker
               id="decision-arrow"
@@ -437,21 +459,30 @@ export function DecisionGraphPanel({
             </text>
           </g>
 
-          <g className="fo-graph-node fo-graph-node-info" transform="translate(210 45)">
+          <g
+            className="fo-graph-node fo-graph-node-info"
+            transform="translate(210 45)"
+          >
             <rect width="145" height="50" rx="10" />
             <text x="72" y="30" textAnchor="middle">
               {short(blueprint.triggerLabel, 21)}
             </text>
           </g>
 
-          <g className="fo-graph-node fo-graph-node-warn" transform="translate(210 185)">
+          <g
+            className="fo-graph-node fo-graph-node-warn"
+            transform="translate(210 185)"
+          >
             <rect width="145" height="50" rx="10" />
             <text x="72" y="30" textAnchor="middle">
               {short(blueprint.consequenceLabel, 21)}
             </text>
           </g>
 
-          <g className="fo-graph-node fo-graph-node-ok" transform="translate(500 115)">
+          <g
+            className="fo-graph-node fo-graph-node-ok"
+            transform="translate(500 115)"
+          >
             <rect width="105" height="50" rx="10" />
             <text x="52" y="30" textAnchor="middle">
               {Math.round(selected.confidence * 100)}% conf
@@ -506,15 +537,15 @@ export function DecisionGraphPanel({
           {executeRecommendation.isPending
             ? 'Executing...'
             : executionMode === 'live'
-              ? 'Execute live recommendation'
-              : 'Dry-run recommendation'}
+              ? t('Execute live recommendation')
+              : t('Dry-run recommendation')}
         </Button>
         <Button
           variant="secondary"
           disabled={createPlaybook.isPending}
           onClick={() => createPlaybook.mutate()}
         >
-          {createPlaybook.isPending ? 'Creating...' : 'Generate playbook'}
+          {createPlaybook.isPending ? 'Creating...' : t('Generate playbook')}
         </Button>
         <Button
           variant="secondary"
@@ -525,9 +556,9 @@ export function DecisionGraphPanel({
               notes: 'Accepted from decision graph',
             })
           }
-        >
+        ><Trans>
           Mark accepted
-        </Button>
+        </Trans></Button>
         <Button
           variant="secondary"
           disabled={captureOutcome.isPending}
@@ -537,9 +568,9 @@ export function DecisionGraphPanel({
               notes: 'Deferred from decision graph',
             })
           }
-        >
+        ><Trans>
           Mark deferred
-        </Button>
+        </Trans></Button>
       </div>
     </section>
   );

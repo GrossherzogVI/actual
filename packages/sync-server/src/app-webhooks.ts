@@ -24,7 +24,12 @@ app.get('/config', (_req, res) => {
   if (!row) {
     res.json({
       status: 'ok',
-      data: { url: '', secret: '', enabled: false, events: 'sync,file-upload,file-delete' },
+      data: {
+        url: '',
+        secret: '',
+        enabled: false,
+        events: 'sync,file-upload,file-delete',
+      },
     });
     return;
   }

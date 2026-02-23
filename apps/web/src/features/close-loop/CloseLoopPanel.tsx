@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Trans } from 'react-i18next';
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import type { CloseRun, MoneyPulse } from '../../core/types';
 import { apiClient } from '../../core/api/client';
+import type { CloseRun, MoneyPulse } from '../../core/types';
+
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -36,7 +39,10 @@ function readResolvedRunIds(): string[] {
 
 function writeResolvedRunIds(ids: string[]) {
   try {
-    window.localStorage.setItem(CLOSE_RESOLVED_STORAGE_KEY, JSON.stringify(ids));
+    window.localStorage.setItem(
+      CLOSE_RESOLVED_STORAGE_KEY,
+      JSON.stringify(ids),
+    );
   } catch {
     // Ignore storage failures.
   }
@@ -62,16 +68,30 @@ function stageStatus(input: {
     (input.pulse?.urgentReviews || 0) * 3 +
     (input.pulse?.expiringContracts || 0) * 2 +
     (input.pulse?.pendingReviews || 0);
-  const latestAgeMs = input.latestRun ? Date.now() - input.latestRun.createdAtMs : Number.POSITIVE_INFINITY;
+  const latestAgeMs = input.latestRun
+    ? Date.now() - input.latestRun.createdAtMs
+    : Number.POSITIVE_INFINITY;
 
   const preflight: CloseHealthTier =
     preflightLoad >= 30 ? 'critical' : preflightLoad >= 12 ? 'warn' : 'stable';
   const execution: CloseHealthTier =
-    latestAgeMs > 7 * 24 * 60 * 60 * 1000 ? 'critical' : latestAgeMs > 48 * 60 * 60 * 1000 ? 'warn' : 'stable';
+    latestAgeMs > 7 * 24 * 60 * 60 * 1000
+      ? 'critical'
+      : latestAgeMs > 48 * 60 * 60 * 1000
+        ? 'warn'
+        : 'stable';
   const exceptions: CloseHealthTier =
-    input.unresolvedExceptions >= 4 ? 'critical' : input.unresolvedExceptions > 0 ? 'warn' : 'stable';
+    input.unresolvedExceptions >= 4
+      ? 'critical'
+      : input.unresolvedExceptions > 0
+        ? 'warn'
+        : 'stable';
   const confidence: CloseHealthTier =
-    input.healthScore < 45 ? 'critical' : input.healthScore < 72 ? 'warn' : 'stable';
+    input.healthScore < 45
+      ? 'critical'
+      : input.healthScore < 72
+        ? 'warn'
+        : 'stable';
 
   return {
     preflight,
@@ -96,8 +116,11 @@ function stageClass(tier: CloseHealthTier) {
 export function CloseLoopPanel({ onStatus }: CloseLoopPanelProps) {
   const queryClient = useQueryClient();
   const [periodFilter, setPeriodFilter] = useState<ClosePeriodFilter>('all');
-  const [exceptionFilter, setExceptionFilter] = useState<CloseExceptionFilter>('all');
-  const [resolvedRunIds, setResolvedRunIds] = useState<string[]>(() => readResolvedRunIds());
+  const [exceptionFilter, setExceptionFilter] =
+    useState<CloseExceptionFilter>('all');
+  const [resolvedRunIds, setResolvedRunIds] = useState<string[]>(() =>
+    readResolvedRunIds(),
+  );
 
   const closeRuns = useQuery({
     queryKey: ['close-runs', periodFilter, exceptionFilter],
@@ -117,7 +140,8 @@ export function CloseLoopPanel({ onStatus }: CloseLoopPanelProps) {
   });
 
   const runClose = useMutation({
-    mutationFn: (period: 'weekly' | 'monthly') => apiClient.runCloseRoutine(period),
+    mutationFn: (period: 'weekly' | 'monthly') =>
+      apiClient.runCloseRoutine(period),
     onSuccess: async result => {
       onStatus(
         `${result.period} close completed (${result.exceptionCount} exceptions / pending ${result.summary.pendingReviews} / urgent ${result.summary.urgentReviews}).`,
@@ -147,7 +171,9 @@ export function CloseLoopPanel({ onStatus }: CloseLoopPanelProps) {
   const closeStats = useMemo(() => {
     const runs = closeRuns.data || [];
     const withExceptions = runs.filter(run => run.exceptionCount > 0);
-    const unresolvedRuns = withExceptions.filter(run => !resolvedSet.has(run.id));
+    const unresolvedRuns = withExceptions.filter(
+      run => !resolvedSet.has(run.id),
+    );
     const avgExceptions =
       runs.length > 0
         ? runs.reduce((acc, run) => acc + run.exceptionCount, 0) / runs.length
@@ -161,7 +187,12 @@ export function CloseLoopPanel({ onStatus }: CloseLoopPanelProps) {
 
     const healthScore = Math.max(
       0,
-      Math.round(100 - unresolvedRuns.length * 15 - avgExceptions * 5 - Math.min(40, operationalLoad)),
+      Math.round(
+        100 -
+          unresolvedRuns.length * 15 -
+          avgExceptions * 5 -
+          Math.min(40, operationalLoad),
+      ),
     );
     const healthTier: CloseHealthTier =
       healthScore >= 75 ? 'stable' : healthScore >= 45 ? 'warn' : 'critical';
@@ -185,7 +216,12 @@ export function CloseLoopPanel({ onStatus }: CloseLoopPanelProps) {
         pulse: pulse.data,
         healthScore: closeStats.healthScore,
       }),
-    [closeStats.healthScore, closeStats.latestRun, closeStats.unresolvedRuns.length, pulse.data],
+    [
+      closeStats.healthScore,
+      closeStats.latestRun,
+      closeStats.unresolvedRuns.length,
+      pulse.data,
+    ],
   );
 
   const markResolved = (runId: string) => {
@@ -228,16 +264,20 @@ export function CloseLoopPanel({ onStatus }: CloseLoopPanelProps) {
   return (
     <section className="fo-panel" id="close-loop">
       <header className="fo-panel-header">
-        <h2>Close Loop</h2>
+        <h2>
+          <Trans>Close Loop</Trans>
+        </h2>
         <small>
-          Exception-first cockpit. Shortcuts: Alt+Shift+W (weekly), Alt+Shift+U (monthly),
-          Alt+Shift+9 (full cycle).
+          Exception-first cockpit. Shortcuts: Alt+Shift+W (weekly), Alt+Shift+U
+          (monthly), Alt+Shift+9 (full cycle).
         </small>
       </header>
 
-      <article className={`fo-close-health ${healthClass(closeStats.healthTier)}`}>
+      <article
+        className={`fo-close-health ${healthClass(closeStats.healthTier)}`}
+      >
         <div className="fo-space-between">
-          <strong>Close confidence score</strong>
+          <strong><Trans>Close confidence score</Trans></strong>
           <strong>{closeStats.healthScore}</strong>
         </div>
         <small>
@@ -245,8 +285,9 @@ export function CloseLoopPanel({ onStatus }: CloseLoopPanelProps) {
           {runAgeLabel(closeStats.latestRun)}
         </small>
         <small>
-          pending {pulse.data?.pendingReviews ?? '-'} · urgent {pulse.data?.urgentReviews ?? '-'} ·
-          expiring {pulse.data?.expiringContracts ?? '-'}
+          pending {pulse.data?.pendingReviews ?? '-'} · urgent{' '}
+          {pulse.data?.urgentReviews ?? '-'} · expiring{' '}
+          {pulse.data?.expiringContracts ?? '-'}
         </small>
       </article>
 
@@ -254,23 +295,23 @@ export function CloseLoopPanel({ onStatus }: CloseLoopPanelProps) {
         <Button
           onClick={() => runClose.mutate('weekly')}
           disabled={runClose.isPending || runFullCycle.isPending}
-        >
+        ><Trans>
           Run weekly close
-        </Button>
+        </Trans></Button>
         <Button
           variant="secondary"
           onClick={() => runClose.mutate('monthly')}
           disabled={runClose.isPending || runFullCycle.isPending}
-        >
+        ><Trans>
           Run monthly close
-        </Button>
+        </Trans></Button>
         <Button
           variant="secondary"
           onClick={() => runFullCycle.mutate()}
           disabled={runClose.isPending || runFullCycle.isPending}
-        >
+        ><Trans>
           Full cycle
-        </Button>
+        </Trans></Button>
       </div>
 
       <div className="fo-space-between">
@@ -285,7 +326,7 @@ export function CloseLoopPanel({ onStatus }: CloseLoopPanelProps) {
           onValueChange={value => setPeriodFilter(value as ClosePeriodFilter)}
         >
           <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder="Period" />
+            <SelectValue placeholder={t('Period')} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">all periods</SelectItem>
@@ -295,10 +336,12 @@ export function CloseLoopPanel({ onStatus }: CloseLoopPanelProps) {
         </Select>
         <Select
           value={exceptionFilter}
-          onValueChange={value => setExceptionFilter(value as CloseExceptionFilter)}
+          onValueChange={value =>
+            setExceptionFilter(value as CloseExceptionFilter)
+          }
         >
           <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder="Exceptions" />
+            <SelectValue placeholder={t('Exceptions')} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">all runs</SelectItem>
@@ -309,28 +352,29 @@ export function CloseLoopPanel({ onStatus }: CloseLoopPanelProps) {
 
       <div className="fo-close-stage-list">
         <article className={`fo-close-stage ${stageClass(stages.preflight)}`}>
-          <strong>Preflight pressure</strong>
+          <strong><Trans>Preflight pressure</Trans></strong>
           <small>
-            Urgent + expiring workload before close commit ({pulse.data?.urgentReviews ?? 0}/
+            Urgent + expiring workload before close commit (
+            {pulse.data?.urgentReviews ?? 0}/
             {pulse.data?.expiringContracts ?? 0}).
           </small>
         </article>
         <article className={`fo-close-stage ${stageClass(stages.execution)}`}>
-          <strong>Execution freshness</strong>
+          <strong><Trans>Execution freshness</Trans></strong>
           <small>{runAgeLabel(closeStats.latestRun)}</small>
         </article>
         <article className={`fo-close-stage ${stageClass(stages.exceptions)}`}>
-          <strong>Exception resolution</strong>
+          <strong><Trans>Exception resolution</Trans></strong>
           <small>{closeStats.unresolvedRuns.length} unresolved runs.</small>
         </article>
         <article className={`fo-close-stage ${stageClass(stages.confidence)}`}>
-          <strong>Operational confidence</strong>
-          <small>Health score {closeStats.healthScore}.</small>
+          <strong><Trans>Operational confidence</Trans></strong>
+          <small><Trans>Health score </Trans>{closeStats.healthScore}.</small>
         </article>
       </div>
 
       <div className="fo-stack">
-        <strong>Unresolved exception rail</strong>
+        <strong><Trans>Unresolved exception rail</Trans></strong>
         {closeStats.unresolvedRuns.length === 0 ? (
           <small>No unresolved close exceptions.</small>
         ) : (
@@ -343,17 +387,18 @@ export function CloseLoopPanel({ onStatus }: CloseLoopPanelProps) {
                 </div>
                 <small>{run.exceptionCount} exceptions</small>
                 <small>
-                  pending {run.summary.pendingReviews} | urgent {run.summary.urgentReviews} |
-                  expiring {run.summary.expiringContracts}
+                  pending {run.summary.pendingReviews} | urgent{' '}
+                  {run.summary.urgentReviews} | expiring{' '}
+                  {run.summary.expiringContracts}
                 </small>
                 <div className="fo-row mt-2">
                   <Button
                     size="sm"
                     variant="secondary"
                     onClick={() => markResolved(run.id)}
-                  >
+                  ><Trans>
                     Mark resolved
-                  </Button>
+                  </Trans></Button>
                 </div>
               </article>
             ))}
@@ -367,12 +412,13 @@ export function CloseLoopPanel({ onStatus }: CloseLoopPanelProps) {
           return (
             <article
               key={run.id}
-              className={`fo-log ${run.exceptionCount > 0
+              className={`fo-log ${
+                run.exceptionCount > 0
                   ? resolved
                     ? 'fo-close-run-resolved'
                     : 'fo-close-run-unresolved'
                   : 'fo-log-live'
-                }`}
+              }`}
             >
               <div className="fo-space-between">
                 <strong>{run.period}</strong>
@@ -380,8 +426,9 @@ export function CloseLoopPanel({ onStatus }: CloseLoopPanelProps) {
               </div>
               <small>{run.exceptionCount} exceptions</small>
               <small>
-                pending {run.summary.pendingReviews} | urgent {run.summary.urgentReviews} |
-                expiring {run.summary.expiringContracts}
+                pending {run.summary.pendingReviews} | urgent{' '}
+                {run.summary.urgentReviews} | expiring{' '}
+                {run.summary.expiringContracts}
               </small>
               {run.exceptionCount > 0 ? (
                 <div className="fo-row mt-2">
@@ -390,17 +437,17 @@ export function CloseLoopPanel({ onStatus }: CloseLoopPanelProps) {
                       size="sm"
                       variant="secondary"
                       onClick={() => unresolveRun(run.id)}
-                    >
+                    ><Trans>
                       Move to unresolved
-                    </Button>
+                    </Trans></Button>
                   ) : (
                     <Button
                       size="sm"
                       variant="secondary"
                       onClick={() => markResolved(run.id)}
-                    >
+                    ><Trans>
                       Mark resolved
-                    </Button>
+                    </Trans></Button>
                   )}
                 </div>
               ) : null}

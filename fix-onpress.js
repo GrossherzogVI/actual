@@ -4,7 +4,7 @@ const path = require('path');
 function walk(dir) {
   let results = [];
   const list = fs.readdirSync(dir);
-  list.forEach((file) => {
+  list.forEach(file => {
     file = path.join(dir, file);
     if (fs.statSync(file).isDirectory()) {
       results = results.concat(walk(file));
@@ -20,20 +20,30 @@ let totalReplaced = 0;
 
 files.forEach(file => {
   let content = fs.readFileSync(file, 'utf8');
-  let original = content;
+  const original = content;
 
-  // Split by <Button, <Link, etc., then find the next closing tag or '>', 
+  // Split by <Button, <Link, etc., then find the next closing tag or '>',
   // keeping track of brace nesting {} to safely skip arrow functions.
 
-  const tags = ['Button', 'Link', 'ActionableGridListItem', 'AttentionQueueWidget', 'DonutGraph', 'BarGraph', 'CalendarGraph', 'StackedBarGraph', 'Checkbox'];
+  const tags = [
+    'Button',
+    'Link',
+    'ActionableGridListItem',
+    'AttentionQueueWidget',
+    'DonutGraph',
+    'BarGraph',
+    'CalendarGraph',
+    'StackedBarGraph',
+    'Checkbox',
+  ];
 
   for (const tag of tags) {
     const searchStr = `<${tag}`;
-    let parts = content.split(searchStr);
+    const parts = content.split(searchStr);
 
     if (parts.length > 1) {
       for (let i = 1; i < parts.length; i++) {
-        let part = parts[i];
+        const part = parts[i];
 
         let braceDepth = 0;
         let j = 0;
@@ -50,7 +60,7 @@ files.forEach(file => {
             continue;
           }
 
-          if (char === '"' || char === "'" || char === "`") {
+          if (char === '"' || char === "'" || char === '`') {
             inString = true;
             stringChar = char;
             continue;
@@ -67,7 +77,7 @@ files.forEach(file => {
 
         // now part.substring(0, j) is the inside of the opening tag
         let insideTag = part.substring(0, j);
-        let outsideTag = part.substring(j);
+        const outsideTag = part.substring(j);
 
         insideTag = insideTag.replace(/\bonClick\b/g, 'onPress');
 

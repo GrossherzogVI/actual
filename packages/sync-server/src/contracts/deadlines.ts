@@ -10,8 +10,22 @@
 // ─── German Holiday Computation ──────────────────────────────────────────────
 
 export type Bundesland =
-  | 'BW' | 'BY' | 'BE' | 'BB' | 'HB' | 'HH' | 'HE' | 'MV'
-  | 'NI' | 'NW' | 'RP' | 'SL' | 'SN' | 'ST' | 'SH' | 'TH';
+  | 'BW'
+  | 'BY'
+  | 'BE'
+  | 'BB'
+  | 'HB'
+  | 'HH'
+  | 'HE'
+  | 'MV'
+  | 'NI'
+  | 'NW'
+  | 'RP'
+  | 'SL'
+  | 'SN'
+  | 'ST'
+  | 'SH'
+  | 'TH';
 
 function fmtDate(d: Date): string {
   const y = d.getFullYear();
@@ -44,7 +58,10 @@ function easterSunday(year: number): Date {
   return new Date(year, month - 1, day);
 }
 
-function getHolidays(year: number, bundesland?: Bundesland | null): Set<string> {
+function getHolidays(
+  year: number,
+  bundesland?: Bundesland | null,
+): Set<string> {
   const holidays = new Set<string>();
   const easter = easterSunday(year);
 
@@ -76,7 +93,9 @@ function getHolidays(year: number, bundesland?: Bundesland | null): Set<string> 
   if (bundesland === 'TH') {
     holidays.add(`${year}-09-20`);
   }
-  if (['BB', 'HB', 'HH', 'MV', 'NI', 'SN', 'ST', 'SH', 'TH'].includes(bundesland)) {
+  if (
+    ['BB', 'HB', 'HH', 'MV', 'NI', 'SN', 'ST', 'SH', 'TH'].includes(bundesland)
+  ) {
     holidays.add(`${year}-10-31`);
   }
   if (['BW', 'BY', 'NW', 'RP', 'SL'].includes(bundesland)) {
@@ -85,7 +104,7 @@ function getHolidays(year: number, bundesland?: Bundesland | null): Set<string> 
   if (bundesland === 'SN') {
     const nov23 = new Date(year, 10, 23);
     const dayOfWeek = nov23.getDay();
-    const offset = ((dayOfWeek + 4) % 7) || 7;
+    const offset = (dayOfWeek + 4) % 7 || 7;
     holidays.add(fmtDate(addCalendarDays(nov23, -offset)));
   }
 
@@ -118,7 +137,10 @@ function isWeekend(d: Date): boolean {
   return day === 0 || day === 6;
 }
 
-export function isBusinessDay(date: Date, bundesland?: Bundesland | null): boolean {
+export function isBusinessDay(
+  date: Date,
+  bundesland?: Bundesland | null,
+): boolean {
   if (isWeekend(date)) return false;
   const holidays = getHolidays(date.getFullYear(), bundesland);
   const y = date.getFullYear();
@@ -159,7 +181,7 @@ export function addBusinessDays(
 
 // ─── Deadline Computation ─────────────────────────────────────────────────────
 
-export interface DeadlineConfig {
+export type DeadlineConfig = {
   nominalDate: string;
   paymentMethod: PaymentMethod;
   leadTimeOverride?: number | null;
@@ -167,13 +189,13 @@ export interface DeadlineConfig {
   softShift: DeadlineShift;
   hardShift: DeadlineShift;
   bundesland?: Bundesland | null;
-}
+};
 
-export interface DeadlineResult {
+export type DeadlineResult = {
   action: string;
   soft: string;
   hard: string;
-}
+};
 
 function toISO(d: Date): string {
   const y = d.getFullYear();
@@ -226,7 +248,7 @@ export function deadlineStatus(
 // ─── Payment Date Generation ──────────────────────────────────────────────────
 
 const INTERVAL_MONTHS: Record<string, number> = {
-  weekly: 0,      // handled specially
+  weekly: 0, // handled specially
   monthly: 1,
   quarterly: 3,
   'semi-annual': 6,

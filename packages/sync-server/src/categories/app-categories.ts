@@ -79,7 +79,9 @@ app.post('/map', (req, res) => {
   const { external_categories, source } = req.body ?? {};
 
   if (!Array.isArray(external_categories)) {
-    res.status(400).json({ status: 'error', reason: 'external-categories-required' });
+    res
+      .status(400)
+      .json({ status: 'error', reason: 'external-categories-required' });
     return;
   }
 

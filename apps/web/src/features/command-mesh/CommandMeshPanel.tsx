@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Trans } from 'react-i18next';
 
 import { COMMAND_MESH_HINTS } from '@finance-os/domain-kernel';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { apiClient } from '../../core/api/client';
 import type {
@@ -11,12 +12,11 @@ import type {
   RunStatus,
   WorkflowCommandExecution,
 } from '../../core/types';
+import { RUN_DETAILS_COMMAND_EVENT } from '../runtime/run-details-commands';
+import type { RunDetailsCommandEventDetail, RunDetailsSelector } from '../runtime/run-details-commands';
 import { RunDetailsDrawer } from '../runtime/RunDetailsDrawer';
-import {
-  type RunDetailsCommandEventDetail,
-  type RunDetailsSelector,
-  RUN_DETAILS_COMMAND_EVENT,
-} from '../runtime/run-details-commands';
+
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -26,7 +26,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 
 type CommandMeshPanelProps = {
   onRoute: (route: string) => void;
@@ -70,20 +69,21 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
   const [historyErrorFilter, setHistoryErrorFilter] = useState<
     'all' | 'errors' | 'clean'
   >('all');
-  const [historyModeFilter, setHistoryModeFilter] = useState<'all' | ExecutionMode>(
-    'all',
-  );
-  const [historyStatusFilter, setHistoryStatusFilter] = useState<'all' | RunStatus>(
-    'all',
-  );
+  const [historyModeFilter, setHistoryModeFilter] = useState<
+    'all' | ExecutionMode
+  >('all');
+  const [historyStatusFilter, setHistoryStatusFilter] = useState<
+    'all' | RunStatus
+  >('all');
   const [historyActorFilter, setHistoryActorFilter] = useState('');
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [resolvedRunById, setResolvedRunById] =
     useState<WorkflowCommandExecution | null>(null);
   const [pendingRunDetailsSelector, setPendingRunDetailsSelector] =
     useState<RunDetailsSelector | null>(null);
-  const [pendingRunDetailsRunId, setPendingRunDetailsRunId] =
-    useState<string | null>(null);
+  const [pendingRunDetailsRunId, setPendingRunDetailsRunId] = useState<
+    string | null
+  >(null);
 
   const history = useQuery({
     queryKey: [
@@ -101,7 +101,8 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
           historyErrorFilter === 'all'
             ? undefined
             : historyErrorFilter === 'errors',
-        executionMode: historyModeFilter === 'all' ? undefined : historyModeFilter,
+        executionMode:
+          historyModeFilter === 'all' ? undefined : historyModeFilter,
         status: historyStatusFilter === 'all' ? undefined : historyStatusFilter,
       }),
     refetchInterval: 15_000,
@@ -117,26 +118,26 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
       ) || null,
     [history.data],
   );
-  const selectedRun = useMemo<WorkflowCommandExecution | null>(
-    () => {
-      if (!selectedRunId) {
-        return null;
-      }
-      const fromHistory = (history.data || []).find(run => run.id === selectedRunId);
-      if (fromHistory) {
-        return fromHistory;
-      }
-      if (resolvedRunById && resolvedRunById.id === selectedRunId) {
-        return resolvedRunById;
-      }
+  const selectedRun = useMemo<WorkflowCommandExecution | null>(() => {
+    if (!selectedRunId) {
       return null;
-    },
-    [history.data, resolvedRunById, selectedRunId],
-  );
+    }
+    const fromHistory = (history.data || []).find(
+      run => run.id === selectedRunId,
+    );
+    if (fromHistory) {
+      return fromHistory;
+    }
+    if (resolvedRunById && resolvedRunById.id === selectedRunId) {
+      return resolvedRunById;
+    }
+    return null;
+  }, [history.data, resolvedRunById, selectedRunId]);
 
   useEffect(() => {
     const onRunDetailsCommand = (event: Event) => {
-      const detail = (event as CustomEvent<RunDetailsCommandEventDetail>).detail;
+      const detail = (event as CustomEvent<RunDetailsCommandEventDetail>)
+        .detail;
       if (!detail || detail.scope !== 'command') {
         return;
       }
@@ -195,7 +196,9 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
         setResolvedRunById(found);
         setSelectedRunId(found.id);
         setPendingRunDetailsRunId(null);
-        onStatus(`Opened details for command run ${found.id} (${found.status}).`);
+        onStatus(
+          `Opened details for command run ${found.id} (${found.status}).`,
+        );
       } catch (error) {
         if (cancelled) {
           return;
@@ -238,7 +241,9 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
               );
 
     if (!candidate) {
-      onStatus(`No ${pendingRunDetailsSelector.replace('latest-', '')} command run found.`);
+      onStatus(
+        `No ${pendingRunDetailsSelector.replace('latest-', '')} command run found.`,
+      );
       setPendingRunDetailsSelector(null);
       return;
     }
@@ -246,13 +251,10 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
     setResolvedRunById(null);
     setSelectedRunId(candidate.id);
     setPendingRunDetailsSelector(null);
-    onStatus(`Opened details for command run ${candidate.id} (${candidate.status}).`);
-  }, [
-    history.data,
-    history.isFetching,
-    onStatus,
-    pendingRunDetailsSelector,
-  ]);
+    onStatus(
+      `Opened details for command run ${candidate.id} (${candidate.status}).`,
+    );
+  }, [history.data, history.isFetching, onStatus, pendingRunDetailsSelector]);
 
   const addLog = (entry: Omit<LogEntry, 'id'>) => {
     setLogs(prev => [{ ...entry, id: nextId() }, ...prev].slice(0, 24));
@@ -280,7 +282,9 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
       }
 
       setGuardrailBlocks(
-        run.guardrailResults.filter(result => result.blocking && !result.passed),
+        run.guardrailResults.filter(
+          result => result.blocking && !result.passed,
+        ),
       );
       onStatus(
         `Command run ${run.status} (${run.executionMode}) with ${run.errorCount} error(s).`,
@@ -309,7 +313,9 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
         queryClient.invalidateQueries({ queryKey: ['scenario-branches'] }),
         queryClient.invalidateQueries({ queryKey: ['scenario-mutations'] }),
         queryClient.invalidateQueries({ queryKey: ['scenario-compare'] }),
-        queryClient.invalidateQueries({ queryKey: ['scenario-adoption-check'] }),
+        queryClient.invalidateQueries({
+          queryKey: ['scenario-adoption-check'],
+        }),
         queryClient.invalidateQueries({ queryKey: ['scenario-lineage'] }),
       ]);
     },
@@ -347,8 +353,12 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
   return (
     <section className="fo-panel">
       <header className="fo-panel-header">
-        <h2>Command Mesh</h2>
-        <small>Guardrail-aware chain execution with rollback window controls.</small>
+        <h2>
+          <Trans>Command Mesh</Trans>
+        </h2>
+        <small>
+          Guardrail-aware chain execution with rollback window controls.
+        </small>
       </header>
 
       <div className="fo-stack">
@@ -363,14 +373,14 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
             disabled={execute.isPending}
             onClick={() => execute.mutate(command)}
           >
-            {execute.isPending ? 'Running' : 'Execute'}
+            {execute.isPending ? t('Running') : t('Execute')}
           </Button>
           <Button
             variant="secondary"
             disabled={simulateChain.isPending}
             onClick={() => simulateChain.mutate(command)}
           >
-            {simulateChain.isPending ? 'Simulating...' : 'Simulate in twin'}
+            {simulateChain.isPending ? 'Simulating...' : t('Simulate in twin')}
           </Button>
           <Button
             variant="secondary"
@@ -379,7 +389,7 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
           >
             {rollbackRun.isPending
               ? 'Rolling back...'
-              : 'Rollback latest live chain'}
+              : t('Rollback latest live chain')}
           </Button>
         </div>
 
@@ -389,7 +399,7 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
             onValueChange={value => setExecutionMode(value as ExecutionMode)}
           >
             <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Mode" />
+              <SelectValue placeholder={t('Mode')} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="dry-run">dry-run</SelectItem>
@@ -398,10 +408,12 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
           </Select>
           <Select
             value={guardrailProfile}
-            onValueChange={value => setGuardrailProfile(value as GuardrailProfile)}
+            onValueChange={value =>
+              setGuardrailProfile(value as GuardrailProfile)
+            }
           >
             <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Guardrail" />
+              <SelectValue placeholder={t('Guardrail')} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="strict">strict</SelectItem>
@@ -421,7 +433,7 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
                 Math.max(1, Math.min(1440, Number(event.target.value) || 60)),
               )
             }
-            title="Rollback window minutes"
+            title={t('Rollback window minutes')}
           />
           <label className="fo-row">
             <input
@@ -449,7 +461,7 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
 
       {guardrailBlocks.length > 0 ? (
         <section className="fo-log-list">
-          <small>Guardrail blocks</small>
+          <small><Trans>Guardrail blocks</Trans></small>
           {guardrailBlocks.map(block => (
             <article key={block.ruleId} className="fo-log fo-log-error">
               <strong>{block.ruleId}</strong>
@@ -473,29 +485,29 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
       </div>
 
       <div className="fo-log-list">
-        <small>Recent command runs</small>
+        <small><Trans>Recent command runs</Trans></small>
         <div className="fo-row">
           <Button
             size="sm"
             variant={historyErrorFilter === 'all' ? 'default' : 'secondary'}
             onClick={() => setHistoryErrorFilter('all')}
-          >
+          ><Trans>
             All
-          </Button>
+          </Trans></Button>
           <Button
             size="sm"
             variant={historyErrorFilter === 'errors' ? 'default' : 'secondary'}
             onClick={() => setHistoryErrorFilter('errors')}
-          >
+          ><Trans>
             Errors
-          </Button>
+          </Trans></Button>
           <Button
             size="sm"
             variant={historyErrorFilter === 'clean' ? 'default' : 'secondary'}
             onClick={() => setHistoryErrorFilter('clean')}
-          >
+          ><Trans>
             Clean
-          </Button>
+          </Trans></Button>
           <Button
             size="sm"
             variant="secondary"
@@ -513,10 +525,12 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
           </Button>
           <Select
             value={historyStatusFilter}
-            onValueChange={value => setHistoryStatusFilter(value as 'all' | RunStatus)}
+            onValueChange={value =>
+              setHistoryStatusFilter(value as 'all' | RunStatus)
+            }
           >
             <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Status" />
+              <SelectValue placeholder={t('Status')} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">status:all</SelectItem>
@@ -539,13 +553,15 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
             <strong>{run.chain}</strong>
             <span>
               {new Date(run.startedAtMs).toLocaleTimeString()} · {run.actorId} ·{' '}
-              {run.sourceSurface} · {run.executionMode} · status:{' '}
-              {run.status} · {run.errorCount} errors
+              {run.sourceSurface} · {run.executionMode} · status: {run.status} ·{' '}
+              {run.errorCount} errors
             </span>
             {run.statusTimeline.length > 0 ? (
               <small>
                 status path:{' '}
-                {run.statusTimeline.map(transition => transition.status).join(' -> ')}
+                {run.statusTimeline
+                  .map(transition => transition.status)
+                  .join(' -> ')}
               </small>
             ) : null}
             <small>
@@ -560,7 +576,10 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
               <small>
                 guardrails:{' '}
                 {run.guardrailResults
-                  .map(result => `${result.ruleId}:${result.passed ? 'pass' : 'fail'}`)
+                  .map(
+                    result =>
+                      `${result.ruleId}:${result.passed ? 'pass' : 'fail'}`,
+                  )
                   .join(', ')}
               </small>
             ) : null}
@@ -577,25 +596,25 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
                 size="sm"
                 variant="secondary"
                 onClick={() => setSelectedRunId(run.id)}
-              >
+              ><Trans>
                 Details
-              </Button>
+              </Trans></Button>
               <Button
                 size="sm"
                 variant="secondary"
                 onClick={() => simulateChain.mutate(run.chain)}
                 disabled={simulateChain.isPending}
               >
-                {simulateChain.isPending ? 'Simulating...' : 'Simulate'}
+                {simulateChain.isPending ? 'Simulating...' : t('Simulate')}
               </Button>
               <Button
                 size="sm"
                 variant="secondary"
                 onClick={() => execute.mutate(run.chain)}
                 disabled={execute.isPending}
-              >
+              ><Trans>
                 Replay
-              </Button>
+              </Trans></Button>
               <Button
                 size="sm"
                 variant="secondary"
@@ -608,13 +627,15 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
                       rollbackOnFailure,
                     })
                     .then(() =>
-                      queryClient.invalidateQueries({ queryKey: ['command-runs'] }),
+                      queryClient.invalidateQueries({
+                        queryKey: ['command-runs'],
+                      }),
                     )
                 }
                 disabled={execute.isPending}
-              >
+              ><Trans>
                 Replay Live
-              </Button>
+              </Trans></Button>
             </div>
           </article>
         ))}

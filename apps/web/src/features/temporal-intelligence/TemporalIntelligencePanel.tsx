@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Trans } from 'react-i18next';
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { apiClient } from '../../core/api/client';
@@ -40,7 +42,10 @@ function laneSeverityClass(severity: TemporalSignalSeverity) {
   return 'fo-temporal-lane-info';
 }
 
-function calendarDayClass(input: { isBusinessDay: boolean; isHoliday: boolean }) {
+function calendarDayClass(input: {
+  isBusinessDay: boolean;
+  isHoliday: boolean;
+}) {
   if (input.isHoliday) return 'fo-temporal-day fo-temporal-day-holiday';
   if (input.isBusinessDay) return 'fo-temporal-day fo-temporal-day-business';
   return 'fo-temporal-day fo-temporal-day-weekend';
@@ -78,7 +83,8 @@ export function TemporalIntelligencePanel({
   onRoute,
 }: TemporalIntelligencePanelProps) {
   const queryClient = useQueryClient();
-  const [bundesland, setBundesland] = useState<(typeof BUNDESLAND_OPTIONS)[number]>('BE');
+  const [bundesland, setBundesland] =
+    useState<(typeof BUNDESLAND_OPTIONS)[number]>('BE');
   const [horizonDays, setHorizonDays] = useState(14);
   const [executionMode, setExecutionMode] = useState<ExecutionMode>('dry-run');
   const [guardrailProfile, setGuardrailProfile] =
@@ -128,7 +134,9 @@ export function TemporalIntelligencePanel({
         rollbackOnFailure: executionMode === 'live',
       }),
     onSuccess: async run => {
-      const route = run.steps.find(step => typeof step.route === 'string')?.route;
+      const route = run.steps.find(
+        step => typeof step.route === 'string',
+      )?.route;
       onRoute(route || '/ops#command-mesh');
       onStatus(
         `Temporal chain ${run.status}: ${run.steps.length} steps / ${run.errorCount} errors.`,
@@ -163,7 +171,9 @@ export function TemporalIntelligencePanel({
         queryClient.invalidateQueries({ queryKey: ['scenario-branches'] }),
         queryClient.invalidateQueries({ queryKey: ['scenario-mutations'] }),
         queryClient.invalidateQueries({ queryKey: ['scenario-compare'] }),
-        queryClient.invalidateQueries({ queryKey: ['scenario-adoption-check'] }),
+        queryClient.invalidateQueries({
+          queryKey: ['scenario-adoption-check'],
+        }),
         queryClient.invalidateQueries({ queryKey: ['scenario-lineage'] }),
       ]);
     },
@@ -175,9 +185,12 @@ export function TemporalIntelligencePanel({
   return (
     <section className="fo-panel" id="temporal-intelligence">
       <header className="fo-panel-header">
-        <h2>Temporal Intelligence</h2>
+        <h2>
+          <Trans>Temporal Intelligence</Trans>
+        </h2>
         <small>
-          Business-day aware deadline pressure with direct command mesh execution.
+          Business-day aware deadline pressure with direct command mesh
+          execution.
         </small>
       </header>
 
@@ -187,7 +200,9 @@ export function TemporalIntelligencePanel({
           className="fo-input"
           value={bundesland}
           onChange={event =>
-            setBundesland(event.target.value as (typeof BUNDESLAND_OPTIONS)[number])
+            setBundesland(
+              event.target.value as (typeof BUNDESLAND_OPTIONS)[number],
+            )
           }
         >
           {BUNDESLAND_OPTIONS.map(code => (
@@ -204,14 +219,18 @@ export function TemporalIntelligencePanel({
           max={45}
           value={horizonDays}
           onChange={event =>
-            setHorizonDays(Math.max(7, Math.min(45, Number(event.target.value) || 14)))
+            setHorizonDays(
+              Math.max(7, Math.min(45, Number(event.target.value) || 14)),
+            )
           }
         />
         <select
           aria-label="temporal execution mode"
           className="fo-input"
           value={executionMode}
-          onChange={event => setExecutionMode(event.target.value as ExecutionMode)}
+          onChange={event =>
+            setExecutionMode(event.target.value as ExecutionMode)
+          }
         >
           <option value="dry-run">dry-run</option>
           <option value="live">live</option>
@@ -248,13 +267,17 @@ export function TemporalIntelligencePanel({
           className="fo-btn-secondary"
           type="button"
           onClick={() => onRoute('/ops#delegate-lanes')}
-        >
+        ><Trans>
           Open lanes
-        </button>
+        </Trans></button>
       </div>
 
-      {temporalSignals.isLoading ? <small>Loading temporal signals...</small> : null}
-      {temporalSignals.isError ? <small>Temporal intelligence unavailable.</small> : null}
+      {temporalSignals.isLoading ? (
+        <small>Loading temporal signals...</small>
+      ) : null}
+      {temporalSignals.isError ? (
+        <small>Temporal intelligence unavailable.</small>
+      ) : null}
 
       {temporalSignals.data ? (
         <>
@@ -277,7 +300,10 @@ export function TemporalIntelligencePanel({
             </article>
           </div>
 
-          <div className="fo-temporal-calendar" aria-label="temporal calendar strip">
+          <div
+            className="fo-temporal-calendar"
+            aria-label="temporal calendar strip"
+          >
             {temporalSignals.data.calendar.map(day => (
               <article className={calendarDayClass(day)} key={day.date}>
                 <small>{day.weekday}</small>
@@ -287,7 +313,7 @@ export function TemporalIntelligencePanel({
           </div>
 
           <div className="fo-stack">
-            <small className="fo-muted-line">Recommended chains</small>
+            <small className="fo-muted-line"><Trans>Recommended chains</Trans></small>
             <select
               className="fo-input"
               aria-label="temporal recommended chain"
@@ -305,7 +331,8 @@ export function TemporalIntelligencePanel({
                 <strong>{selectedChain.label}</strong>
                 <small>{selectedChain.reason}</small>
                 <small>
-                  projected: amount +{selectedChain.amountDelta} / risk {selectedChain.riskDelta}
+                  projected: amount +{selectedChain.amountDelta} / risk{' '}
+                  {selectedChain.riskDelta}
                 </small>
                 <code>{selectedChain.chain}</code>
               </article>
@@ -325,8 +352,8 @@ export function TemporalIntelligencePanel({
                 {executeChain.isPending
                   ? 'Executing...'
                   : executionMode === 'live'
-                    ? 'Execute live temporal chain'
-                    : 'Dry-run temporal chain'}
+                    ? t('Execute live temporal chain')
+                    : t('Dry-run temporal chain')}
               </button>
               <button
                 className="fo-btn-secondary"
@@ -339,45 +366,49 @@ export function TemporalIntelligencePanel({
               >
                 {simulateChain.isPending
                   ? 'Simulating...'
-                  : 'Simulate chain in spatial twin'}
+                  : t('Simulate chain in spatial twin')}
               </button>
             </div>
           </div>
 
           <div className="fo-temporal-lanes">
-            {(temporalSignals.data.laneSignals || []).slice(0, 8).map(signal => (
-              <article
-                key={signal.laneId}
-                className={`fo-temporal-lane ${laneSeverityClass(signal.severity)}`}
-              >
-                <div className="fo-space-between">
-                  <strong>{signal.title}</strong>
-                  <small>{dueLabel(signal)}</small>
-                </div>
-                <small>
-                  {signal.assignee} · {signal.priority} · {signal.status}
-                </small>
-                <small>{signal.reason}</small>
-                <code>{signal.recommendedChain}</code>
-                <div className="fo-row">
-                  <button
-                    className="fo-btn-secondary"
-                    type="button"
-                    onClick={() => onRoute('/ops#delegate-lanes')}
-                  >
-                    Open lane board
-                  </button>
-                  <button
-                    className="fo-btn-secondary"
-                    type="button"
-                    disabled={executeChain.isPending}
-                    onClick={() => executeChain.mutate(signal.recommendedChain)}
-                  >
-                    Run lane chain
-                  </button>
-                </div>
-              </article>
-            ))}
+            {(temporalSignals.data.laneSignals || [])
+              .slice(0, 8)
+              .map(signal => (
+                <article
+                  key={signal.laneId}
+                  className={`fo-temporal-lane ${laneSeverityClass(signal.severity)}`}
+                >
+                  <div className="fo-space-between">
+                    <strong>{signal.title}</strong>
+                    <small>{dueLabel(signal)}</small>
+                  </div>
+                  <small>
+                    {signal.assignee} · {signal.priority} · {signal.status}
+                  </small>
+                  <small>{signal.reason}</small>
+                  <code>{signal.recommendedChain}</code>
+                  <div className="fo-row">
+                    <button
+                      className="fo-btn-secondary"
+                      type="button"
+                      onClick={() => onRoute('/ops#delegate-lanes')}
+                    ><Trans>
+                      Open lane board
+                    </Trans></button>
+                    <button
+                      className="fo-btn-secondary"
+                      type="button"
+                      disabled={executeChain.isPending}
+                      onClick={() =>
+                        executeChain.mutate(signal.recommendedChain)
+                      }
+                    ><Trans>
+                      Run lane chain
+                    </Trans></button>
+                  </div>
+                </article>
+              ))}
 
             {temporalSignals.data.laneSignals.length === 0 ? (
               <small>No active delegate lanes with temporal pressure.</small>

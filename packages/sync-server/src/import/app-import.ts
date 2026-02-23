@@ -16,7 +16,7 @@ app.use(validateSessionMiddleware);
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-interface ImportPreviewRow {
+type ImportPreviewRow = {
   date: string;
   payee: string;
   amount: number;
@@ -25,14 +25,14 @@ interface ImportPreviewRow {
   account_id?: string;
   suggested_category_id?: string;
   confidence?: number;
-}
+};
 
-interface ImportPreviewResult {
+type ImportPreviewResult = {
   rows: ImportPreviewRow[];
   total: number;
   detected_format: string | null;
   warnings: string[];
-}
+};
 
 // ─── Supported German bank CSV formats with their column mappings ───────────
 
@@ -320,9 +320,7 @@ function detectRecurringPatterns(
 
     const gaps: number[] = [];
     for (let i = 1; i < sortedDates.length; i++) {
-      gaps.push(
-        (sortedDates[i] - sortedDates[i - 1]) / (1000 * 60 * 60 * 24),
-      );
+      gaps.push((sortedDates[i] - sortedDates[i - 1]) / (1000 * 60 * 60 * 24));
     }
     const avgGap = gaps.reduce((a, b) => a + b, 0) / gaps.length;
 
@@ -337,9 +335,7 @@ function detectRecurringPatterns(
 
     patterns.push({
       payee: group.originalPayee,
-      amount: Math.round(
-        amounts.reduce((a, b) => a + b, 0) / amounts.length,
-      ),
+      amount: Math.round(amounts.reduce((a, b) => a + b, 0) / amounts.length),
       likely_interval,
       occurrence_count: group.dates.length,
     });
@@ -351,10 +347,7 @@ function detectRecurringPatterns(
 /**
  * Find the header row index in parsed CSV rows by looking for known column names.
  */
-function findHeaderRow(
-  rows: string[][],
-  format: BankFormat | null,
-): number {
+function findHeaderRow(rows: string[][], format: BankFormat | null): number {
   const targetCols = format
     ? [format.columns.date.toLowerCase(), format.columns.amount.toLowerCase()]
     : ['buchungstag', 'betrag', 'date', 'amount', 'buchung', 'datum'];
@@ -434,10 +427,7 @@ function mapRowToPreview(
     ]);
   }
 
-  const date = parseGermanDate(
-    dateStr,
-    format?.date_format,
-  );
+  const date = parseGermanDate(dateStr, format?.date_format);
   const amount = parseGermanAmount(amountStr);
 
   if (!date) return null;
@@ -467,8 +457,18 @@ app.get('/bank-formats', (_req, res) => {
         encoding: f.encoding,
         delimiter: f.delimiter,
       })),
-      { id: 'mt940', name: 'MT940 (SWIFT)', encoding: 'UTF-8', delimiter: null },
-      { id: 'camt053', name: 'CAMT.053 (ISO 20022)', encoding: 'UTF-8', delimiter: null },
+      {
+        id: 'mt940',
+        name: 'MT940 (SWIFT)',
+        encoding: 'UTF-8',
+        delimiter: null,
+      },
+      {
+        id: 'camt053',
+        name: 'CAMT.053 (ISO 20022)',
+        encoding: 'UTF-8',
+        delimiter: null,
+      },
     ],
   });
 });
@@ -525,7 +525,9 @@ app.post('/csv', async (req, res) => {
       }) as string[][];
     } catch (parseError: unknown) {
       const msg =
-        parseError instanceof Error ? parseError.message : 'Unknown parse error';
+        parseError instanceof Error
+          ? parseError.message
+          : 'Unknown parse error';
       res
         .status(400)
         .json({ status: 'error', reason: 'csv-parse-failed', detail: msg });
@@ -540,8 +542,7 @@ app.post('/csv', async (req, res) => {
     // 4. Auto-detect bank format
     let detectedFormat: BankFormat | null = null;
     if (bankFormat) {
-      detectedFormat =
-        BANK_FORMATS.find(f => f.id === bankFormat) ?? null;
+      detectedFormat = BANK_FORMATS.find(f => f.id === bankFormat) ?? null;
     }
 
     // Find header row
@@ -637,9 +638,7 @@ app.post('/finanzguru', async (req, res) => {
 
     const sheetName = workbook.SheetNames[0];
     if (!sheetName) {
-      res
-        .status(400)
-        .json({ status: 'error', reason: 'no-sheets-found' });
+      res.status(400).json({ status: 'error', reason: 'no-sheets-found' });
       return;
     }
 
@@ -675,12 +674,11 @@ app.post('/finanzguru', async (req, res) => {
       }
       const payeeStr = String(raw[finanzguruFormat.columns.payee] ?? '');
       const amountStr = String(raw[finanzguruFormat.columns.amount] ?? '');
-      const notesStr = String(
-        raw[finanzguruFormat.columns.notes] ?? '',
-      );
+      const notesStr = String(raw[finanzguruFormat.columns.notes] ?? '');
       const ibanStr = String(raw[finanzguruFormat.columns.iban] ?? '');
       const categoryStr = String(
-        raw[(finanzguruFormat.columns as Record<string, string>).category] ?? '',
+        raw[(finanzguruFormat.columns as Record<string, string>).category] ??
+          '',
       );
 
       const date = parseGermanDate(dateStr, finanzguruFormat.date_format);
@@ -786,9 +784,7 @@ function parseMT940(text: string): ImportPreviewRow[] {
 
     // :61: line: YYMMDD[MMDD]<C|D|RD|RC>[N]<amount,cents>N<ref>[//<counterref>]
     // Example: 2302150215D1500,00NTRFNONREF
-    const m = f.value.match(
-      /^(\d{6})(\d{4})?(C|D|RD|RC)N?(\d+),(\d{0,2})(.*)/,
-    );
+    const m = f.value.match(/^(\d{6})(\d{4})?(C|D|RD|RC)N?(\d+),(\d{0,2})(.*)/);
     if (!m) continue;
 
     const [, yymmdd, mmdd, direction, major, minor] = m;
@@ -800,7 +796,9 @@ function parseMT940(text: string): ImportPreviewRow[] {
       ? `${year}-${mmdd.slice(0, 2)}-${mmdd.slice(2, 4)}`
       : `${year}-${mm}-${dd}`;
 
-    const cents = parseInt(major) * 100 + parseInt((minor || '0').padEnd(2, '0').slice(0, 2));
+    const cents =
+      parseInt(major) * 100 +
+      parseInt((minor || '0').padEnd(2, '0').slice(0, 2));
     const isDebit = direction === 'D' || direction === 'RD';
     const amount = isDebit ? -cents : cents;
 
@@ -812,8 +810,8 @@ function parseMT940(text: string): ImportPreviewRow[] {
     if (next && next.tag === '86') {
       const narrative = next.value;
       // Try to extract payee from subfield 32 (Auftraggeber/Empfänger)
-      const payeeMatch = narrative.match(/\?32([^\?]+)/);
-      const purposeMatch = narrative.match(/\?20([^\?]+)/);
+      const payeeMatch = narrative.match(/\?32([^?]+)/);
+      const purposeMatch = narrative.match(/\?20([^?]+)/);
       if (payeeMatch) payee = payeeMatch[1].trim();
       notes = purposeMatch ? purposeMatch[1].trim() : narrative.slice(0, 120);
       i++; // consume the :86:
@@ -859,7 +857,8 @@ function parseCAMT053(xmlText: string): ImportPreviewRow[] {
     };
 
     // Booking date — prefer <BookgDt><Dt> over <ValDt><Dt>
-    const bookingSection = block.match(/<BookgDt>([\s\S]*?)<\/BookgDt>/)?.[1] ?? '';
+    const bookingSection =
+      block.match(/<BookgDt>([\s\S]*?)<\/BookgDt>/)?.[1] ?? '';
     const valueSection = block.match(/<ValDt>([\s\S]*?)<\/ValDt>/)?.[1] ?? '';
     const dateRaw =
       bookingSection.match(/<Dt>([^<]+)<\/Dt>/)?.[1]?.trim() ||
@@ -916,8 +915,9 @@ function detectTextFormat(text: string): 'mt940' | 'camt053' | null {
     text.includes('BkToCstmrStmt') ||
     text.includes('camt.053') ||
     text.includes('<Stmt>')
-  )
+  ) {
     return 'camt053';
+  }
   return null;
 }
 
@@ -993,9 +993,7 @@ app.post('/detect-contracts', (req, res) => {
   const { transactions } = req.body ?? {};
 
   if (!Array.isArray(transactions)) {
-    res
-      .status(400)
-      .json({ status: 'error', reason: 'transactions-required' });
+    res.status(400).json({ status: 'error', reason: 'transactions-required' });
     return;
   }
 

@@ -14,27 +14,28 @@
 
 ## 2. Tech Stack (Existing — No Migration)
 
-| Layer | Technology | Notes |
-|-------|-----------|-------|
-| Frontend | React 19 + Vite 7 | Monorepo: `packages/desktop-client/` |
-| Styling | `@emotion/css` (CSS-in-JS) | NOT Tailwind. Premium feel via design tokens, not framework swap. |
-| UI Primitives | `react-aria-components` | Accessible Button (`isDisabled`, `onPress`), Select, etc. |
-| Component Library | `@actual-app/components` | View, Text, Button, Input, Card, Select, Menu, Popover, Toggle, Tooltip |
-| Command Palette | `cmdk` v1.1.1 | Already exists as `CommandBar.tsx` — extend, don't rebuild |
-| Keyboard Shortcuts | `react-hotkeys-hook` v5.2.4 | Already installed |
-| Dashboard Layout | `react-grid-layout` v2.2.2 | Already installed — enables widget customization |
-| Drag & Drop | `react-dnd` v16.0.1 | Already installed |
-| Backend | Express 5 (sync-server) | `packages/sync-server/` |
-| Core Engine | loot-core | Handler bridge: client → loot-core → HTTP → Express |
-| Database | SQLite (account.sqlite) | Custom tables via sync-server migrations |
-| AI | Ollama (VPS, 32GB RAM shared) | `mistral-small` default, `llama3.2-vision` for OCR |
-| Infrastructure | Docker, GHCR CI/CD, VPS 212.69.84.228 | Self-hosted, full data sovereignty |
-| Bank Sync | Docker sync scripts (community) | Max control, n8n integration pipeline |
-| Mobile | PWA (Progressive Web App) | Same React codebase, responsive design |
+| Layer              | Technology                            | Notes                                                                   |
+| ------------------ | ------------------------------------- | ----------------------------------------------------------------------- |
+| Frontend           | React 19 + Vite 7                     | Monorepo: `packages/desktop-client/`                                    |
+| Styling            | `@emotion/css` (CSS-in-JS)            | NOT Tailwind. Premium feel via design tokens, not framework swap.       |
+| UI Primitives      | `react-aria-components`               | Accessible Button (`isDisabled`, `onPress`), Select, etc.               |
+| Component Library  | `@actual-app/components`              | View, Text, Button, Input, Card, Select, Menu, Popover, Toggle, Tooltip |
+| Command Palette    | `cmdk` v1.1.1                         | Already exists as `CommandBar.tsx` — extend, don't rebuild              |
+| Keyboard Shortcuts | `react-hotkeys-hook` v5.2.4           | Already installed                                                       |
+| Dashboard Layout   | `react-grid-layout` v2.2.2            | Already installed — enables widget customization                        |
+| Drag & Drop        | `react-dnd` v16.0.1                   | Already installed                                                       |
+| Backend            | Express 5 (sync-server)               | `packages/sync-server/`                                                 |
+| Core Engine        | loot-core                             | Handler bridge: client → loot-core → HTTP → Express                     |
+| Database           | SQLite (account.sqlite)               | Custom tables via sync-server migrations                                |
+| AI                 | Ollama (VPS, 32GB RAM shared)         | `mistral-small` default, `llama3.2-vision` for OCR                      |
+| Infrastructure     | Docker, GHCR CI/CD, VPS 212.69.84.228 | Self-hosted, full data sovereignty                                      |
+| Bank Sync          | Docker sync scripts (community)       | Max control, n8n integration pipeline                                   |
+| Mobile             | PWA (Progressive Web App)             | Same React codebase, responsive design                                  |
 
 ## 3. Architecture Decisions (Locked)
 
 ### 3.1 Contract/Schedule Model
+
 **ONE enriched contract object, layered on Actual's schedule engine.**
 
 - A "contract" is the user-facing concept. Under the hood it references Actual's `schedule_id`.
@@ -44,6 +45,7 @@
 - Contract with no payment (free trial) → `schedule_id = null`.
 
 ### 3.2 Category System
+
 **Pre-built 2-level German category tree, customizable, with lightweight tags.**
 
 Default tree:
@@ -69,13 +71,14 @@ Default tree:
 - IBAN-based categorization rules for German direct debits
 
 ### 3.3 AI Strategy — "Smart Matching"
+
 **Three-tier system: Pinned → AI High Confidence → AI Low Confidence.**
 
-| Tier | Trigger | Behavior | UX |
-|------|---------|----------|-----|
-| Pinned | User explicitly assigns | Deterministic default. Overridable per-transaction. | Lock icon |
-| AI High (>85%) | Pattern + history | Auto-categorize silently | "AI" sparkle badge |
-| AI Low (<85%) | New/rare payee | Auto-categorize + add to review queue | Yellow "?" indicator |
+| Tier           | Trigger                 | Behavior                                            | UX                   |
+| -------------- | ----------------------- | --------------------------------------------------- | -------------------- |
+| Pinned         | User explicitly assigns | Deterministic default. Overridable per-transaction. | Lock icon            |
+| AI High (>85%) | Pattern + history       | Auto-categorize silently                            | "AI" sparkle badge   |
+| AI Low (<85%)  | New/rare payee          | Auto-categorize + add to review queue               | Yellow "?" indicator |
 
 - Even pinned assignments can be overridden per-transaction
 - AI learns from user corrections over time
@@ -83,6 +86,7 @@ Default tree:
 - After 95%+ accuracy over 10 transactions, auto-promote to silent processing
 
 ### 3.4 Unified Review Queue — "Needs Attention"
+
 **All AI-generated items in one unified inbox.**
 
 Item types: Uncategorized transactions, Recurring pattern detection, Amount anomalies, Budget suggestions.
@@ -92,6 +96,7 @@ Priority tiers: Urgent (red, e.g. potential overdraft) → Review (yellow, e.g. 
 Key behaviors: Batch accept >90% confidence, delegation rules per-payee, undo stack, auto-dismiss when resolved, snooze with smart timing, weekly digest.
 
 ### 3.5 Bank Sync
+
 **Docker sync scripts** (community approach, maximum control).
 
 - Transactions route through n8n before import → AI categorization in pipeline
@@ -101,6 +106,7 @@ Key behaviors: Batch accept >90% confidence, delegation rules per-payee, undo st
 - Amount mismatch detection against existing schedules
 
 ### 3.6 Mobile Strategy
+
 **PWA first.** Same React codebase, responsive design. No native app until specific need arises (camera OCR, offline-first, biometric auth).
 
 ## 4. Feature Specifications
@@ -110,11 +116,13 @@ Key behaviors: Batch accept >90% confidence, delegation rules per-payee, undo st
 The cockpit is for MANAGING money, not ANALYZING it. No charts, no category breakdowns, no recent transactions on this page.
 
 **Hero metrics:**
+
 - **Total Balance**: Sum across all accounts
 - **Available to Spend**: Total minus all committed future payments this month
 - **Cash Runway**: Available / daily burn rate → "Money lasts until Mar 27"
 
 **Layout (4-column):**
+
 ```
 ┌─ MONEY PULSE (dismissible) ──────────────────────────────────────────────┐
 │ €2,325 total · €485 available · Runway: Mar 27 · ⚠ 3 reviews           │
@@ -135,6 +143,7 @@ The cockpit is for MANAGING money, not ANALYZING it. No charts, no category brea
 ```
 
 **Widgets (customizable via react-grid-layout in Phase 2):**
+
 - Account Balances card
 - "This Month" summary card
 - Upcoming Payments list (configurable depth)
@@ -152,6 +161,7 @@ Three-line summary on app open:
 ### 4.2 Contract & Recurring Payment Management
 
 **Data model:**
+
 ```
 Contract {
   // Identity
@@ -186,6 +196,7 @@ Contract {
 ```
 
 **List view features:**
+
 - Health indicators: 🟢 (good) 🟡 (renewal in 60 days) 🔴 (cancellation deadline in 30 days)
 - Sort by: name, amount, next payment, type, status, annual cost
 - Filter by: type, status, category, account
@@ -199,16 +210,19 @@ Contract {
 Mietvertrag (12 months notice typical), Handyvertrag (24 months, 3 months notice), Stromvertrag (12 months, 6 weeks notice), Versicherung (varies), Streaming (monthly, cancel anytime), Fitnessstudio (12-24 months, 3 months notice).
 
 **Contract creation flows:**
+
 1. Manual: Click "+" → name, amount, interval, category (auto-suggest), optional fields on expand
 2. AI-detected: After 3 recurring bank transactions → appears in review queue → one-click creation with pre-filled data
 3. Bulk import: From Finanzguru export or during Getting Started wizard
 
 **Price change handling:**
+
 1. Bank transaction amount differs from schedule → review queue item
 2. User clicks "Update to new amount" → schedule updates, change logged in history
 3. Cashflow projections immediately use new amount
 
 **Cancellation features:**
+
 - Cancellation deadline computed and displayed prominently
 - Deadline approaching → contract turns 🟡 then 🔴
 - Cancellation letter template: pre-filled Kündigungsschreiben (name, address, contract number, date) for copy-paste
@@ -221,6 +235,7 @@ Horizontal timeline showing all contracts across years with price changes and ca
 **Default view:** Next 30 days, grouped by week, with running balance.
 
 **Layout:**
+
 - Week headers with total: "THIS WEEK — 3 items, €976"
 - Each item: date, contract name, amount, account icon
 - Running balance after each payment cluster
@@ -229,12 +244,14 @@ Horizontal timeline showing all contracts across years with price changes and ca
 - Income entries (salary) shown in green, toggleable
 
 **Views available:**
+
 - Next 30 days (default, grouped by week)
 - Full month grid (calendar view)
 - Full year overview
 - Payday cycle toggle (27th→26th instead of 1st→last)
 
 **Balance projection:**
+
 - Running balance from today forward
 - Shows balance at each payment cluster
 - Income (salary on predictable date) included
@@ -248,6 +265,7 @@ Drag payments to different dates → see how projection changes.
 **Base flow (3-4 seconds):** Amount → Category → Save.
 
 **Layout:**
+
 ```
 ┌─ QUICK ADD (⌘N) ─────────────────────────────────────────────┐
 │  PRESETS: [☕ 3.80] [🛒 Supermarkt] [🍕 Restaurant] [📸 OCR] │
@@ -284,6 +302,7 @@ Rapid sequential entry with visible running total. All items saved at once to de
 ### 4.5 Invoice OCR
 
 **Use Case A — Cash receipt scan (Phase 2):**
+
 1. Camera button in Quick Add (mobile) or drag-drop zone (desktop)
 2. Image uploaded to VPS → Ollama llama3.2-vision processes
 3. Extraction: amount (90%+), date (90%+), vendor (70-80%)
@@ -292,6 +311,7 @@ Rapid sequential entry with visible running total. All items saved at once to de
 6. User confirms/adjusts → Save with receipt attached
 
 **Use Case B — Digital invoice linking (Phase 2):**
+
 1. On contract detail page: "Upload invoice" / drag PDF
 2. OCR extracts: amount, date, invoice number
 3. "This matches Vodafone contract (€39.90/month). Link?" → Confirm
@@ -303,12 +323,14 @@ Receipt inbox: unmatched receipts waiting for bank transaction. When match found
 Forward invoice email → n8n processes → draft appears in review queue.
 
 **Technical constraints:**
+
 - llama3.2-vision 11B needs ~8GB RAM. On 32GB shared VPS → may need smaller model or request queuing.
 - Always show for review — never auto-save from OCR.
 
 ### 4.6 Data Migration & Import
 
 **Getting Started wizard (first-run):**
+
 1. CREATE ACCOUNTS: Add bank accounts, credit cards, cash wallet, PayPal
 2. IMPORT DATA: [Finanzguru XLSX] [Bank CSV] [Skip]
 3. SET UP BANK SYNC: [Configure Docker sync] [Later]
@@ -316,12 +338,14 @@ Forward invoice email → n8n processes → draft appears in review queue.
 5. CUSTOMIZE CATEGORIES: [German defaults] [Map from Finanzguru] [Customize]
 
 **Finanzguru import wizard:**
+
 - Upload XLSX export (columns: Hauptkategorie, Unterkategorie, transaction fields, contract info)
 - Auto-map Finanzguru categories to our tree (with manual override)
 - Import transactions, detect recurring patterns
 - Preview before committing
 
 **Bank CSV import:**
+
 - Auto-detect German bank format: DKB, ING, Sparkasse, Commerzbank, N26, Comdirect, Deutsche Bank
 - Handle encoding (Windows-1252) and separator (semicolon) issues
 - Smart deduplication against already-imported transactions
@@ -330,6 +354,7 @@ Forward invoice email → n8n processes → draft appears in review queue.
 "234 transactions detected. 189 can be auto-categorized. 23 look like contracts. 22 need manual review. [Import]"
 
 **Additional formats (Phase 2):**
+
 - MT940 (SWIFT German bank statement)
 - CAMT.053 (ISO 20022 XML)
 
@@ -349,6 +374,7 @@ Separate page from dashboard. NOT operational — analytical.
 | Top Merchants | "€2,340 at REWE this year, €890 at Amazon" |
 
 **Advanced views (Phase 3):**
+
 - Subscription creep tracker (total subscriptions over time)
 - Spending velocity ("At current pace: €3,100 this month")
 - Seasonal patterns ("More in Dec and Aug")
@@ -379,6 +405,7 @@ Separate page from dashboard. NOT operational — analytical.
 ## 5. Global UX Patterns
 
 ### 5.1 Command Palette (⌘K)
+
 Extends existing `CommandBar.tsx` (cmdk v1.1.1).
 
 **Modes:**
@@ -394,22 +421,24 @@ Extends existing `CommandBar.tsx` (cmdk v1.1.1).
 Context-sensitive: on contracts page → contract actions surface first.
 
 ### 5.2 Keyboard Shortcuts
+
 Uses `react-hotkeys-hook` (already installed).
 
-| Shortcut | Action |
-|----------|--------|
-| ⌘K | Command palette |
-| ⌘N | Quick add expense |
-| ⌘T | Expense train mode |
-| ⌘1-9 | Navigate to page |
-| J / K | Navigate up/down in lists |
-| Enter | Open selected item |
-| E | Edit selected item inline |
-| Esc | Close overlay / go back |
-| ⌘Z | Undo last action |
-| ? | Show keyboard shortcuts reference |
+| Shortcut | Action                            |
+| -------- | --------------------------------- |
+| ⌘K       | Command palette                   |
+| ⌘N       | Quick add expense                 |
+| ⌘T       | Expense train mode                |
+| ⌘1-9     | Navigate to page                  |
+| J / K    | Navigate up/down in lists         |
+| Enter    | Open selected item                |
+| E        | Edit selected item inline         |
+| Esc      | Close overlay / go back           |
+| ⌘Z       | Undo last action                  |
+| ?        | Show keyboard shortcuts reference |
 
 ### 5.3 Navigation Structure
+
 ```
 ⌘1  Dashboard        ← Operations cockpit
 ⌘2  Accounts         ← Account list + transactions
@@ -427,6 +456,7 @@ Always available (overlays, not pages):
 ```
 
 **Progressive feature discovery:**
+
 - First visit: Dashboard + Accounts + Import. Others dimmed with unlock hints.
 - After import: Contracts + Calendar activate
 - After AI processes: Review queue appears
@@ -434,28 +464,29 @@ Always available (overlays, not pages):
 
 ### 5.4 Micro-Interactions (Premium Feel)
 
-| Pattern | Description | Phase |
-|---------|-------------|-------|
-| Inline editing | Click amount/category in lists → edit in place | 1 |
-| Bulk select | Shift+Click range → batch categorize/tag/delete | 1 |
-| Toast + Undo | Every action → "Saved" toast with 10-sec undo | 1 |
-| Skeleton loading | Gray pulsing shapes (not spinners) | 1 |
-| Smooth transitions | Cards slide in, dismissed items fade out | 1 |
-| Color-coded amounts | Expenses red, income green, transfers gray | 1 |
-| Empty state guidance | "No contracts yet. [Import] or [Add first]" | 1 |
-| "Last visited" memory | App reopens to last page | 1 |
-| Breadcrumbs | Dashboard > Contracts > FitX | 1 |
-| Amount formatting | Auto €, comma decimals (German), thousand seps | 1 |
-| Fuzzy search | Everywhere: contracts, payees, categories, notes | 1 |
-| Context menus | Right-click → quick actions | 2 |
-| Smart date input | "morgen", "letzten Freitag" → parsed (German) | 2 |
-| Density toggle | Comfortable / Dense / Compact | 2 |
-| Drag-and-drop | Categorize by dragging transactions | 2 |
-| Dashboard widget customization | react-grid-layout drag/resize | 2 |
+| Pattern                        | Description                                      | Phase |
+| ------------------------------ | ------------------------------------------------ | ----- |
+| Inline editing                 | Click amount/category in lists → edit in place   | 1     |
+| Bulk select                    | Shift+Click range → batch categorize/tag/delete  | 1     |
+| Toast + Undo                   | Every action → "Saved" toast with 10-sec undo    | 1     |
+| Skeleton loading               | Gray pulsing shapes (not spinners)               | 1     |
+| Smooth transitions             | Cards slide in, dismissed items fade out         | 1     |
+| Color-coded amounts            | Expenses red, income green, transfers gray       | 1     |
+| Empty state guidance           | "No contracts yet. [Import] or [Add first]"      | 1     |
+| "Last visited" memory          | App reopens to last page                         | 1     |
+| Breadcrumbs                    | Dashboard > Contracts > FitX                     | 1     |
+| Amount formatting              | Auto €, comma decimals (German), thousand seps   | 1     |
+| Fuzzy search                   | Everywhere: contracts, payees, categories, notes | 1     |
+| Context menus                  | Right-click → quick actions                      | 2     |
+| Smart date input               | "morgen", "letzten Freitag" → parsed (German)    | 2     |
+| Density toggle                 | Comfortable / Dense / Compact                    | 2     |
+| Drag-and-drop                  | Categorize by dragging transactions              | 2     |
+| Dashboard widget customization | react-grid-layout drag/resize                    | 2     |
 
 ### 5.5 Design Token Refresh
 
 Update `packages/component-library/src/theme.ts`:
+
 - Modern color palette (inspired by Linear/Superhuman, not "2011 open source")
 - Consistent spacing scale: 4/8/12/16/24/32/48px
 - Typography: Inter (already used), refined size/weight scale
@@ -469,48 +500,48 @@ Update `packages/component-library/src/theme.ts`:
 
 **Goal:** Contract overview + payment calendar + dashboard. User opens the app daily.
 
-| Area | Scope |
-|------|-------|
-| Dashboard | Operations cockpit with all widgets (static layout) |
-| Contracts | Full CRUD, health indicators, templates, bulk import, document attachment, multi-select, annual cost, cost-per-day |
-| Calendar | Next 30 days + year, grouped by week, running balance, income, crunch days |
-| Quick Add | Full spec: frecency, presets, save+new/dup/park, calculator, recent templates, expense train |
-| AI | Three-tier Smart Matching, review queue with batch accept, delegation rules, weekly digest |
-| Categories | Pre-built German tree, icons+colors, tags, contract binding, IBAN rules |
-| Command Palette | Extended: transactions, contracts, actions, calculator |
-| Keyboard | ⌘K, ⌘N, ⌘T, ⌘1-9, J/K, E, ?, ⌘Z |
-| Import | Finanzguru wizard, German bank CSV, Getting Started wizard, deduplication, import advisor |
-| Design | Token refresh, skeleton loading, micro-animations, toast+undo, inline editing, bulk select, breadcrumbs, empty states |
-| Architecture | Contract model on Actual's schedules, new migrations, handler bridge, Express routes, feature flags |
+| Area            | Scope                                                                                                                 |
+| --------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Dashboard       | Operations cockpit with all widgets (static layout)                                                                   |
+| Contracts       | Full CRUD, health indicators, templates, bulk import, document attachment, multi-select, annual cost, cost-per-day    |
+| Calendar        | Next 30 days + year, grouped by week, running balance, income, crunch days                                            |
+| Quick Add       | Full spec: frecency, presets, save+new/dup/park, calculator, recent templates, expense train                          |
+| AI              | Three-tier Smart Matching, review queue with batch accept, delegation rules, weekly digest                            |
+| Categories      | Pre-built German tree, icons+colors, tags, contract binding, IBAN rules                                               |
+| Command Palette | Extended: transactions, contracts, actions, calculator                                                                |
+| Keyboard        | ⌘K, ⌘N, ⌘T, ⌘1-9, J/K, E, ?, ⌘Z                                                                                       |
+| Import          | Finanzguru wizard, German bank CSV, Getting Started wizard, deduplication, import advisor                             |
+| Design          | Token refresh, skeleton loading, micro-animations, toast+undo, inline editing, bulk select, breadcrumbs, empty states |
+| Architecture    | Contract model on Actual's schedules, new migrations, handler bridge, Express routes, feature flags                   |
 
 ### Phase 2 — "Daily Delight"
 
-| Area | Scope |
-|------|-------|
-| Dashboard | Widget customization, Money Pulse brief, monthly snapshot/postcard |
-| Contracts | Cancellation letter template, annual review wizard, CSV/Excel export |
-| Calendar | Payday cycle toggle, balance threshold red zone, .ics export |
-| Quick Add | Smart amount memory, split transactions, smart day/time suggestions |
-| AI | Explain button, autopilot progress display, confidence bands |
-| OCR | Photo receipt scan, PDF drag-drop, receipt-to-transaction matching |
-| Budget | Envelope system, rollover, "left to spend", budget alerts |
-| Analytics | All core views (spending, trends, fixed/variable, merchants, budget vs actual) |
-| Import | MT940, CAMT.053 formats |
-| UX | Density toggle, smart German date input, context menus, drag-drop categorization |
+| Area      | Scope                                                                            |
+| --------- | -------------------------------------------------------------------------------- |
+| Dashboard | Widget customization, Money Pulse brief, monthly snapshot/postcard               |
+| Contracts | Cancellation letter template, annual review wizard, CSV/Excel export             |
+| Calendar  | Payday cycle toggle, balance threshold red zone, .ics export                     |
+| Quick Add | Smart amount memory, split transactions, smart day/time suggestions              |
+| AI        | Explain button, autopilot progress display, confidence bands                     |
+| OCR       | Photo receipt scan, PDF drag-drop, receipt-to-transaction matching               |
+| Budget    | Envelope system, rollover, "left to spend", budget alerts                        |
+| Analytics | All core views (spending, trends, fixed/variable, merchants, budget vs actual)   |
+| Import    | MT940, CAMT.053 formats                                                          |
+| UX        | Density toggle, smart German date input, context menus, drag-drop categorization |
 
 ### Phase 3 — "Power User"
 
-| Area | Scope |
-|------|-------|
-| AI | Full autopilot mode, "teach the AI" training |
-| Calendar | Scenario engine (what-if drag-to-reschedule) |
-| Contracts | Timeline visualization, bundle detection |
-| Loans | Tilgungsplan, overview, early repayment calculator |
-| Savings | Goals with progress bars |
+| Area      | Scope                                                                       |
+| --------- | --------------------------------------------------------------------------- |
+| AI        | Full autopilot mode, "teach the AI" training                                |
+| Calendar  | Scenario engine (what-if drag-to-reschedule)                                |
+| Contracts | Timeline visualization, bundle detection                                    |
+| Loans     | Tilgungsplan, overview, early repayment calculator                          |
+| Savings   | Goals with progress bars                                                    |
 | Analytics | Seasonal patterns, merchant loyalty, annual report PDF, cost of living, YoY |
-| OCR | Email forwarding (n8n), batch scanning |
-| Mobile | PWA optimization, voice note entry |
-| Other | Net worth placeholder, Financial Health Score (opt-in) |
+| OCR       | Email forwarding (n8n), batch scanning                                      |
+| Mobile    | PWA optimization, voice note entry                                          |
+| Other     | Net worth placeholder, Financial Health Score (opt-in)                      |
 
 ### Backlog
 
@@ -533,6 +564,7 @@ Update `packages/component-library/src/theme.ts`:
 ## 8. What to Kill / Deprecate
 
 From the existing fork, these modules should be **deprecated or removed**:
+
 - `packages/sync-server/src/intelligence/` — too abstract, no daily utility. Replaced by review queue.
 - `packages/sync-server/src/nl-query/` — cool tech, zero daily utility. Replaced by command palette.
 - `packages/sync-server/src/events/` — over-engineered event bus for current scale. Use direct function calls.
@@ -540,6 +572,7 @@ From the existing fork, these modules should be **deprecated or removed**:
 - `packages/sync-server/src/forecast/` — replaced by simpler balance projection on calendar.
 
 **Keep and enhance:**
+
 - `packages/sync-server/src/ai/` — refocus on Smart Matching three-tier system
 - `packages/sync-server/src/contracts/` — rebuild as the enriched contract model
 

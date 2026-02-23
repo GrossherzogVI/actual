@@ -34,7 +34,11 @@ const configSchema = z.object({
     .default(500),
   FINANCE_GATEWAY_ACTIVITY_MAINTENANCE_ON_START: booleanFromEnv.default(true),
   FINANCE_GATEWAY_ACTIVITY_RETENTION_DAYS: z.coerce.number().min(0).default(90),
-  FINANCE_GATEWAY_ACTIVITY_MAX_ROWS: z.coerce.number().int().min(0).default(50000),
+  FINANCE_GATEWAY_ACTIVITY_MAX_ROWS: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .default(50000),
   FINANCE_GATEWAY_ACTIVITY_MAINTENANCE_INTERVAL_MINUTES: z.coerce
     .number()
     .int()
@@ -44,6 +48,8 @@ const configSchema = z.object({
 
 export type GatewayConfig = z.infer<typeof configSchema>;
 
-export function loadGatewayConfig(env: NodeJS.ProcessEnv = process.env): GatewayConfig {
+export function loadGatewayConfig(
+  env: NodeJS.ProcessEnv = process.env,
+): GatewayConfig {
   return configSchema.parse(env);
 }

@@ -1,11 +1,12 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type {
   TemporalSignals,
   WorkflowCommandExecution,
 } from '../../core/types';
+
 import { TemporalIntelligencePanel } from './TemporalIntelligencePanel';
 
 const apiClientMock = vi.hoisted(() => ({
@@ -95,7 +96,8 @@ function createTemporalSignals(
         daysUntilDue: 2,
         severity: 'warn',
         reason: 'Deadline in 2 day(s).',
-        recommendedChain: 'triage -> delegate-triage-batch -> apply-batch-policy',
+        recommendedChain:
+          'triage -> delegate-triage-batch -> apply-batch-policy',
       },
     ],
     recommendedChains: [
@@ -181,9 +183,15 @@ describe('TemporalIntelligencePanel', () => {
   it('renders temporal summary and lane pressure cards', async () => {
     renderPanel();
 
-    expect(await screen.findByText('Temporal Intelligence')).toBeInTheDocument();
-    expect(await screen.findByText('Renegotiate mobile contract')).toBeInTheDocument();
-    expect(screen.getAllByText('Run safe close window').length).toBeGreaterThan(0);
+    expect(
+      await screen.findByText('Temporal Intelligence'),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('Renegotiate mobile contract'),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText('Run safe close window').length).toBeGreaterThan(
+      0,
+    );
     expect(await screen.findByText('2026-03-08')).toBeInTheDocument();
   });
 

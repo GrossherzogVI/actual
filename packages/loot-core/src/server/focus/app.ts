@@ -27,14 +27,19 @@ function readError(err: unknown, fallback = 'unknown') {
   );
 }
 
-async function focusAdaptivePanel(): Promise<Record<string, unknown> | HandlerError> {
+async function focusAdaptivePanel(): Promise<
+  Record<string, unknown> | HandlerError
+> {
   const userToken = await asyncStorage.getItem('user-token');
   if (!userToken) {
     return { error: 'not-logged-in' };
   }
 
   try {
-    return await gatewayGet<Record<string, unknown>>('/focus/v1/adaptive-panel', userToken);
+    return await gatewayGet<Record<string, unknown>>(
+      '/focus/v1/adaptive-panel',
+      userToken,
+    );
   } catch (err) {
     return { error: readError(err, 'network-failure') };
   }

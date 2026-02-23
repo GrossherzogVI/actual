@@ -1,26 +1,32 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { motion, AnimatePresence, type Variants } from 'motion/react';
+import { Trans } from 'react-i18next';
 
 import {
-  CommandPaletteAdvanced,
   commandCenterTokens,
+  CommandPaletteAdvanced,
 } from '@finance-os/design-system';
+import { useQuery } from '@tanstack/react-query';
+import { motion, AnimatePresence } from 'motion/react';
+import type { Variants } from 'motion/react';
 
-import type { PlaybookRun, RunStatus, WorkflowCommandExecution } from '../core/types';
 import { apiClient } from '../core/api/client';
+import type {
+  PlaybookRun,
+  RunStatus,
+  WorkflowCommandExecution,
+} from '../core/types';
 import { AdaptiveFocusRail } from '../features/adaptive-focus/AdaptiveFocusRail';
 import { CloseLoopPanel } from '../features/close-loop/CloseLoopPanel';
 import { CommandMeshPanel } from '../features/command-mesh/CommandMeshPanel';
 import { DecisionGraphPanel } from '../features/decision-graph/DecisionGraphPanel';
 import { DelegateLanesPanel } from '../features/delegate-lanes/DelegateLanesPanel';
-import { PlaybooksPanel } from '../features/ops-playbooks/PlaybooksPanel';
 import { OpsActivityFeedPanel } from '../features/ops-activity/OpsActivityFeedPanel';
+import { PlaybooksPanel } from '../features/ops-playbooks/PlaybooksPanel';
 import { PolicyControlPanel } from '../features/policy/PolicyControlPanel';
-import { RuntimeIncidentTimelinePanel } from '../features/runtime/RuntimeIncidentTimelinePanel';
-import { RuntimeControlPanel } from '../features/runtime/RuntimeControlPanel';
 import { dispatchRunDetailsCommand } from '../features/runtime/run-details-commands';
 import { dispatchRuntimeCommand } from '../features/runtime/runtime-commands';
+import { RuntimeControlPanel } from '../features/runtime/RuntimeControlPanel';
+import { RuntimeIncidentTimelinePanel } from '../features/runtime/RuntimeIncidentTimelinePanel';
 import { SpatialTwinPanel } from '../features/spatial-twin/SpatialTwinPanel';
 import { TemporalIntelligencePanel } from '../features/temporal-intelligence/TemporalIntelligencePanel';
 
@@ -34,7 +40,9 @@ type RunAnomalyCandidate = {
   statusPath: string;
 };
 
-function toCommandRunCandidate(run: WorkflowCommandExecution): RunAnomalyCandidate {
+function toCommandRunCandidate(
+  run: WorkflowCommandExecution,
+): RunAnomalyCandidate {
   return {
     scope: 'command',
     id: run.id,
@@ -130,9 +138,11 @@ export function App() {
   const anomalyTargets = useMemo(() => {
     const now = Date.now();
     const blocked =
-      recentRunCandidates.find(candidate => candidate.status === 'blocked') || null;
+      recentRunCandidates.find(candidate => candidate.status === 'blocked') ||
+      null;
     const failed =
-      recentRunCandidates.find(candidate => candidate.status === 'failed') || null;
+      recentRunCandidates.find(candidate => candidate.status === 'failed') ||
+      null;
     const rollbackEligible =
       recentRunCandidates.find(
         candidate =>
@@ -151,10 +161,12 @@ export function App() {
   const anomalyCounts = useMemo(() => {
     const now = Date.now();
     return {
-      blocked: recentRunCandidates.filter(candidate => candidate.status === 'blocked')
-        .length,
-      failed: recentRunCandidates.filter(candidate => candidate.status === 'failed')
-        .length,
+      blocked: recentRunCandidates.filter(
+        candidate => candidate.status === 'blocked',
+      ).length,
+      failed: recentRunCandidates.filter(
+        candidate => candidate.status === 'failed',
+      ).length,
       rollbackEligible: recentRunCandidates.filter(
         candidate =>
           candidate.rollbackEligible &&
@@ -170,27 +182,91 @@ export function App() {
     () => [
       { id: 'open-ops', label: 'Open Ops Command Center', hint: 'G O' },
       { id: 'open-review', label: 'Open Review Queue', hint: 'G R' },
-      { id: 'run-weekly-close', label: 'Run Weekly Close Routine', hint: 'W C' },
+      {
+        id: 'run-weekly-close',
+        label: 'Run Weekly Close Routine',
+        hint: 'W C',
+      },
       { id: 'create-playbook', label: 'Create Baseline Playbook', hint: 'P C' },
       { id: 'assign-lane', label: 'Assign Delegate Lane', hint: 'D L' },
-      { id: 'open-runtime-incidents', label: 'Open Runtime Incident Timeline', hint: 'R I' },
-      { id: 'runtime-stabilize', label: 'Stabilize Runtime Pipeline', hint: 'R S' },
-      { id: 'runtime-requeue', label: 'Requeue Expired Worker Claims', hint: 'R Q' },
-      { id: 'runtime-replay-dead-letters', label: 'Replay Dead Letters', hint: 'R D' },
-      { id: 'runtime-start-pipeline', label: 'Start Runtime Pipeline', hint: 'R P' },
+      {
+        id: 'open-runtime-incidents',
+        label: 'Open Runtime Incident Timeline',
+        hint: 'R I',
+      },
+      {
+        id: 'runtime-stabilize',
+        label: 'Stabilize Runtime Pipeline',
+        hint: 'R S',
+      },
+      {
+        id: 'runtime-requeue',
+        label: 'Requeue Expired Worker Claims',
+        hint: 'R Q',
+      },
+      {
+        id: 'runtime-replay-dead-letters',
+        label: 'Replay Dead Letters',
+        hint: 'R D',
+      },
+      {
+        id: 'runtime-start-pipeline',
+        label: 'Start Runtime Pipeline',
+        hint: 'R P',
+      },
       { id: 'resolve-next-action', label: 'Resolve Next Action', hint: 'N A' },
       { id: 'run-triage-chain', label: 'Execute Triage Chain', hint: 'T C' },
       { id: 'run-autopilot-live', label: 'Run Autopilot Live', hint: 'A L' },
-      { id: 'rollback-last-playbook-run', label: 'Rollback Last Playbook', hint: 'P R' },
-      { id: 'rollback-last-command-run', label: 'Rollback Last Command Run', hint: 'C R' },
-      { id: 'open-latest-live-command-run', label: 'Open Latest Live Command Run', hint: 'C L' },
-      { id: 'open-latest-failed-command-run', label: 'Open Latest Failed Command Run', hint: 'C F' },
-      { id: 'open-latest-blocked-command-run', label: 'Open Latest Blocked Command Run', hint: 'C B' },
-      { id: 'open-latest-live-playbook-run', label: 'Open Latest Live Playbook Run', hint: 'P L' },
-      { id: 'open-latest-failed-playbook-run', label: 'Open Latest Failed Playbook Run', hint: 'P F' },
-      { id: 'open-latest-blocked-playbook-run', label: 'Open Latest Blocked Playbook Run', hint: 'P B' },
-      { id: 'open-latest-failed-run', label: 'Open Latest Failed Run', hint: 'X F' },
-      { id: 'open-latest-blocked-run', label: 'Open Latest Blocked Run', hint: 'X B' },
+      {
+        id: 'rollback-last-playbook-run',
+        label: 'Rollback Last Playbook',
+        hint: 'P R',
+      },
+      {
+        id: 'rollback-last-command-run',
+        label: 'Rollback Last Command Run',
+        hint: 'C R',
+      },
+      {
+        id: 'open-latest-live-command-run',
+        label: 'Open Latest Live Command Run',
+        hint: 'C L',
+      },
+      {
+        id: 'open-latest-failed-command-run',
+        label: 'Open Latest Failed Command Run',
+        hint: 'C F',
+      },
+      {
+        id: 'open-latest-blocked-command-run',
+        label: 'Open Latest Blocked Command Run',
+        hint: 'C B',
+      },
+      {
+        id: 'open-latest-live-playbook-run',
+        label: 'Open Latest Live Playbook Run',
+        hint: 'P L',
+      },
+      {
+        id: 'open-latest-failed-playbook-run',
+        label: 'Open Latest Failed Playbook Run',
+        hint: 'P F',
+      },
+      {
+        id: 'open-latest-blocked-playbook-run',
+        label: 'Open Latest Blocked Playbook Run',
+        hint: 'P B',
+      },
+      {
+        id: 'open-latest-failed-run',
+        label: 'Open Latest Failed Run',
+        hint: 'X F',
+      },
+      {
+        id: 'open-latest-blocked-run',
+        label: 'Open Latest Blocked Run',
+        hint: 'X B',
+      },
       {
         id: 'open-latest-rollback-eligible-run',
         label: 'Open Latest Rollback Eligible Run',
@@ -208,11 +284,31 @@ export function App() {
       { id: 'run-autopilot-live', label: 'Autopilot Live', hint: 'A L' },
       { id: 'runtime-stabilize', label: 'Stabilize Runtime', hint: 'R S' },
       { id: 'open-runtime-incidents', label: 'Incident Timeline', hint: 'R I' },
-      { id: 'rollback-last-command-run', label: 'Rollback Command', hint: 'C R' },
-      { id: 'open-latest-failed-command-run', label: 'Inspect Failed Command', hint: 'C F' },
-      { id: 'open-latest-failed-playbook-run', label: 'Inspect Failed Playbook', hint: 'P F' },
-      { id: 'open-latest-blocked-run', label: 'Inspect Blocked Run', hint: 'X B' },
-      { id: 'open-latest-rollback-eligible-run', label: 'Inspect Rollback Window', hint: 'X R' },
+      {
+        id: 'rollback-last-command-run',
+        label: 'Rollback Command',
+        hint: 'C R',
+      },
+      {
+        id: 'open-latest-failed-command-run',
+        label: 'Inspect Failed Command',
+        hint: 'C F',
+      },
+      {
+        id: 'open-latest-failed-playbook-run',
+        label: 'Inspect Failed Playbook',
+        hint: 'P F',
+      },
+      {
+        id: 'open-latest-blocked-run',
+        label: 'Inspect Blocked Run',
+        hint: 'X B',
+      },
+      {
+        id: 'open-latest-rollback-eligible-run',
+        label: 'Inspect Rollback Window',
+        hint: 'X R',
+      },
     ],
     [],
   );
@@ -221,10 +317,25 @@ export function App() {
     () => [
       { id: 'morning', label: 'Morning Loop', route: '/ops', hint: '1' },
       { id: 'capture', label: 'Capture Loop', route: '/quick-add', hint: '2' },
-      { id: 'triage', label: 'Triage Loop', route: '/review?priority=urgent', hint: '3' },
-      { id: 'execution', label: 'Execution Loop', route: '/contracts?filter=expiring', hint: '4' },
+      {
+        id: 'triage',
+        label: 'Triage Loop',
+        route: '/review?priority=urgent',
+        hint: '3',
+      },
+      {
+        id: 'execution',
+        label: 'Execution Loop',
+        route: '/contracts?filter=expiring',
+        hint: '4',
+      },
       { id: 'close', label: 'Close Loop', route: '/ops', hint: '5' },
-      { id: 'simulation', label: 'Simulation Loop', route: '/ops#spatial-twin', hint: '6' },
+      {
+        id: 'simulation',
+        label: 'Simulation Loop',
+        route: '/ops#spatial-twin',
+        hint: '6',
+      },
     ],
     [],
   );
@@ -281,10 +392,10 @@ export function App() {
     (input: {
       target: RunAnomalyCandidate | null;
       selector:
-      | 'latest-live'
-      | 'latest-failed'
-      | 'latest-blocked'
-      | 'latest-rollback-eligible';
+        | 'latest-live'
+        | 'latest-failed'
+        | 'latest-blocked'
+        | 'latest-rollback-eligible';
       source: 'palette' | 'shell';
       emptyMessage: string;
       contextLabel: string;
@@ -294,7 +405,9 @@ export function App() {
         return;
       }
       const route =
-        input.target.scope === 'command' ? '/ops#command-mesh' : '/ops#playbooks';
+        input.target.scope === 'command'
+          ? '/ops#command-mesh'
+          : '/ops#playbooks';
       handleRoute(route);
       dispatchRunDetailsCommand({
         scope: input.target.scope,
@@ -352,7 +465,9 @@ export function App() {
 
       if (entryId === 'run-weekly-close') {
         const result = await apiClient.runCloseRoutine('weekly');
-        setStatus(`Weekly close completed (${result.exceptionCount} exceptions).`);
+        setStatus(
+          `Weekly close completed (${result.exceptionCount} exceptions).`,
+        );
         return;
       }
 
@@ -392,7 +507,9 @@ export function App() {
             rollbackOnFailure: true,
           },
         );
-        setStatus(`Triage chain executed (${run.steps.length} steps, ${run.errorCount} errors).`);
+        setStatus(
+          `Triage chain executed (${run.steps.length} steps, ${run.errorCount} errors).`,
+        );
         return;
       }
 
@@ -407,7 +524,9 @@ export function App() {
             rollbackOnFailure: true,
           },
         );
-        setStatus(`Autopilot live run ${run.status} (${run.errorCount} errors).`);
+        setStatus(
+          `Autopilot live run ${run.status} (${run.errorCount} errors).`,
+        );
         return;
       }
 
@@ -452,8 +571,9 @@ export function App() {
       if (entryId === 'open-latest-live-command-run') {
         openRunDetailsTarget({
           target:
-            recentRunCandidates.find(candidate => candidate.scope === 'command') ||
-            null,
+            recentRunCandidates.find(
+              candidate => candidate.scope === 'command',
+            ) || null,
           selector: 'latest-live',
           source,
           emptyMessage: 'No live command run found.',
@@ -495,8 +615,9 @@ export function App() {
       if (entryId === 'open-latest-live-playbook-run') {
         openRunDetailsTarget({
           target:
-            recentRunCandidates.find(candidate => candidate.scope === 'playbook') ||
-            null,
+            recentRunCandidates.find(
+              candidate => candidate.scope === 'playbook',
+            ) || null,
           selector: 'latest-live',
           source,
           emptyMessage: 'No live playbook run found.',
@@ -525,7 +646,8 @@ export function App() {
           target:
             recentRunCandidates.find(
               candidate =>
-                candidate.scope === 'playbook' && candidate.status === 'blocked',
+                candidate.scope === 'playbook' &&
+                candidate.status === 'blocked',
             ) || null,
           selector: 'latest-blocked',
           source,
@@ -601,7 +723,10 @@ export function App() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [runCommand]);
 
-  const handlePaletteSelection = async (entry: { id: string; label: string }) => {
+  const handlePaletteSelection = async (entry: {
+    id: string;
+    label: string;
+  }) => {
     setPaletteOpen(false);
     try {
       await runCommand(entry.id, 'palette');
@@ -640,16 +765,22 @@ export function App() {
         type: 'spring',
         stiffness: 300,
         damping: 24,
-      }
+      },
     },
   };
 
   return (
     <div className="fo-app-shell">
       <header className="fo-topbar">
-        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.4 }}>
-          <h1>Finance OS - Command Center</h1>
-          <small>Precision Command Center / Ops Superhuman mode</small>
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          <h1>
+            <Trans>Finance OS - Command Center</Trans>
+          </h1>
+          <small><Trans>Precision Command Center / Ops Superhuman mode</Trans></small>
         </motion.div>
 
         <motion.div
@@ -660,15 +791,15 @@ export function App() {
         >
           <motion.div className="fo-metric-card" whileHover={{ scale: 1.05 }}>
             <strong>{moneyPulse.data?.pendingReviews ?? '-'}</strong>
-            <small>Pending Reviews</small>
+            <small><Trans>Pending Reviews</Trans></small>
           </motion.div>
           <motion.div className="fo-metric-card" whileHover={{ scale: 1.05 }}>
             <strong>{moneyPulse.data?.urgentReviews ?? '-'}</strong>
-            <small>Urgent</small>
+            <small><Trans>Urgent</Trans></small>
           </motion.div>
           <motion.div className="fo-metric-card" whileHover={{ scale: 1.05 }}>
             <strong>{moneyPulse.data?.expiringContracts ?? '-'}</strong>
-            <small>Expiring 30d</small>
+            <small><Trans>Expiring 30d</Trans></small>
           </motion.div>
         </motion.div>
       </header>
@@ -723,7 +854,9 @@ export function App() {
         <button
           className="fo-anomaly-badge fo-anomaly-badge-rollback"
           type="button"
-          onClick={() => executeShellCommand('open-latest-rollback-eligible-run')}
+          onClick={() =>
+            executeShellCommand('open-latest-rollback-eligible-run')
+          }
         >
           <strong>{anomalyCounts.rollbackEligible}</strong>
           <small>rollback window</small>
@@ -747,31 +880,39 @@ export function App() {
 
           <motion.section className="fo-panel" variants={itemVariants}>
             <header className="fo-panel-header">
-              <h2>Narrative Compression Pulse</h2>
-              <small>Daily briefing compressed into top actionable outcomes.</small>
+              <h2><Trans>Narrative Compression Pulse</Trans></h2>
+              <small>
+                Daily briefing compressed into top actionable outcomes.
+              </small>
             </header>
             <div className="fo-stack">
               <motion.article className="fo-card" whileHover={{ scale: 1.01 }}>
-                <strong>{narrativePulse.data?.summary || 'Generating pulse...'}</strong>
+                <strong>
+                  {narrativePulse.data?.summary || 'Generating pulse...'}
+                </strong>
                 <small>
                   Generated:{' '}
                   {narrativePulse.data?.generatedAtMs
-                    ? new Date(narrativePulse.data.generatedAtMs).toLocaleTimeString()
+                    ? new Date(
+                        narrativePulse.data.generatedAtMs,
+                      ).toLocaleTimeString()
                     : '-'}
                 </small>
               </motion.article>
               <AnimatePresence>
-                {(narrativePulse.data?.highlights || []).map((highlight, index) => (
-                  <motion.article
-                    className="fo-card"
-                    key={highlight}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.1 * index }}
-                  >
-                    <small>{highlight}</small>
-                  </motion.article>
-                ))}
+                {(narrativePulse.data?.highlights || []).map(
+                  (highlight, index) => (
+                    <motion.article
+                      className="fo-card"
+                      key={highlight}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.1 * index }}
+                    >
+                      <small>{highlight}</small>
+                    </motion.article>
+                  ),
+                )}
               </AnimatePresence>
               {(narrativePulse.data?.actionHints || []).map(hint => (
                 <article className="fo-card" key={hint}>
@@ -782,7 +923,10 @@ export function App() {
           </motion.section>
 
           <motion.div variants={itemVariants}>
-            <TemporalIntelligencePanel onStatus={setStatus} onRoute={handleRoute} />
+            <TemporalIntelligencePanel
+              onStatus={setStatus}
+              onRoute={handleRoute}
+            />
           </motion.div>
         </aside>
 
@@ -813,7 +957,10 @@ export function App() {
             <OpsActivityFeedPanel onRoute={handleRoute} />
           </motion.div>
           <motion.div variants={itemVariants}>
-            <RuntimeIncidentTimelinePanel onRoute={handleRoute} onStatus={setStatus} />
+            <RuntimeIncidentTimelinePanel
+              onRoute={handleRoute}
+              onStatus={setStatus}
+            />
           </motion.div>
           <motion.div variants={itemVariants}>
             <DelegateLanesPanel onStatus={setStatus} />
@@ -832,14 +979,15 @@ export function App() {
         <code>{lastRoute}</code>
         <code>
           {latestTerminalRun
-            ? `run:${latestTerminalRun.status} (${latestTerminalRun.statusPath || 'n/a'}) | rollback:${latestTerminalRun.rollbackWindowUntilMs
-              ? latestTerminalRun.rollbackWindowUntilMs > Date.now()
-                ? `open until ${new Date(
-                  latestTerminalRun.rollbackWindowUntilMs,
-                ).toLocaleTimeString()}`
-                : 'window expired'
-              : 'n/a'
-            }`
+            ? `run:${latestTerminalRun.status} (${latestTerminalRun.statusPath || 'n/a'}) | rollback:${
+                latestTerminalRun.rollbackWindowUntilMs
+                  ? latestTerminalRun.rollbackWindowUntilMs > Date.now()
+                    ? `open until ${new Date(
+                        latestTerminalRun.rollbackWindowUntilMs,
+                      ).toLocaleTimeString()}`
+                    : 'window expired'
+                  : 'n/a'
+              }`
             : 'run: none'}
         </code>
       </footer>

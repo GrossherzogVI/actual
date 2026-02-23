@@ -50,9 +50,10 @@ app.post('/', (req, res) => {
   const db = getAccountDb();
   const id = uuidv4();
 
-  const aiSuggestion = (amount != null || notes)
-    ? JSON.stringify({ amount, category_id, notes: notes ?? undefined })
-    : null;
+  const aiSuggestion =
+    amount != null || notes
+      ? JSON.stringify({ amount, category_id, notes: notes ?? undefined })
+      : null;
 
   db.mutate(
     `INSERT INTO review_queue
@@ -79,7 +80,12 @@ app.get('/count', (_req, res) => {
     [],
   ) as Array<{ priority: string; count: number }>;
 
-  const counts: Record<string, number> = { pending: 0, urgent: 0, review: 0, suggestion: 0 };
+  const counts: Record<string, number> = {
+    pending: 0,
+    urgent: 0,
+    review: 0,
+    suggestion: 0,
+  };
   let total = 0;
   for (const row of rows) {
     counts[row.priority] = row.count;
@@ -134,10 +140,9 @@ app.patch('/:id', (req, res) => {
   }
 
   const db = getAccountDb();
-  const existing = db.first(
-    'SELECT * FROM review_queue WHERE id = ?',
-    [req.params.id],
-  );
+  const existing = db.first('SELECT * FROM review_queue WHERE id = ?', [
+    req.params.id,
+  ]);
 
   if (!existing) {
     res.status(404).json({ status: 'error', reason: 'not-found' });
@@ -164,7 +169,9 @@ app.patch('/:id', (req, res) => {
     ],
   );
 
-  const updated = db.first('SELECT * FROM review_queue WHERE id = ?', [req.params.id]);
+  const updated = db.first('SELECT * FROM review_queue WHERE id = ?', [
+    req.params.id,
+  ]);
   res.json({ status: 'ok', data: updated });
 });
 
@@ -177,7 +184,10 @@ app.post('/batch', (req, res) => {
     return;
   }
 
-  if (!newStatus || !['accepted', 'rejected', 'dismissed'].includes(newStatus)) {
+  if (
+    !newStatus ||
+    !['accepted', 'rejected', 'dismissed'].includes(newStatus)
+  ) {
     res.status(400).json({ status: 'error', reason: 'invalid-status' });
     return;
   }
@@ -201,10 +211,9 @@ app.post('/batch', (req, res) => {
 /** POST /review/:id/apply — apply the AI suggestion */
 app.post('/:id/apply', (req, res) => {
   const db = getAccountDb();
-  const item = db.first(
-    'SELECT * FROM review_queue WHERE id = ?',
-    [req.params.id],
-  ) as Record<string, unknown> | undefined;
+  const item = db.first('SELECT * FROM review_queue WHERE id = ?', [
+    req.params.id,
+  ]) as Record<string, unknown> | undefined;
 
   if (!item) {
     res.status(404).json({ status: 'error', reason: 'not-found' });
@@ -270,10 +279,9 @@ app.post('/batch-accept', (req, res) => {
 /** POST /review/:id/accept — accept and apply AI suggestion */
 app.post('/:id/accept', (req, res) => {
   const db = getAccountDb();
-  const item = db.first(
-    'SELECT * FROM review_queue WHERE id = ?',
-    [req.params.id],
-  ) as Record<string, unknown> | undefined;
+  const item = db.first('SELECT * FROM review_queue WHERE id = ?', [
+    req.params.id,
+  ]) as Record<string, unknown> | undefined;
 
   if (!item) {
     res.status(404).json({ status: 'error', reason: 'not-found' });
@@ -310,10 +318,9 @@ app.post('/:id/reject', (req, res) => {
   const { correct_category_id } = req.body ?? {};
 
   const db = getAccountDb();
-  const item = db.first(
-    'SELECT * FROM review_queue WHERE id = ?',
-    [req.params.id],
-  ) as Record<string, unknown> | undefined;
+  const item = db.first('SELECT * FROM review_queue WHERE id = ?', [
+    req.params.id,
+  ]) as Record<string, unknown> | undefined;
 
   if (!item) {
     res.status(404).json({ status: 'error', reason: 'not-found' });
@@ -351,10 +358,9 @@ app.post('/:id/snooze', (req, res) => {
   const snoozeDays = typeof days === 'number' ? days : 7;
 
   const db = getAccountDb();
-  const item = db.first(
-    'SELECT * FROM review_queue WHERE id = ?',
-    [req.params.id],
-  ) as Record<string, unknown> | undefined;
+  const item = db.first('SELECT * FROM review_queue WHERE id = ?', [
+    req.params.id,
+  ]) as Record<string, unknown> | undefined;
 
   if (!item) {
     res.status(404).json({ status: 'error', reason: 'not-found' });
@@ -376,17 +382,18 @@ app.post('/:id/snooze', (req, res) => {
     [snoozeDays, req.params.id],
   );
 
-  const updated = db.first('SELECT * FROM review_queue WHERE id = ?', [req.params.id]);
+  const updated = db.first('SELECT * FROM review_queue WHERE id = ?', [
+    req.params.id,
+  ]);
   res.json({ status: 'ok', data: updated });
 });
 
 /** DELETE /review/:id — dismiss permanently */
 app.delete('/:id', (req, res) => {
   const db = getAccountDb();
-  const existing = db.first(
-    'SELECT id FROM review_queue WHERE id = ?',
-    [req.params.id],
-  );
+  const existing = db.first('SELECT id FROM review_queue WHERE id = ?', [
+    req.params.id,
+  ]);
 
   if (!existing) {
     res.status(404).json({ status: 'error', reason: 'not-found' });

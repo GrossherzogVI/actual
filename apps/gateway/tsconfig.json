@@ -9,9 +9,7 @@
       "@finance-os/domain-kernel": [
         "../../packages/domain-kernel/src/index.ts"
       ],
-      "@finance-os/event-model": [
-        "../../packages/event-model/src/index.ts"
-      ]
+      "@finance-os/event-model": ["../../packages/event-model/src/index.ts"]
     },
     "types": ["node"],
     "strict": true,

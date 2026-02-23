@@ -24,7 +24,17 @@ type Bundesland =
   | 'SH'
   | 'TH';
 
-const REFORMATION_STATES: Bundesland[] = ['BB', 'MV', 'SN', 'ST', 'TH', 'HH', 'HB', 'SH', 'NI'];
+const REFORMATION_STATES: Bundesland[] = [
+  'BB',
+  'MV',
+  'SN',
+  'ST',
+  'TH',
+  'HH',
+  'HB',
+  'SH',
+  'NI',
+];
 const ALL_SAINTS_STATES: Bundesland[] = ['BW', 'BY', 'NW', 'RP', 'SL'];
 
 function pad(value: number): string {

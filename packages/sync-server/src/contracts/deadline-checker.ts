@@ -12,14 +12,13 @@
 
 import { getAccountDb } from '../account-db.js';
 import { dispatchWebhook } from '../webhook.js';
+
 import {
   computeDeadlines,
   deadlineStatus,
   nextPaymentDates,
-  type Bundesland,
-  type DeadlineConfig,
-  type PaymentMethod,
 } from './deadlines.js';
+import type { Bundesland, DeadlineConfig, PaymentMethod } from './deadlines.js';
 
 const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
 
@@ -96,7 +95,10 @@ function runCheck(): void {
   try {
     ensureNotificationsTable();
   } catch (err) {
-    console.warn('[DeadlineChecker] Could not create notifications table:', (err as Error).message);
+    console.warn(
+      '[DeadlineChecker] Could not create notifications table:',
+      (err as Error).message,
+    );
     return;
   }
 
@@ -116,7 +118,10 @@ function runCheck(): void {
       [],
     ) as Record<string, unknown>[];
   } catch (err) {
-    console.warn('[DeadlineChecker] Could not query contracts:', (err as Error).message);
+    console.warn(
+      '[DeadlineChecker] Could not query contracts:',
+      (err as Error).message,
+    );
     return;
   }
 
@@ -144,11 +149,14 @@ function runCheck(): void {
     for (const nominalDate of dates) {
       const paymentMethod: PaymentMethod =
         (contract.payment_method as PaymentMethod | null) ?? 'manual_sepa';
-      const gracePeriodDays = (contract.grace_period_days as number | null) ?? 5;
+      const gracePeriodDays =
+        (contract.grace_period_days as number | null) ?? 5;
       const softShift =
-        (contract.soft_deadline_shift as DeadlineConfig['softShift'] | null) ?? 'before';
+        (contract.soft_deadline_shift as DeadlineConfig['softShift'] | null) ??
+        'before';
       const hardShift =
-        (contract.hard_deadline_shift as DeadlineConfig['hardShift'] | null) ?? 'after';
+        (contract.hard_deadline_shift as DeadlineConfig['hardShift'] | null) ??
+        'after';
       const leadTimeOverride =
         (contract.lead_time_override as number | null) ?? null;
 
@@ -172,10 +180,17 @@ function runCheck(): void {
       const status = deadlineStatus(deadlines, today);
 
       // Fire webhook for each crossed threshold that hasn't been fired yet
-      const eventsToFire: Array<{ type: 'deadline.action_due' | 'deadline.soft_passed' | 'deadline.hard_passed' }> = [];
+      const eventsToFire: Array<{
+        type:
+          | 'deadline.action_due'
+          | 'deadline.soft_passed'
+          | 'deadline.hard_passed';
+      }> = [];
 
       if (
-        (status === 'action_due' || status === 'soft_passed' || status === 'hard_passed') &&
+        (status === 'action_due' ||
+          status === 'soft_passed' ||
+          status === 'hard_passed') &&
         !alreadyFired(contractId, nominalDate, 'deadline.action_due')
       ) {
         eventsToFire.push({ type: 'deadline.action_due' });
@@ -238,7 +253,10 @@ export function startDeadlineChecker(): void {
     try {
       runCheck();
     } catch (err) {
-      console.warn('[DeadlineChecker] Initial check failed:', (err as Error).message);
+      console.warn(
+        '[DeadlineChecker] Initial check failed:',
+        (err as Error).message,
+      );
     }
   }, 5000);
 
@@ -246,7 +264,10 @@ export function startDeadlineChecker(): void {
     try {
       runCheck();
     } catch (err) {
-      console.warn('[DeadlineChecker] Periodic check failed:', (err as Error).message);
+      console.warn(
+        '[DeadlineChecker] Periodic check failed:',
+        (err as Error).message,
+      );
     }
   }, SIX_HOURS_MS);
 

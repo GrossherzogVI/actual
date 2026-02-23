@@ -151,10 +151,9 @@ async function getContract(args: {
   if (!userToken) return { error: 'not-logged-in' };
 
   try {
-    const res = await get(
-      getServer().BASE_SERVER + `/contracts/${args.id}`,
-      { headers: { 'X-ACTUAL-TOKEN': userToken } },
-    );
+    const res = await get(getServer().BASE_SERVER + `/contracts/${args.id}`, {
+      headers: { 'X-ACTUAL-TOKEN': userToken },
+    });
     if (res) {
       const parsed = JSON.parse(res);
       if (parsed.status === 'ok') return parsed.data;
@@ -236,9 +235,7 @@ async function createContract(data: {
 
 async function updateContract(args: {
   id: string;
-  data: Partial<
-    Omit<ContractEntity, 'id' | 'created_at' | 'updated_at'>
-  >;
+  data: Partial<Omit<ContractEntity, 'id' | 'created_at' | 'updated_at'>>;
 }): Promise<ContractEntity | { error: string }> {
   const userToken = await asyncStorage.getItem('user-token');
   if (!userToken) return { error: 'not-logged-in' };
@@ -278,10 +275,9 @@ async function contractSummary(): Promise<ContractSummary | { error: string }> {
   if (!userToken) return { error: 'not-logged-in' };
 
   try {
-    const res = await get(
-      getServer().BASE_SERVER + '/contracts/summary',
-      { headers: { 'X-ACTUAL-TOKEN': userToken } },
-    );
+    const res = await get(getServer().BASE_SERVER + '/contracts/summary', {
+      headers: { 'X-ACTUAL-TOKEN': userToken },
+    });
     if (res) {
       const parsed = JSON.parse(res);
       if (parsed.status === 'ok') return parsed.data;

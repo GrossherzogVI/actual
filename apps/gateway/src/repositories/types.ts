@@ -87,7 +87,7 @@ export type WorkerFingerprintClaimFilters = {
   staleRecovered?: boolean;
 };
 
-export interface GatewayRepository {
+export type GatewayRepository = {
   readonly kind: 'memory' | 'postgres';
 
   init(): Promise<void>;
@@ -113,7 +113,10 @@ export interface GatewayRepository {
     rolledBackAtMs: number,
     rollbackRunId?: string,
   ): Promise<PlaybookRun | null>;
-  listPlaybookRuns(limit: number, filters?: PlaybookRunFilters): Promise<PlaybookRun[]>;
+  listPlaybookRuns(
+    limit: number,
+    filters?: PlaybookRunFilters,
+  ): Promise<PlaybookRun[]>;
 
   createCloseRun(run: CloseRun): Promise<CloseRun>;
   listCloseRuns(limit: number, filters?: CloseRunFilters): Promise<CloseRun[]>;
@@ -123,7 +126,9 @@ export interface GatewayRepository {
   updateWorkflowCommandRun(
     run: WorkflowCommandExecution,
   ): Promise<WorkflowCommandExecution | null>;
-  getWorkflowCommandRunById(runId: string): Promise<WorkflowCommandExecution | null>;
+  getWorkflowCommandRunById(
+    runId: string,
+  ): Promise<WorkflowCommandExecution | null>;
   markWorkflowCommandRunRolledBack(
     runId: string,
     rolledBackAtMs: number,
@@ -141,7 +146,9 @@ export interface GatewayRepository {
   listScenarioBranches(): Promise<ScenarioBranch[]>;
   getScenarioBranchById(branchId: string): Promise<ScenarioBranch | null>;
   createScenarioBranch(branch: ScenarioBranch): Promise<ScenarioBranch>;
-  addScenarioMutation(mutation: ScenarioMutation): Promise<ScenarioMutation | null>;
+  addScenarioMutation(
+    mutation: ScenarioMutation,
+  ): Promise<ScenarioMutation | null>;
   listScenarioMutations(branchId: string): Promise<ScenarioMutation[]>;
   adoptScenarioBranch(
     branchId: string,
@@ -181,7 +188,9 @@ export interface GatewayRepository {
   trimOpsActivityEvents(input: OpsActivityTrimInput): Promise<number>;
   trimWorkerJobAttempts(input: OpsActivityTrimInput): Promise<number>;
   trimWorkerDeadLetters(input: OpsActivityTrimInput): Promise<number>;
-  trimWorkerFingerprintClaimEvents(input: OpsActivityTrimInput): Promise<number>;
+  trimWorkerFingerprintClaimEvents(
+    input: OpsActivityTrimInput,
+  ): Promise<number>;
   createWorkerJobAttempt(attempt: WorkerJobAttempt): Promise<WorkerJobAttempt>;
   listWorkerJobAttempts(
     limit: number,
@@ -196,9 +205,13 @@ export interface GatewayRepository {
     limit: number,
     filters?: WorkerFingerprintClaimFilters,
   ): Promise<WorkerFingerprintClaimEvent[]>;
-  countWorkerFingerprintClaimEvents(filters?: WorkerFingerprintClaimFilters): Promise<number>;
+  countWorkerFingerprintClaimEvents(
+    filters?: WorkerFingerprintClaimFilters,
+  ): Promise<number>;
   createWorkerDeadLetter(entry: WorkerDeadLetter): Promise<WorkerDeadLetter>;
-  getWorkerDeadLetterById(deadLetterId: string): Promise<WorkerDeadLetter | null>;
+  getWorkerDeadLetterById(
+    deadLetterId: string,
+  ): Promise<WorkerDeadLetter | null>;
   listWorkerDeadLetters(
     limit: number,
     filters?: WorkerDeadLetterFilters,
@@ -210,9 +223,11 @@ export interface GatewayRepository {
     ownerId: string;
     ttlMs: number;
   }): Promise<boolean>;
-  getSystemLease(input: {
+  getSystemLease(input: { leaseKey: string }): Promise<{
     leaseKey: string;
-  }): Promise<{ leaseKey: string; ownerId: string; expiresAtMs: number } | null>;
+    ownerId: string;
+    expiresAtMs: number;
+  } | null>;
   releaseSystemLease(input: {
     leaseKey: string;
     ownerId: string;
@@ -232,7 +247,7 @@ export interface GatewayRepository {
     cursor?: string;
     limit: number;
   }): Promise<{ events: LedgerEvent[]; nextCursor?: string }>;
-}
+};
 
 export type RepositoryFactoryOptions = {
   databaseUrl?: string;

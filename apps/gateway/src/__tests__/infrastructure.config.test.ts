@@ -13,7 +13,9 @@ describe('gateway infrastructure defaults', () => {
     expect(config.FINANCE_GATEWAY_INTERNAL_TOKEN).toBe('');
     expect(config.FINANCE_GATEWAY_ACTIVITY_STARTUP_MODE).toBe('non-blocking');
     expect(config.FINANCE_GATEWAY_ACTIVITY_BACKFILL_LIMIT_PER_PLANE).toBe(500);
-    expect(config.FINANCE_GATEWAY_ACTIVITY_MAINTENANCE_INTERVAL_MINUTES).toBe(0);
+    expect(config.FINANCE_GATEWAY_ACTIVITY_MAINTENANCE_INTERVAL_MINUTES).toBe(
+      0,
+    );
   });
 
   it('parses activity maintenance booleans from env strings safely', () => {

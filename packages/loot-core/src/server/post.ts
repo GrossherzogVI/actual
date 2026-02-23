@@ -75,11 +75,11 @@ export async function post(
   if (responseData.status !== 'ok') {
     logger.log(
       'API call failed: ' +
-      url +
-      '\nData: ' +
-      JSON.stringify(data, null, 2) +
-      '\nResponse: ' +
-      JSON.stringify(res, null, 2),
+        url +
+        '\nData: ' +
+        JSON.stringify(data, null, 2) +
+        '\nResponse: ' +
+        JSON.stringify(res, null, 2),
     );
 
     throw new PostError(
@@ -125,11 +125,11 @@ export async function del(url, data, headers = {}, timeout = null) {
   if (res.status !== 'ok') {
     logger.log(
       'API call failed: ' +
-      url +
-      '\nData: ' +
-      JSON.stringify(data, null, 2) +
-      '\nResponse: ' +
-      JSON.stringify(res, null, 2),
+        url +
+        '\nData: ' +
+        JSON.stringify(data, null, 2) +
+        '\nResponse: ' +
+        JSON.stringify(res, null, 2),
     );
 
     throw new PostError(res.description || res.reason || 'unknown');
@@ -173,11 +173,11 @@ export async function patch(url, data, headers = {}, timeout = null) {
   if (res.status !== 'ok') {
     logger.log(
       'API call failed: ' +
-      url +
-      '\nData: ' +
-      JSON.stringify(data, null, 2) +
-      '\nResponse: ' +
-      JSON.stringify(res, null, 2),
+        url +
+        '\nData: ' +
+        JSON.stringify(data, null, 2) +
+        '\nResponse: ' +
+        JSON.stringify(res, null, 2),
     );
 
     throw new PostError(res.description || res.reason || 'unknown');

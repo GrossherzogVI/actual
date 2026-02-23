@@ -1,7 +1,6 @@
+import { commandEnvelopeSchema } from '@finance-os/domain-kernel';
 import type { FastifyInstance } from 'fastify';
 import * as z from 'zod';
-
-import { commandEnvelopeSchema } from '@finance-os/domain-kernel';
 
 import { parseRequestBody } from '../http/route-utils';
 import type { GatewayService } from '../services/gateway-service';
@@ -31,7 +30,10 @@ export async function registerFocusRoutes(
   });
 
   app.get('/action-outcomes', async request => {
-    const query = ((request as QueryLike).query || {}) as Record<string, unknown>;
+    const query = ((request as QueryLike).query || {}) as Record<
+      string,
+      unknown
+    >;
     const parsed = focusSchemas.listActionOutcomes.safeParse({
       limit:
         typeof query.limit === 'string'

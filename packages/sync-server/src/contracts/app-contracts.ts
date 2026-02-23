@@ -6,14 +6,17 @@ import {
   requestLoggerMiddleware,
   validateSessionMiddleware,
 } from '../util/middlewares.js';
+
 import {
   computeDeadlines,
   deadlineStatus,
   nextPaymentDates,
-  type Bundesland,
-  type DeadlineConfig,
-  type DeadlineResult,
-  type PaymentMethod,
+} from './deadlines.js';
+import type {
+  Bundesland,
+  DeadlineConfig,
+  DeadlineResult,
+  PaymentMethod,
 } from './deadlines.js';
 
 const app = express();
@@ -312,8 +315,7 @@ app.get('/:id/deadlines', (req, res) => {
     (row.soft_deadline_shift as DeadlineConfig['softShift'] | null) ?? 'before';
   const hardShift =
     (row.hard_deadline_shift as DeadlineConfig['hardShift'] | null) ?? 'after';
-  const leadTimeOverride =
-    (row.lead_time_override as number | null) ?? null;
+  const leadTimeOverride = (row.lead_time_override as number | null) ?? null;
 
   const nominalDates = nextPaymentDates(
     row.start_date as string,
@@ -456,10 +458,9 @@ app.post('/', (req, res) => {
     }
   }
 
-  const created = db.first(
-    'SELECT * FROM contracts WHERE id = ?',
-    [id],
-  ) as Record<string, unknown>;
+  const created = db.first('SELECT * FROM contracts WHERE id = ?', [
+    id,
+  ]) as Record<string, unknown>;
   res.json({ status: 'ok', data: enrichContract(created) });
 });
 
@@ -494,10 +495,24 @@ app.patch('/:id', (req, res) => {
   }
 
   const allowedFields = [
-    'name', 'provider', 'type', 'category_id', 'schedule_id', 'amount',
-    'currency', 'interval', 'custom_interval_days', 'payment_account_id',
-    'start_date', 'end_date', 'notice_period_months', 'auto_renewal',
-    'status', 'notes', 'iban', 'counterparty',
+    'name',
+    'provider',
+    'type',
+    'category_id',
+    'schedule_id',
+    'amount',
+    'currency',
+    'interval',
+    'custom_interval_days',
+    'payment_account_id',
+    'start_date',
+    'end_date',
+    'notice_period_months',
+    'auto_renewal',
+    'status',
+    'notes',
+    'iban',
+    'counterparty',
   ];
 
   const updates: string[] = [];
@@ -543,7 +558,9 @@ app.patch('/:id', (req, res) => {
 
   // Update tags if provided
   if (Array.isArray(body.tags)) {
-    db.mutate('DELETE FROM contract_tags WHERE contract_id = ?', [req.params.id]);
+    db.mutate('DELETE FROM contract_tags WHERE contract_id = ?', [
+      req.params.id,
+    ]);
     for (const tag of body.tags) {
       db.mutate(
         'INSERT OR IGNORE INTO contract_tags (contract_id, tag) VALUES (?, ?)',
@@ -552,10 +569,9 @@ app.patch('/:id', (req, res) => {
     }
   }
 
-  const updated = db.first(
-    'SELECT * FROM contracts WHERE id = ?',
-    [req.params.id],
-  ) as Record<string, unknown>;
+  const updated = db.first('SELECT * FROM contracts WHERE id = ?', [
+    req.params.id,
+  ]) as Record<string, unknown>;
   res.json({ status: 'ok', data: enrichContract(updated) });
 });
 

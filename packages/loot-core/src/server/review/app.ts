@@ -7,12 +7,12 @@ import { getServer } from '../server-config';
 export type ReviewItem = {
   id: string;
   type:
-  | 'uncategorized'
-  | 'low_confidence'
-  | 'recurring_detected'
-  | 'amount_mismatch'
-  | 'budget_suggestion'
-  | 'parked_expense';
+    | 'uncategorized'
+    | 'low_confidence'
+    | 'recurring_detected'
+    | 'amount_mismatch'
+    | 'budget_suggestion'
+    | 'parked_expense';
   priority: 'urgent' | 'review' | 'suggestion';
   transaction_id: string | null;
   contract_id: string | null;
@@ -94,10 +94,9 @@ async function reviewCount(): Promise<ReviewCount | { error: string }> {
   if (!userToken) return { error: 'not-logged-in' };
 
   try {
-    const res = await get(
-      getServer().BASE_SERVER + '/review/count',
-      { headers: { 'X-ACTUAL-TOKEN': userToken } },
-    );
+    const res = await get(getServer().BASE_SERVER + '/review/count', {
+      headers: { 'X-ACTUAL-TOKEN': userToken },
+    });
     const parsed = JSON.parse(res);
     return parsed?.data;
   } catch (err) {
@@ -198,11 +197,9 @@ async function reviewCreate(args: {
   if (!userToken) return { error: 'not-logged-in' };
 
   try {
-    const result = await post(
-      getServer().BASE_SERVER + '/review',
-      args,
-      { 'X-ACTUAL-TOKEN': userToken },
-    );
+    const result = await post(getServer().BASE_SERVER + '/review', args, {
+      'X-ACTUAL-TOKEN': userToken,
+    });
     return result as ReviewItem;
   } catch (err) {
     return { error: err.reason || err.message || 'unknown' };
@@ -248,7 +245,9 @@ async function reviewAccept(args: {
 async function reviewReject(args: {
   id: string;
   correct_category_id?: string;
-}): Promise<{ rejected: boolean; correct_category_id: string | null } | { error: string }> {
+}): Promise<
+  { rejected: boolean; correct_category_id: string | null } | { error: string }
+> {
   const userToken = await asyncStorage.getItem('user-token');
   if (!userToken) return { error: 'not-logged-in' };
 

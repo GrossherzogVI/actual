@@ -33,14 +33,19 @@ function readError(err: unknown, fallback = 'unknown') {
   );
 }
 
-async function scenarioListBranches(): Promise<Array<Record<string, unknown>> | HandlerError> {
+async function scenarioListBranches(): Promise<
+  Array<Record<string, unknown>> | HandlerError
+> {
   const userToken = await asyncStorage.getItem('user-token');
   if (!userToken) {
     return { error: 'not-logged-in' };
   }
 
   try {
-    return await gatewayGet<Array<Record<string, unknown>>>('/scenario/v1/branches', userToken);
+    return await gatewayGet<Array<Record<string, unknown>>>(
+      '/scenario/v1/branches',
+      userToken,
+    );
   } catch (err) {
     return { error: readError(err, 'network-failure') };
   }

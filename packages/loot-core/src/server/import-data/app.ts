@@ -1,8 +1,8 @@
+import * as asyncStorage from '../../platform/server/asyncStorage';
 // @ts-strict-ignore
 import type { ImportTransactionEntity } from '../../types/models/import-transaction';
-import * as asyncStorage from '../../platform/server/asyncStorage';
-import { createApp } from '../app';
 import { importTransactions } from '../accounts/app';
+import { createApp } from '../app';
 import { post } from '../post';
 import { getServer } from '../server-config';
 
@@ -86,7 +86,8 @@ async function importFinanzguruCommit(args: {
     // If accountId is provided and accountMapping is empty, use it as fallback for all rows
     const byAccount = new Map<string, ImportPreviewRow[]>();
     let unmappedCount = 0;
-    const useFallback = args.accountId && Object.keys(accountMapping).length === 0;
+    const useFallback =
+      args.accountId && Object.keys(accountMapping).length === 0;
 
     for (const row of args.rows) {
       let accountId: string | undefined;
@@ -170,11 +171,9 @@ async function importCsvPreview(args: {
   if (!userToken) return { error: 'not-logged-in' };
 
   try {
-    const result = await post(
-      getServer().BASE_SERVER + '/import/csv',
-      args,
-      { 'X-ACTUAL-TOKEN': userToken },
-    );
+    const result = await post(getServer().BASE_SERVER + '/import/csv', args, {
+      'X-ACTUAL-TOKEN': userToken,
+    });
     return result as ImportPreviewResult;
   } catch (err) {
     return { error: err.reason || err.message || 'unknown' };
@@ -194,8 +193,7 @@ async function importCsvCommit(args: {
       payee_name: row.payee,
       imported_payee: row.payee,
       notes: row.notes ?? undefined,
-      imported_id:
-        row.imported_id ?? `${row.date}-${row.payee}-${row.amount}`,
+      imported_id: row.imported_id ?? `${row.date}-${row.payee}-${row.amount}`,
       category:
         args.categoryMapping?.[row.suggested_category_id ?? ''] ?? undefined,
     }));

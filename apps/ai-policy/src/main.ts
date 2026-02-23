@@ -39,7 +39,10 @@ const setPolicySchema = z.object({
   redactionMode: z.enum(['strict', 'balanced', 'off']),
 });
 
-function redactPrompt(prompt: string, mode: PolicyState['redactionMode']): string {
+function redactPrompt(
+  prompt: string,
+  mode: PolicyState['redactionMode'],
+): string {
   if (mode === 'off') return prompt;
 
   const ibanPattern = /\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b/g;
@@ -94,7 +97,10 @@ async function main() {
   });
 
   app.get('/v1/audit', async request => {
-    const limit = Math.min(200, Math.max(1, Number((request.query as { limit?: number }).limit || 50)));
+    const limit = Math.min(
+      200,
+      Math.max(1, Number((request.query as { limit?: number }).limit || 50)),
+    );
     return auditTrail.slice(0, limit);
   });
 
@@ -104,7 +110,8 @@ async function main() {
 
     const redactedPrompt = redactPrompt(payload.prompt, state.redactionMode);
     const provider = payload.providerHint || 'local/ollama';
-    const providerAllowed = !payload.providerHint || state.allowedProviders.includes(provider);
+    const providerAllowed =
+      !payload.providerHint || state.allowedProviders.includes(provider);
 
     const route =
       allowCloud && providerAllowed && payload.dataClass === 'public'

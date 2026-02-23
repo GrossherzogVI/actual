@@ -33,14 +33,19 @@ function readError(err: unknown, fallback = 'unknown') {
   );
 }
 
-async function delegateListLanes(): Promise<Array<Record<string, unknown>> | HandlerError> {
+async function delegateListLanes(): Promise<
+  Array<Record<string, unknown>> | HandlerError
+> {
   const userToken = await asyncStorage.getItem('user-token');
   if (!userToken) {
     return { error: 'not-logged-in' };
   }
 
   try {
-    return await gatewayGet<Array<Record<string, unknown>>>('/delegate/v1/lanes', userToken);
+    return await gatewayGet<Array<Record<string, unknown>>>(
+      '/delegate/v1/lanes',
+      userToken,
+    );
   } catch (err) {
     return { error: readError(err, 'network-failure') };
   }

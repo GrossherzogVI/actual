@@ -1,4 +1,7 @@
-import type { CommandParseError, CommandParseStep } from '@finance-os/domain-kernel';
+import type {
+  CommandParseError,
+  CommandParseStep,
+} from '@finance-os/domain-kernel';
 
 import type {
   ExecutionMode,
@@ -32,15 +35,13 @@ export type GuardrailEvaluationResult = {
   hasBlockingFailure: boolean;
 };
 
-function toRule(
-  input: {
-    ruleId: string;
-    passed: boolean;
-    message: string;
-    severity: GuardrailResult['severity'];
-    blocking: boolean;
-  },
-): GuardrailResult {
+function toRule(input: {
+  ruleId: string;
+  passed: boolean;
+  message: string;
+  severity: GuardrailResult['severity'];
+  blocking: boolean;
+}): GuardrailResult {
   return {
     ruleId: input.ruleId,
     passed: input.passed,
@@ -99,7 +100,8 @@ export function evaluateGuardrails(
           input.opsState.urgentReviews <= urgentThreshold
             ? `Urgent review pressure (${input.opsState.urgentReviews}) is within threshold (${urgentThreshold}).`
             : `Urgent reviews (${input.opsState.urgentReviews}) exceed threshold (${urgentThreshold}).`,
-        severity: input.opsState.urgentReviews <= urgentThreshold ? 'info' : 'critical',
+        severity:
+          input.opsState.urgentReviews <= urgentThreshold ? 'info' : 'critical',
         blocking: input.opsState.urgentReviews > urgentThreshold,
       }),
       allowDowngrade: true,
@@ -146,7 +148,9 @@ export function evaluateGuardrails(
     applyProfile(input.profile, item.rule, item.allowDowngrade),
   );
 
-  const hasBlockingFailure = results.some(result => !result.passed && result.blocking);
+  const hasBlockingFailure = results.some(
+    result => !result.passed && result.blocking,
+  );
   const modeAdjustedResults =
     input.mode === 'dry-run'
       ? results.map(result =>

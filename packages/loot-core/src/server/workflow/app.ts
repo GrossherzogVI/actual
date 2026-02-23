@@ -48,14 +48,19 @@ function readError(err: unknown, fallback = 'unknown') {
   );
 }
 
-async function workflowMoneyPulse(): Promise<WorkflowMoneyPulse | HandlerError> {
+async function workflowMoneyPulse(): Promise<
+  WorkflowMoneyPulse | HandlerError
+> {
   const userToken = await asyncStorage.getItem('user-token');
   if (!userToken) {
     return { error: 'not-logged-in' };
   }
 
   try {
-    return await gatewayGet<WorkflowMoneyPulse>('/workflow/v1/money-pulse', userToken);
+    return await gatewayGet<WorkflowMoneyPulse>(
+      '/workflow/v1/money-pulse',
+      userToken,
+    );
   } catch (err) {
     return { error: readError(err, 'network-failure') };
   }
@@ -98,7 +103,9 @@ async function workflowCommandRuns(args: {
   }
 }
 
-async function workflowResolveNextAction(): Promise<Record<string, unknown> | HandlerError> {
+async function workflowResolveNextAction(): Promise<
+  Record<string, unknown> | HandlerError
+> {
   const userToken = await asyncStorage.getItem('user-token');
   if (!userToken) {
     return { error: 'not-logged-in' };
@@ -115,14 +122,19 @@ async function workflowResolveNextAction(): Promise<Record<string, unknown> | Ha
   }
 }
 
-async function workflowPlaybookList(): Promise<Array<Record<string, unknown>> | HandlerError> {
+async function workflowPlaybookList(): Promise<
+  Array<Record<string, unknown>> | HandlerError
+> {
   const userToken = await asyncStorage.getItem('user-token');
   if (!userToken) {
     return { error: 'not-logged-in' };
   }
 
   try {
-    return await gatewayGet<Array<Record<string, unknown>>>('/workflow/v1/playbooks', userToken);
+    return await gatewayGet<Array<Record<string, unknown>>>(
+      '/workflow/v1/playbooks',
+      userToken,
+    );
   } catch (err) {
     return { error: readError(err, 'network-failure') };
   }

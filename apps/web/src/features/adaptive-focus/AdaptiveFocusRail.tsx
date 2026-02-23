@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Trans } from 'react-i18next';
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { apiClient } from '../../core/api/client';
@@ -8,6 +10,7 @@ import type {
   FocusAction,
   GuardrailProfile,
 } from '../../core/types';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -56,7 +59,10 @@ function clampRollbackWindow(minutes: number): number {
 }
 
 function executionPlanForAction(action: FocusAction): FocusActionExecutionPlan {
-  if (typeof action.recommendedChain === 'string' && action.recommendedChain.trim()) {
+  if (
+    typeof action.recommendedChain === 'string' &&
+    action.recommendedChain.trim()
+  ) {
     return {
       chain: action.recommendedChain.trim(),
       assignee: action.recommendedAssignee || 'delegate',
@@ -81,7 +87,8 @@ function executionPlanForAction(action: FocusAction): FocusActionExecutionPlan {
   }
   if (action.id === 'focus-expiring-contracts') {
     return {
-      chain: 'triage -> open-expiring-contracts -> assign-expiring-contracts-lane',
+      chain:
+        'triage -> open-expiring-contracts -> assign-expiring-contracts-lane',
       assignee: 'delegate',
       fallbackRoute: '/contracts?filter=expiring',
       defaultExecutionMode: 'live',
@@ -111,7 +118,8 @@ function executionPlanForAction(action: FocusAction): FocusActionExecutionPlan {
   }
   if (action.id === 'focus-delegate-lanes-stale') {
     return {
-      chain: 'triage -> escalate-stale-lanes -> delegate-triage-batch -> apply-batch-policy',
+      chain:
+        'triage -> escalate-stale-lanes -> delegate-triage-batch -> apply-batch-policy',
       assignee: 'delegate',
       fallbackRoute: '/ops#delegate-lanes',
       defaultExecutionMode: 'live',
@@ -129,7 +137,10 @@ function executionPlanForAction(action: FocusAction): FocusActionExecutionPlan {
   };
 }
 
-export function AdaptiveFocusRail({ onRoute, onStatus }: AdaptiveFocusRailProps) {
+export function AdaptiveFocusRail({
+  onRoute,
+  onStatus,
+}: AdaptiveFocusRailProps) {
   const queryClient = useQueryClient();
   const [selectedActionId, setSelectedActionId] = useState('');
   const [note, setNote] = useState('');
@@ -166,7 +177,8 @@ export function AdaptiveFocusRail({ onRoute, onStatus }: AdaptiveFocusRailProps)
   }, [outcomes.data]);
 
   const selectedAction =
-    rankedActions.find(action => action.id === selectedActionId) || rankedActions[0];
+    rankedActions.find(action => action.id === selectedActionId) ||
+    rankedActions[0];
 
   const selectedActionPlan = useMemo(
     () => (selectedAction ? executionPlanForAction(selectedAction) : null),
@@ -180,10 +192,7 @@ export function AdaptiveFocusRail({ onRoute, onStatus }: AdaptiveFocusRailProps)
     setExecutionMode(selectedActionPlan.defaultExecutionMode);
     setGuardrailProfile(selectedActionPlan.defaultGuardrailProfile);
     setRollbackWindowMinutes(selectedActionPlan.defaultRollbackWindowMinutes);
-  }, [
-    selectedAction?.id,
-    selectedActionPlan,
-  ]);
+  }, [selectedAction?.id, selectedActionPlan]);
 
   const selectedActionOutcomes = useMemo(
     () =>
@@ -194,11 +203,17 @@ export function AdaptiveFocusRail({ onRoute, onStatus }: AdaptiveFocusRailProps)
   );
 
   const recordOutcome = useMutation({
-    mutationFn: async (input: { actionId: string; outcome: string; notes?: string }) =>
+    mutationFn: async (input: {
+      actionId: string;
+      outcome: string;
+      notes?: string;
+    }) =>
       apiClient.recordActionOutcome(input.actionId, input.outcome, input.notes),
     onSuccess: async (_, input) => {
       if (onStatus) {
-        onStatus(`Recorded "${formatOutcome(input.outcome)}" for ${input.actionId}.`);
+        onStatus(
+          `Recorded "${formatOutcome(input.outcome)}" for ${input.actionId}.`,
+        );
       }
       setNote('');
       await Promise.all([
@@ -263,12 +278,16 @@ export function AdaptiveFocusRail({ onRoute, onStatus }: AdaptiveFocusRailProps)
         throw new Error('No focus action selected');
       }
       const plan = selectedActionPlan;
-      const run = await apiClient.executeCommandChain(plan.chain, plan.assignee, {
-        executionMode,
-        guardrailProfile,
-        rollbackWindowMinutes,
-        rollbackOnFailure: executionMode === 'live',
-      });
+      const run = await apiClient.executeCommandChain(
+        plan.chain,
+        plan.assignee,
+        {
+          executionMode,
+          guardrailProfile,
+          rollbackWindowMinutes,
+          rollbackOnFailure: executionMode === 'live',
+        },
+      );
       return {
         actionTitle: selectedAction.title,
         plan,
@@ -277,7 +296,8 @@ export function AdaptiveFocusRail({ onRoute, onStatus }: AdaptiveFocusRailProps)
     },
     onSuccess: async ({ actionTitle, plan, run }) => {
       const nextRoute =
-        run.steps.find(step => typeof step.route === 'string')?.route || plan.fallbackRoute;
+        run.steps.find(step => typeof step.route === 'string')?.route ||
+        plan.fallbackRoute;
       onRoute(nextRoute);
       if (onStatus) {
         onStatus(
@@ -328,7 +348,9 @@ export function AdaptiveFocusRail({ onRoute, onStatus }: AdaptiveFocusRailProps)
         queryClient.invalidateQueries({ queryKey: ['scenario-branches'] }),
         queryClient.invalidateQueries({ queryKey: ['scenario-mutations'] }),
         queryClient.invalidateQueries({ queryKey: ['scenario-compare'] }),
-        queryClient.invalidateQueries({ queryKey: ['scenario-adoption-check'] }),
+        queryClient.invalidateQueries({
+          queryKey: ['scenario-adoption-check'],
+        }),
         queryClient.invalidateQueries({ queryKey: ['scenario-lineage'] }),
       ]);
     },
@@ -353,8 +375,13 @@ export function AdaptiveFocusRail({ onRoute, onStatus }: AdaptiveFocusRailProps)
   return (
     <section className="fo-panel">
       <header className="fo-panel-header">
-        <h2>Adaptive Focus Workbench</h2>
-        <small>Ranked action lane with single-action depth and batch execution controls.</small>
+        <h2>
+          <Trans>Adaptive Focus Workbench</Trans>
+        </h2>
+        <small>
+          Ranked action lane with single-action depth and batch execution
+          controls.
+        </small>
       </header>
 
       {focus.isLoading ? <small>Loading focus panel...</small> : null}
@@ -366,7 +393,7 @@ export function AdaptiveFocusRail({ onRoute, onStatus }: AdaptiveFocusRailProps)
           disabled={runResolveNext.isPending}
           onClick={() => runResolveNext.mutate()}
         >
-          {runResolveNext.isPending ? 'Resolving...' : 'Resolve Next + Open'}
+          {runResolveNext.isPending ? 'Resolving...' : t('Resolve Next + Open')}
         </Button>
         <Button
           variant="secondary"
@@ -382,7 +409,9 @@ export function AdaptiveFocusRail({ onRoute, onStatus }: AdaptiveFocusRailProps)
           aria-label="focus execution mode"
           className="fo-input"
           value={executionMode}
-          onChange={event => setExecutionMode(event.target.value as ExecutionMode)}
+          onChange={event =>
+            setExecutionMode(event.target.value as ExecutionMode)
+          }
         >
           <option value="dry-run">dry-run</option>
           <option value="live">live</option>
@@ -419,8 +448,8 @@ export function AdaptiveFocusRail({ onRoute, onStatus }: AdaptiveFocusRailProps)
           {executeSelectedAction.isPending
             ? 'Executing...'
             : executionMode === 'live'
-              ? 'Execute selected live'
-              : 'Dry-run selected action'}
+              ? t('Execute selected live')
+              : t('Dry-run selected action')}
         </Button>
         <Button
           variant="secondary"
@@ -429,7 +458,7 @@ export function AdaptiveFocusRail({ onRoute, onStatus }: AdaptiveFocusRailProps)
         >
           {simulateSelectedAction.isPending
             ? 'Simulating...'
-            : 'Simulate selected in twin'}
+            : t('Simulate selected in twin')}
         </Button>
       </div>
 
@@ -459,7 +488,10 @@ export function AdaptiveFocusRail({ onRoute, onStatus }: AdaptiveFocusRailProps)
                 </div>
                 <small>{action.reason}</small>
                 <small>
-                  last: {latestOutcome ? formatOutcome(latestOutcome.outcome) : 'none'}
+                  last:{' '}
+                  {latestOutcome
+                    ? formatOutcome(latestOutcome.outcome)
+                    : 'none'}
                 </small>
               </button>
             );
@@ -492,35 +524,37 @@ export function AdaptiveFocusRail({ onRoute, onStatus }: AdaptiveFocusRailProps)
                 <Button
                   variant="secondary"
                   onClick={() => onRoute(selectedAction.route)}
-                >
+                ><Trans>
                   Open
-                </Button>
+                </Trans></Button>
                 <Button
                   variant="secondary"
                   disabled={recordOutcome.isPending}
                   onClick={() => applyOutcome('accepted')}
-                >
+                ><Trans>
                   Accept
-                </Button>
+                </Trans></Button>
                 <Button
                   variant="secondary"
                   disabled={recordOutcome.isPending}
                   onClick={() => applyOutcome('deferred')}
-                >
+                ><Trans>
                   Defer
-                </Button>
+                </Trans></Button>
                 <Button
                   variant="secondary"
                   disabled={recordOutcome.isPending}
                   onClick={() => applyOutcome('rejected')}
-                >
+                ><Trans>
                   Reject
-                </Button>
+                </Trans></Button>
               </div>
 
               <div className="fo-focus-outcomes">
                 {selectedActionOutcomes.length === 0 ? (
-                  <small className="fo-muted-line">No recent outcomes for this action.</small>
+                  <small className="fo-muted-line">
+                    No recent outcomes for this action.
+                  </small>
                 ) : (
                   selectedActionOutcomes.map(outcome => (
                     <article
@@ -529,7 +563,9 @@ export function AdaptiveFocusRail({ onRoute, onStatus }: AdaptiveFocusRailProps)
                     >
                       <div className="fo-space-between">
                         <strong>{formatOutcome(outcome.outcome)}</strong>
-                        <small>{new Date(outcome.recordedAtMs).toLocaleTimeString()}</small>
+                        <small>
+                          {new Date(outcome.recordedAtMs).toLocaleTimeString()}
+                        </small>
                       </div>
                       {outcome.notes ? <small>{outcome.notes}</small> : null}
                     </article>

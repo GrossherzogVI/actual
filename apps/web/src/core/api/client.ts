@@ -20,9 +20,10 @@ import type {
   OpsActivitySeverity,
   OpsBackfillResult,
   OpsMaintenanceResult,
-  QueueRequeueExpiredResult,
   Playbook,
   PlaybookRun,
+  QueueRequeueExpiredResult,
+  ReplayWorkerDeadLettersResult,
   RuntimeMetrics,
   ScenarioAdoptionCheck,
   ScenarioBranch,
@@ -33,19 +34,16 @@ import type {
   ScenarioSimulationResult,
   ScenarioSimulationSource,
   TemporalSignals,
-  ReplayWorkerDeadLettersResult,
   WorkerDeadLetter,
   WorkerQueueHealth,
   WorkflowCommandExecution,
 } from '../types';
 
-const gatewayBaseUrl = import.meta.env.VITE_GATEWAY_URL || 'http://localhost:7070';
+const gatewayBaseUrl =
+  import.meta.env.VITE_GATEWAY_URL || 'http://localhost:7070';
 const gatewayInternalToken = import.meta.env.VITE_GATEWAY_INTERNAL_TOKEN || '';
 
-async function request<T>(
-  path: string,
-  init?: RequestInit,
-): Promise<T> {
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${gatewayBaseUrl}${path}`, {
     ...init,
     headers: {
@@ -98,7 +96,8 @@ function normalizeRunOptions(
       Math.min(1440, Math.trunc(input?.rollbackWindowMinutes ?? 60)),
     ),
     idempotencyKey:
-      typeof input?.idempotencyKey === 'string' && input.idempotencyKey.length >= 8
+      typeof input?.idempotencyKey === 'string' &&
+      input.idempotencyKey.length >= 8
         ? input.idempotencyKey
         : undefined,
     rollbackOnFailure:
@@ -128,13 +127,17 @@ export const apiClient = {
   },
 
   resolveNextAction() {
-    return request<{ id: string; title: string; route: string; confidence: number }>(
-      '/workflow/v1/resolve-next-action',
-      {
-        method: 'POST',
-        body: JSON.stringify({ envelope: commandEnvelope('resolve-next-action') }),
-      },
-    );
+    return request<{
+      id: string;
+      title: string;
+      route: string;
+      confidence: number;
+    }>('/workflow/v1/resolve-next-action', {
+      method: 'POST',
+      body: JSON.stringify({
+        envelope: commandEnvelope('resolve-next-action'),
+      }),
+    });
   },
 
   getFocusPanel() {
@@ -160,17 +163,14 @@ export const apiClient = {
     const normalized = normalizeRunOptions(options, {
       executionMode: 'dry-run',
     });
-    return request<PlaybookRun>(
-      '/workflow/v1/run-playbook',
-      {
-        method: 'POST',
-        body: JSON.stringify({
-          envelope: commandEnvelope('run-playbook'),
-          playbookId,
-          ...normalized,
-        }),
-      },
-    );
+    return request<PlaybookRun>('/workflow/v1/run-playbook', {
+      method: 'POST',
+      body: JSON.stringify({
+        envelope: commandEnvelope('run-playbook'),
+        playbookId,
+        ...normalized,
+      }),
+    });
   },
 
   listPlaybookRuns(input?: {
@@ -206,7 +206,9 @@ export const apiClient = {
     if (typeof input?.hasErrors === 'boolean') {
       params.set('hasErrors', String(input.hasErrors));
     }
-    return request<PlaybookRun[]>(`/workflow/v1/playbook-runs?${params.toString()}`);
+    return request<PlaybookRun[]>(
+      `/workflow/v1/playbook-runs?${params.toString()}`,
+    );
   },
 
   replayPlaybookRun(runId: string, options?: Partial<RunExecutionOptions>) {
@@ -224,16 +226,13 @@ export const apiClient = {
   },
 
   runCloseRoutine(period: 'weekly' | 'monthly') {
-    return request<CloseRun>(
-      '/workflow/v1/run-close-routine',
-      {
-        method: 'POST',
-        body: JSON.stringify({
-          envelope: commandEnvelope('run-close-routine'),
-          period,
-        }),
-      },
-    );
+    return request<CloseRun>('/workflow/v1/run-close-routine', {
+      method: 'POST',
+      body: JSON.stringify({
+        envelope: commandEnvelope('run-close-routine'),
+        period,
+      }),
+    });
   },
 
   listCloseRuns(input?: {
@@ -310,9 +309,7 @@ export const apiClient = {
   listCommandRunsByIds(runIds: string[]) {
     const normalized = Array.from(
       new Set(
-        runIds
-          .map(runId => runId.trim())
-          .filter(runId => runId.length > 0),
+        runIds.map(runId => runId.trim()).filter(runId => runId.length > 0),
       ),
     ).slice(0, 200);
 
@@ -320,12 +317,15 @@ export const apiClient = {
       return Promise.resolve([]);
     }
 
-    return request<WorkflowCommandExecution[]>('/workflow/v1/list-command-runs-by-ids', {
-      method: 'POST',
-      body: JSON.stringify({
-        runIds: normalized,
-      }),
-    });
+    return request<WorkflowCommandExecution[]>(
+      '/workflow/v1/list-command-runs-by-ids',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          runIds: normalized,
+        }),
+      },
+    );
   },
 
   rollbackPlaybookRun(runId: string, reason?: string) {
@@ -340,14 +340,17 @@ export const apiClient = {
   },
 
   rollbackCommandRun(runId: string, reason?: string) {
-    return request<WorkflowCommandExecution>('/workflow/v1/rollback-command-run', {
-      method: 'POST',
-      body: JSON.stringify({
-        envelope: commandEnvelope('rollback-command-run'),
-        runId,
-        reason,
-      }),
-    });
+    return request<WorkflowCommandExecution>(
+      '/workflow/v1/rollback-command-run',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          envelope: commandEnvelope('rollback-command-run'),
+          runId,
+          reason,
+        }),
+      },
+    );
   },
 
   listOpsActivity(input?: {
@@ -426,20 +429,23 @@ export const apiClient = {
     workerId?: string;
     jobName?: string;
   }) {
-    return request<WorkerDeadLetter[]>('/workflow/v1/list-worker-dead-letters', {
-      method: 'POST',
-      headers: gatewayInternalToken
-        ? {
-            'x-finance-internal-token': gatewayInternalToken,
-          }
-        : undefined,
-      body: JSON.stringify({
-        limit: Math.max(1, Math.min(200, Math.trunc(input?.limit ?? 20))),
-        status: input?.status,
-        workerId: input?.workerId,
-        jobName: input?.jobName,
-      }),
-    });
+    return request<WorkerDeadLetter[]>(
+      '/workflow/v1/list-worker-dead-letters',
+      {
+        method: 'POST',
+        headers: gatewayInternalToken
+          ? {
+              'x-finance-internal-token': gatewayInternalToken,
+            }
+          : undefined,
+        body: JSON.stringify({
+          limit: Math.max(1, Math.min(200, Math.trunc(input?.limit ?? 20))),
+          status: input?.status,
+          workerId: input?.workerId,
+          jobName: input?.jobName,
+        }),
+      },
+    );
   },
 
   replayWorkerDeadLetters(input?: {
@@ -480,19 +486,22 @@ export const apiClient = {
     operatorId?: string;
     resolutionNote?: string;
   }) {
-    return request<WorkerDeadLetter>('/workflow/v1/resolve-worker-dead-letter', {
-      method: 'POST',
-      headers: gatewayInternalToken
-        ? {
-            'x-finance-internal-token': gatewayInternalToken,
-          }
-        : undefined,
-      body: JSON.stringify({
-        deadLetterId: input.deadLetterId,
-        operatorId: input.operatorId || 'operator',
-        resolutionNote: input.resolutionNote,
-      }),
-    });
+    return request<WorkerDeadLetter>(
+      '/workflow/v1/resolve-worker-dead-letter',
+      {
+        method: 'POST',
+        headers: gatewayInternalToken
+          ? {
+              'x-finance-internal-token': gatewayInternalToken,
+            }
+          : undefined,
+        body: JSON.stringify({
+          deadLetterId: input.deadLetterId,
+          operatorId: input.operatorId || 'operator',
+          resolutionNote: input.resolutionNote,
+        }),
+      },
+    );
   },
 
   reopenWorkerDeadLetter(input: {
@@ -531,7 +540,10 @@ export const apiClient = {
       body: JSON.stringify({
         windowMs:
           typeof input?.windowMs === 'number'
-            ? Math.max(60_000, Math.min(604_800_000, Math.trunc(input.windowMs)))
+            ? Math.max(
+                60_000,
+                Math.min(604_800_000, Math.trunc(input.windowMs)),
+              )
             : 3_600_000,
         sampleLimit:
           typeof input?.sampleLimit === 'number'
@@ -604,7 +616,9 @@ export const apiClient = {
     const params = new URLSearchParams();
     params.set('laneId', laneId);
     params.set('limit', String(Math.max(1, Math.min(limit, 200))));
-    return request<DelegateLaneEvent[]>(`/delegate/v1/lane-events?${params.toString()}`);
+    return request<DelegateLaneEvent[]>(
+      `/delegate/v1/lane-events?${params.toString()}`,
+    );
   },
 
   assignDelegateLane(
@@ -711,7 +725,9 @@ export const apiClient = {
   listScenarioMutations(branchId: string) {
     const params = new URLSearchParams();
     params.set('branchId', branchId);
-    return request<ScenarioMutation[]>(`/scenario/v1/mutations?${params.toString()}`);
+    return request<ScenarioMutation[]>(
+      `/scenario/v1/mutations?${params.toString()}`,
+    );
   },
 
   getScenarioAdoptionCheck(branchId: string, againstBranchId?: string) {
@@ -728,7 +744,9 @@ export const apiClient = {
   getScenarioLineage(branchId: string) {
     const params = new URLSearchParams();
     params.set('branchId', branchId);
-    return request<ScenarioLineage | null>(`/scenario/v1/lineage?${params.toString()}`);
+    return request<ScenarioLineage | null>(
+      `/scenario/v1/lineage?${params.toString()}`,
+    );
   },
 
   createScenarioBranch(name: string, baseBranchId?: string, notes?: string) {
@@ -817,18 +835,21 @@ export const apiClient = {
       },
     );
 
-    return request<ScenarioBranchPromotionResult>('/scenario/v1/promote-branch-run', {
-      method: 'POST',
-      body: JSON.stringify({
-        envelope: commandEnvelope('promote-scenario-branch-run'),
-        branchId: input.branchId,
-        mutationId: input.mutationId,
-        assignee: input.assignee,
-        sourceSurface: input.sourceSurface,
-        note: input.note,
-        ...normalized,
-      }),
-    });
+    return request<ScenarioBranchPromotionResult>(
+      '/scenario/v1/promote-branch-run',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          envelope: commandEnvelope('promote-scenario-branch-run'),
+          branchId: input.branchId,
+          mutationId: input.mutationId,
+          assignee: input.assignee,
+          sourceSurface: input.sourceSurface,
+          note: input.note,
+          ...normalized,
+        }),
+      },
+    );
   },
 
   adoptScenarioBranch(
@@ -873,16 +894,17 @@ export const apiClient = {
   },
 
   explainRecommendation(recommendation: AppRecommendation) {
-    return request<{ explanation: string; confidence: number; reversible: boolean }>(
-      '/intelligence/v1/explain',
-      {
-        method: 'POST',
-        body: JSON.stringify({
-          envelope: commandEnvelope('explain'),
-          recommendation,
-        }),
-      },
-    );
+    return request<{
+      explanation: string;
+      confidence: number;
+      reversible: boolean;
+    }>('/intelligence/v1/explain', {
+      method: 'POST',
+      body: JSON.stringify({
+        envelope: commandEnvelope('explain'),
+        recommendation,
+      }),
+    });
   },
 
   recordActionOutcome(actionId: string, outcome: string, notes?: string) {
@@ -903,7 +925,9 @@ export const apiClient = {
     if (input?.actionId) {
       params.set('actionId', input.actionId);
     }
-    return request<ActionOutcome[]>(`/focus/v1/action-outcomes?${params.toString()}`);
+    return request<ActionOutcome[]>(
+      `/focus/v1/action-outcomes?${params.toString()}`,
+    );
   },
 
   getEgressPolicy() {

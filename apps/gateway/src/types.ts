@@ -44,7 +44,11 @@ export type GuardrailResult = {
   blocking: boolean;
 };
 
-export type EffectSummaryStatus = 'planned' | 'applied' | 'rolled-back' | 'skipped';
+export type EffectSummaryStatus =
+  | 'planned'
+  | 'applied'
+  | 'rolled-back'
+  | 'skipped';
 
 export type EffectSummary = {
   effectId: string;
@@ -235,7 +239,13 @@ export type DelegateLane = {
 export type DelegateLaneEvent = {
   id: string;
   laneId: string;
-  type: 'assigned' | 'accepted' | 'completed' | 'rejected' | 'comment' | 'reopened';
+  type:
+    | 'assigned'
+    | 'accepted'
+    | 'completed'
+    | 'rejected'
+    | 'comment'
+    | 'reopened';
   actorId: string;
   message?: string;
   payload?: Record<string, unknown>;

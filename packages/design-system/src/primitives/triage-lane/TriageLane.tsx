@@ -72,7 +72,12 @@ export function TriageLane({ title, items }: TriageLaneProps) {
                   flexShrink: 0,
                 }}
               />
-              <strong style={{ fontFamily: commandCenterTokens.font.dense, fontSize: 13 }}>
+              <strong
+                style={{
+                  fontFamily: commandCenterTokens.font.dense,
+                  fontSize: 13,
+                }}
+              >
                 {item.title}
               </strong>
             </div>

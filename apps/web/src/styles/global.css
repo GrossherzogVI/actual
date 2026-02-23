@@ -51,15 +51,15 @@
   --fo-bg: #161616;
   --fo-bg-2: #202020;
   --fo-panel: #202020;
-  --fo-border: #2E2E2E;
-  --fo-text: #EDEDED;
-  --fo-muted: #A6A6A6;
+  --fo-border: #2e2e2e;
+  --fo-text: #ededed;
+  --fo-muted: #a6a6a6;
 
   /* Smart Semantic Colors - Elegant Application */
-  --fo-danger: #EF4444;
-  --fo-ok: #10B981;
-  --fo-accent: #F59E0B;
-  --fo-info: #3B82F6;
+  --fo-danger: #ef4444;
+  --fo-ok: #10b981;
+  --fo-accent: #f59e0b;
+  --fo-info: #3b82f6;
 }
 
 @layer base {
@@ -203,19 +203,19 @@ pre {
 .fo-anomaly-badge-blocked {
   background: rgba(239, 68, 68, 0.08);
   border-color: rgba(239, 68, 68, 0.2);
-  color: #F87171;
+  color: #f87171;
 }
 
 .fo-anomaly-badge-failed {
   background: rgba(245, 158, 11, 0.08);
   border-color: rgba(245, 158, 11, 0.2);
-  color: #FBBF24;
+  color: #fbbf24;
 }
 
 .fo-anomaly-badge-rollback {
   background: rgba(59, 130, 246, 0.08);
   border-color: rgba(59, 130, 246, 0.2);
-  color: #60A5FA;
+  color: #60a5fa;
 }
 
 .fo-action-chip {
@@ -313,7 +313,10 @@ pre {
   padding: 20px;
   display: grid;
   gap: 16px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -2px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
   position: relative;
   overflow: hidden;
   transition: all 200ms ease-out;
@@ -321,7 +324,10 @@ pre {
 
 .fo-panel:hover {
   border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -4px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.2),
+    0 4px 6px -4px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .fo-panel-header {
@@ -372,7 +378,9 @@ pre {
 .fo-input:focus {
   outline: none;
   border-color: var(--fo-info);
-  box-shadow: 0 0 0 1px var(--fo-info), 0 0 12px rgba(59, 130, 246, 0.15);
+  box-shadow:
+    0 0 0 1px var(--fo-info),
+    0 0 12px rgba(59, 130, 246, 0.15);
 }
 
 .fo-btn,
@@ -385,13 +393,17 @@ pre {
   font-weight: 500;
   cursor: pointer;
   transition: all 200ms ease-out;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02);
 }
 
 .fo-btn:hover {
   background: var(--fo-bg-2);
   border-color: rgba(255, 255, 255, 0.15);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .fo-btn-secondary {
@@ -911,7 +923,9 @@ pre {
   border: 1px solid var(--fo-border);
   border-radius: 8px;
   background: var(--fo-bg-2);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.8),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
   padding: 8px;
 }
 

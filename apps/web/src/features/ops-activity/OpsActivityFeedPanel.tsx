@@ -1,8 +1,11 @@
 import { useMemo, useState } from 'react';
+import { Trans } from 'react-i18next';
+
 import { useInfiniteQuery } from '@tanstack/react-query';
 
-import type { OpsActivityKind, OpsActivitySeverity } from '../../core/types';
 import { apiClient } from '../../core/api/client';
+import type { OpsActivityKind, OpsActivitySeverity } from '../../core/types';
+
 import { Button } from '@/components/ui/button';
 
 type OpsActivityFeedPanelProps = {
@@ -20,7 +23,10 @@ const kindOptions: Array<{ id: 'all' | OpsActivityKind; label: string }> = [
   { id: 'policy-egress', label: 'Policy' },
 ];
 
-const severityOptions: Array<{ id: 'all' | OpsActivitySeverity; label: string }> = [
+const severityOptions: Array<{
+  id: 'all' | OpsActivitySeverity;
+  label: string;
+}> = [
   { id: 'all', label: 'All' },
   { id: 'critical', label: 'Critical' },
   { id: 'warn', label: 'Warnings' },
@@ -29,7 +35,9 @@ const severityOptions: Array<{ id: 'all' | OpsActivitySeverity; label: string }>
 
 export function OpsActivityFeedPanel({ onRoute }: OpsActivityFeedPanelProps) {
   const [kindFilter, setKindFilter] = useState<'all' | OpsActivityKind>('all');
-  const [severityFilter, setSeverityFilter] = useState<'all' | OpsActivitySeverity>('all');
+  const [severityFilter, setSeverityFilter] = useState<
+    'all' | OpsActivitySeverity
+  >('all');
 
   const activity = useInfiniteQuery({
     queryKey: ['ops-activity', kindFilter, severityFilter],
@@ -53,8 +61,13 @@ export function OpsActivityFeedPanel({ onRoute }: OpsActivityFeedPanelProps) {
   return (
     <section className="fo-panel">
       <header className="fo-panel-header">
-        <h2>Ops Activity Feed</h2>
-        <small>Cross-plane timeline for commands, playbooks, delegates, focus, and scenarios.</small>
+        <h2>
+          <Trans>Ops Activity Feed</Trans>
+        </h2>
+        <small>
+          Cross-plane timeline for commands, playbooks, delegates, focus, and
+          scenarios.
+        </small>
       </header>
 
       <div className="fo-stack">
@@ -86,7 +99,9 @@ export function OpsActivityFeedPanel({ onRoute }: OpsActivityFeedPanelProps) {
           </div>
         </div>
 
-        {activity.isLoading ? <small>Loading activity timeline...</small> : null}
+        {activity.isLoading ? (
+          <small>Loading activity timeline...</small>
+        ) : null}
         {activity.isError ? <small>Activity feed unavailable.</small> : null}
         {!activity.isLoading && events.length === 0 ? (
           <small>No activity matching current filters.</small>
@@ -116,9 +131,9 @@ export function OpsActivityFeedPanel({ onRoute }: OpsActivityFeedPanelProps) {
                     size="sm"
                     variant="secondary"
                     onClick={() => onRoute(event.route || '/ops')}
-                  >
+                  ><Trans>
                     Open
-                  </Button>
+                  </Trans></Button>
                 ) : null}
               </div>
             </article>
@@ -133,7 +148,7 @@ export function OpsActivityFeedPanel({ onRoute }: OpsActivityFeedPanelProps) {
               void activity.fetchNextPage();
             }}
           >
-            {activity.isFetchingNextPage ? 'Loading more...' : 'Load More'}
+            {activity.isFetchingNextPage ? 'Loading more...' : t('Load More')}
           </Button>
         ) : null}
       </div>

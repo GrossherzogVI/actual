@@ -7,6 +7,7 @@ Systematically overhaul **every** UI component and page in this personal finance
 ## Important: Use the shadcn MCP
 
 You have access to the **shadcn MCP server**. Use it to:
+
 - Browse and search for additional components as needed
 - Install new shadcn components directly (e.g., `sidebar`, `navigation-menu`, `chart`, `form`, `data-table`)
 - Check available shadcn blocks for pre-built layouts
@@ -19,15 +20,15 @@ If you need a component that isn't installed yet, use the MCP to add it. Don't b
 
 The theme is fully configured in `packages/desktop-client/src/globals.css`. Key tokens:
 
-| Token | Light | Dark | Usage |
-|-------|-------|------|-------|
-| `--primary` | Blue `oklch(0.5461 0.2152 262.88)` | Lighter blue `oklch(0.6231 0.1880 259.81)` | Primary actions, active states, links |
-| `--background` | Off-white `oklch(0.9842 0.0034 247.86)` | Deep navy `oklch(0.1288 0.0406 264.70)` | Page backgrounds |
-| `--card` | Pure white | Dark card `oklch(0.2077 0.0398 265.75)` | Cards, panels, widgets |
-| `--muted` | Light gray | Dark gray `oklch(0.2795)` | Subtle backgrounds, disabled states |
-| `--destructive` | Red | Dark red | Delete, errors, overdraft warnings |
-| `--sidebar-*` | Dedicated sidebar tokens | Dedicated sidebar tokens | Sidebar navigation |
-| `--chart-1..5` | 5-color palette | 5-color palette (different) | All chart visualizations |
+| Token           | Light                                   | Dark                                       | Usage                                 |
+| --------------- | --------------------------------------- | ------------------------------------------ | ------------------------------------- |
+| `--primary`     | Blue `oklch(0.5461 0.2152 262.88)`      | Lighter blue `oklch(0.6231 0.1880 259.81)` | Primary actions, active states, links |
+| `--background`  | Off-white `oklch(0.9842 0.0034 247.86)` | Deep navy `oklch(0.1288 0.0406 264.70)`    | Page backgrounds                      |
+| `--card`        | Pure white                              | Dark card `oklch(0.2077 0.0398 265.75)`    | Cards, panels, widgets                |
+| `--muted`       | Light gray                              | Dark gray `oklch(0.2795)`                  | Subtle backgrounds, disabled states   |
+| `--destructive` | Red                                     | Dark red                                   | Delete, errors, overdraft warnings    |
+| `--sidebar-*`   | Dedicated sidebar tokens                | Dedicated sidebar tokens                   | Sidebar navigation                    |
+| `--chart-1..5`  | 5-color palette                         | 5-color palette (different)                | All chart visualizations              |
 
 Font: Inter (sans), JetBrains Mono (mono), Georgia (serif). Tight letter-spacing (-0.01em light, -0.02em dark).
 
@@ -37,16 +38,27 @@ Font: Inter (sans), JetBrains Mono (mono), Georgia (serif). Tight letter-spacing
 import { cn } from '@/lib/utils';
 
 // Merge Tailwind classes with conflict resolution
-<div className={cn("bg-card text-card-foreground rounded-lg p-4", isActive && "border-primary")} />
+<div
+  className={cn(
+    'bg-card text-card-foreground rounded-lg p-4',
+    isActive && 'border-primary',
+  )}
+/>;
 ```
 
 ### Import Path Convention
 
 All shadcn components live at `@/components/ui/`:
+
 ```tsx
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 ```
 
 ## Installed shadcn Components (25)
@@ -60,6 +72,7 @@ switch       table       tabs        textarea    tooltip
 ```
 
 Install more as needed via the MCP. Likely candidates:
+
 - `sidebar` — for the main navigation overhaul
 - `navigation-menu` — for top-level nav if needed
 - `form` — for structured form layouts with validation
@@ -164,6 +177,7 @@ packages/desktop-client/
 ## Migration Rules
 
 ### DO
+
 - Use `cn()` from `@/lib/utils` for all className merging
 - Use Tailwind utility classes (e.g., `bg-card`, `text-muted-foreground`, `rounded-lg`)
 - Use theme CSS variables via Tailwind (e.g., `bg-primary`, `text-destructive`, `border-border`)
@@ -174,6 +188,7 @@ packages/desktop-client/
 - Maintain all existing functionality — this is a UI reskin, not a feature change
 
 ### DON'T
+
 - Don't use `@emotion/css` for new code — use Tailwind classes
 - Don't use `style={{ }}` inline styles — use Tailwind classes
 - Don't use `@actual-app/components` View/Text — use `<div>`/`<span>` with Tailwind
@@ -186,6 +201,7 @@ packages/desktop-client/
 ### Coexistence Strategy
 
 During migration, both systems coexist:
+
 - Old: `@emotion/css` + `@actual-app/components` (View, Text, Button, etc.)
 - New: Tailwind + shadcn/ui
 - Migrate page-by-page, component-by-component
@@ -194,23 +210,23 @@ During migration, both systems coexist:
 
 ## File-by-File Priority
 
-| Priority | File/Directory | Impact |
-|----------|---------------|--------|
-| 1 | `sidebar/` | Seen on every page |
-| 2 | `dashboard/` + widgets | Landing page, first impression |
-| 3 | `common/` (Toast, Search) | Used everywhere |
-| 4 | `quick-add/` | High-frequency interaction |
-| 5 | `contracts/` | Custom page, heavy table use |
-| 6 | `calendar/` | Custom page, card-heavy |
-| 7 | `analytics/` | Custom page, chart + tabs |
-| 8 | `review/` | Custom page, list + badges |
-| 9 | `import/` | Wizard flow |
-| 10 | `tags/` | Simple CRUD |
-| 11 | `accounts/` + `transactions/` | Upstream, most complex |
-| 12 | `budget/` | Upstream, very complex |
-| 13 | `settings/` | Low frequency |
-| 14 | `modals/` | Used everywhere, many files |
-| 15 | `reports/` | Upstream, low priority |
+| Priority | File/Directory                | Impact                         |
+| -------- | ----------------------------- | ------------------------------ |
+| 1        | `sidebar/`                    | Seen on every page             |
+| 2        | `dashboard/` + widgets        | Landing page, first impression |
+| 3        | `common/` (Toast, Search)     | Used everywhere                |
+| 4        | `quick-add/`                  | High-frequency interaction     |
+| 5        | `contracts/`                  | Custom page, heavy table use   |
+| 6        | `calendar/`                   | Custom page, card-heavy        |
+| 7        | `analytics/`                  | Custom page, chart + tabs      |
+| 8        | `review/`                     | Custom page, list + badges     |
+| 9        | `import/`                     | Wizard flow                    |
+| 10       | `tags/`                       | Simple CRUD                    |
+| 11       | `accounts/` + `transactions/` | Upstream, most complex         |
+| 12       | `budget/`                     | Upstream, very complex         |
+| 13       | `settings/`                   | Low frequency                  |
+| 14       | `modals/`                     | Used everywhere, many files    |
+| 15       | `reports/`                    | Upstream, low priority         |
 
 ## Technical Notes
 
@@ -238,6 +254,7 @@ During migration, both systems coexist:
 ## Example: Before/After
 
 ### Before (emotion + @actual-app/components)
+
 ```tsx
 import { css } from '@emotion/css';
 import { View, Text, Button } from '@actual-app/components';
@@ -245,25 +262,53 @@ import { theme } from '../../style';
 
 function Widget({ title, children }) {
   return (
-    <View style={{ background: theme.cardBackground, borderRadius: 8, padding: 16, border: `1px solid ${theme.tableBorder}` }}>
-      <Text style={{ fontSize: 14, fontWeight: 600, color: theme.pageTextSubdued }}>{title}</Text>
+    <View
+      style={{
+        background: theme.cardBackground,
+        borderRadius: 8,
+        padding: 16,
+        border: `1px solid ${theme.tableBorder}`,
+      }}
+    >
+      <Text
+        style={{ fontSize: 14, fontWeight: 600, color: theme.pageTextSubdued }}
+      >
+        {title}
+      </Text>
       <View style={{ marginTop: 8 }}>{children}</View>
-      <Button type="primary" style={{ marginTop: 12 }}>Action</Button>
+      <Button type="primary" style={{ marginTop: 12 }}>
+        Action
+      </Button>
     </View>
   );
 }
 ```
 
 ### After (Tailwind + shadcn)
+
 ```tsx
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardFooter,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
-function Widget({ title, children }: { title: string; children: React.ReactNode }) {
+function Widget({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-sm font-semibold text-muted-foreground">{title}</CardTitle>
+        <CardTitle className="text-sm font-semibold text-muted-foreground">
+          {title}
+        </CardTitle>
       </CardHeader>
       <CardContent>{children}</CardContent>
       <CardFooter>

@@ -136,7 +136,9 @@ function loadProtoRpcs(): ProtoRpc[] {
 describe('proto to gateway registry contract', () => {
   it('keeps RPC registry synchronized with proto service surface', () => {
     const protoRpcs = loadProtoRpcs();
-    const protoKeys = new Set(protoRpcs.map(rpc => registryKey(rpc.service, rpc.rpc)));
+    const protoKeys = new Set(
+      protoRpcs.map(rpc => registryKey(rpc.service, rpc.rpc)),
+    );
     const registryKeys = new Set(
       rpcRegistry.map(entry => registryKey(entry.service, entry.rpc)),
     );
@@ -196,7 +198,9 @@ describe('proto to gateway registry contract', () => {
         return [];
       }
 
-      return [`${entry.service}.${entry.rpc}: schema does not require envelope`];
+      return [
+        `${entry.service}.${entry.rpc}: schema does not require envelope`,
+      ];
     });
 
     expect(violations).toEqual([]);

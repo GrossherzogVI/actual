@@ -71,9 +71,15 @@ function getWebhookConfig(): WebhookConfig | null {
   return null;
 }
 
-function isEventEnabled(webhookConfig: WebhookConfig, eventType: string): boolean {
+function isEventEnabled(
+  webhookConfig: WebhookConfig,
+  eventType: string,
+): boolean {
   if (webhookConfig.events === '*') return true;
-  return webhookConfig.events.split(',').map(e => e.trim()).includes(eventType);
+  return webhookConfig.events
+    .split(',')
+    .map(e => e.trim())
+    .includes(eventType);
 }
 
 function buildSignature(payload: string, secret: string): string {
@@ -96,7 +102,17 @@ function logDelivery(
     db.mutate(
       `INSERT INTO webhook_deliveries (event_type, url, payload, status_code, response_body, duration_ms, success, error, attempt)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [eventType, url, payload, statusCode, responseBody, durationMs, success ? 1 : 0, error, attempt],
+      [
+        eventType,
+        url,
+        payload,
+        statusCode,
+        responseBody,
+        durationMs,
+        success ? 1 : 0,
+        error,
+        attempt,
+      ],
     );
 
     // Prune old deliveries
@@ -152,7 +168,17 @@ async function sendWebhook(
     const durationMs = Date.now() - start;
     const errorMsg = (err as Error).message;
 
-    logDelivery(eventType, url, payload, null, null, durationMs, false, errorMsg, attempt);
+    logDelivery(
+      eventType,
+      url,
+      payload,
+      null,
+      null,
+      durationMs,
+      false,
+      errorMsg,
+      attempt,
+    );
 
     if (attempt === 1) {
       setTimeout(() => {
@@ -175,18 +201,28 @@ export function dispatchWebhook(event: WebhookEvent): void {
   };
 
   if (webhookConfig.secret) {
-    headers['X-Actual-Signature'] = buildSignature(payload, webhookConfig.secret);
+    headers['X-Actual-Signature'] = buildSignature(
+      payload,
+      webhookConfig.secret,
+    );
   }
 
   // Fire-and-forget with delivery logging
-  sendWebhook(webhookConfig.url, payload, headers, event.type, 1).catch(() => {});
+  sendWebhook(webhookConfig.url, payload, headers, event.type, 1).catch(
+    () => {},
+  );
 }
 
 /** Send a test event to verify the webhook configuration. Returns the delivery result. */
 export async function sendTestWebhook(
   url: string,
   secret: string,
-): Promise<{ success: boolean; statusCode: number | null; error: string | null; durationMs: number }> {
+): Promise<{
+  success: boolean;
+  statusCode: number | null;
+  error: string | null;
+  durationMs: number;
+}> {
   const testEvent: WebhookEvent = {
     type: 'sync',
     fileId: 'test',
@@ -218,7 +254,17 @@ export async function sendTestWebhook(
     const durationMs = Date.now() - start;
     const responseBody = await response.text().catch(() => null);
 
-    logDelivery('test', url, payload, response.status, responseBody, durationMs, response.ok, response.ok ? null : `HTTP ${response.status}`, 1);
+    logDelivery(
+      'test',
+      url,
+      payload,
+      response.status,
+      responseBody,
+      durationMs,
+      response.ok,
+      response.ok ? null : `HTTP ${response.status}`,
+      1,
+    );
 
     return {
       success: response.ok,
@@ -230,7 +276,17 @@ export async function sendTestWebhook(
     const durationMs = Date.now() - start;
     const errorMsg = (err as Error).message;
 
-    logDelivery('test', url, payload, null, null, durationMs, false, errorMsg, 1);
+    logDelivery(
+      'test',
+      url,
+      payload,
+      null,
+      null,
+      durationMs,
+      false,
+      errorMsg,
+      1,
+    );
 
     return {
       success: false,

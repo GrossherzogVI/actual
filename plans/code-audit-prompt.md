@@ -27,6 +27,7 @@ packages/
 ### Custom Code Scope (AUDIT THESE — not upstream)
 
 **Frontend (~14,400 lines in ~56 files):**
+
 - `desktop-client/src/components/dashboard/` — 16 files, operations cockpit with 9 widgets
 - `desktop-client/src/components/contracts/` — 13 files, contract management
 - `desktop-client/src/components/calendar/` — 9 files, payment calendar
@@ -37,27 +38,32 @@ packages/
 - `desktop-client/src/components/tags/` — tag management
 
 **Backend (~4,700 lines in ~12 files):**
+
 - `sync-server/src/ai/` — Ollama classifier, smart matching, review queue API
 - `sync-server/src/contracts/` — contract CRUD, price history, health computation
 - `sync-server/src/categories/` — German category tree, Finanzguru mapping
 - `sync-server/src/import/` — import API endpoints
 
 **Core Handlers (~1,200 lines in ~3 files):**
+
 - `loot-core/src/server/contracts/app.ts` — contract handler bridge
 - `loot-core/src/server/categories-setup/app.ts` — category setup handlers
 - `loot-core/src/server/review/app.ts` — review queue handlers
 
 **Shared Modules:**
+
 - `loot-core/src/shared/german-holidays.ts` — German holiday engine
 - `loot-core/src/shared/deadlines.ts` — payment deadline computation
 
 **Migrations (~400 lines):**
+
 - `sync-server/migrations/1771100000000-contracts-forecast.js`
 - `sync-server/migrations/1771200000000-ai-classification.js`
 - `sync-server/migrations/1772000000000-phase1-tables.js`
 - `sync-server/migrations/1773000000000-payment-deadlines.js`
 
 **Integration Files (modified upstream, audit for correctness):**
+
 - `desktop-client/src/components/FinancesApp.tsx` — route definitions, lazy loading
 - `desktop-client/src/components/sidebar/PrimaryButtons.tsx` — nav items
 - `desktop-client/src/components/GlobalKeys.tsx` — keyboard shortcuts
@@ -70,6 +76,7 @@ packages/
 ### Architecture Pattern
 
 All client-server communication flows through loot-core's handler bridge:
+
 ```
 Client: send('handler-name', args)
   → loot-core handler (packages/loot-core/src/server/{module}/app.ts)
@@ -85,15 +92,16 @@ Create a team of **5 parallel reviewer agents**, each owning specific dimensions
 
 ### Agent Assignment
 
-| Agent | Dimensions | File Scope |
-|-------|-----------|------------|
-| **reviewer-arch** | Architecture + Data Flow | `loot-core/src/server/*/app.ts`, `sync-server/src/*/app-*.ts`, `sync-server/src/app.ts`, `FinancesApp.tsx`, `handlers.ts`, `main.ts`, migrations |
-| **reviewer-frontend** | UI/UX + Component Quality | `desktop-client/src/components/{dashboard,contracts,calendar,analytics,quick-add,review,import,tags}/` |
-| **reviewer-backend** | API + Database + Performance | `sync-server/src/{ai,contracts,categories,import}/`, all migration files, `vite.config.mts` |
-| **reviewer-security** | Security + Input Validation | ALL custom files — focus on API endpoints, SQL queries, user input handling, auth token usage |
-| **reviewer-logic** | Business Logic + Correctness | `loot-core/src/shared/{german-holidays,deadlines}.ts`, `quick-add/hooks/`, `calendar/`, `analytics/hooks/` |
+| Agent                 | Dimensions                   | File Scope                                                                                                                                       |
+| --------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **reviewer-arch**     | Architecture + Data Flow     | `loot-core/src/server/*/app.ts`, `sync-server/src/*/app-*.ts`, `sync-server/src/app.ts`, `FinancesApp.tsx`, `handlers.ts`, `main.ts`, migrations |
+| **reviewer-frontend** | UI/UX + Component Quality    | `desktop-client/src/components/{dashboard,contracts,calendar,analytics,quick-add,review,import,tags}/`                                           |
+| **reviewer-backend**  | API + Database + Performance | `sync-server/src/{ai,contracts,categories,import}/`, all migration files, `vite.config.mts`                                                      |
+| **reviewer-security** | Security + Input Validation  | ALL custom files — focus on API endpoints, SQL queries, user input handling, auth token usage                                                    |
+| **reviewer-logic**    | Business Logic + Correctness | `loot-core/src/shared/{german-holidays,deadlines}.ts`, `quick-add/hooks/`, `calendar/`, `analytics/hooks/`                                       |
 
 Each agent uses `subagent_type` appropriate for its work:
+
 - reviewer-arch → `code-review-ai:architect-review`
 - reviewer-frontend → `agent-teams:team-reviewer`
 - reviewer-backend → `agent-teams:team-reviewer`
@@ -103,6 +111,7 @@ Each agent uses `subagent_type` appropriate for its work:
 ## Review Dimensions (7 Tracks)
 
 ### 1. Architecture & Integration (reviewer-arch)
+
 - Is the handler bridge pattern implemented consistently across all modules?
 - Are there circular dependencies or leaky abstractions between packages?
 - Is `sync-server` importing from `loot-core`? (forbidden — types must be duplicated)
@@ -112,6 +121,7 @@ Each agent uses `subagent_type` appropriate for its work:
 - Feature flags: properly gated? What happens when flags are off?
 
 ### 2. Code Quality & TypeScript (all agents, within their scope)
+
 - `any` / `unknown` / type assertions (`as`, `!`) — identify all occurrences
 - Missing error handling (try/catch around DB operations, HTTP calls)
 - Dead code: unreachable branches, unused imports, orphaned components
@@ -121,6 +131,7 @@ Each agent uses `subagent_type` appropriate for its work:
 - Component prop types: inline vs extracted, consistency
 
 ### 3. UI/UX Quality (reviewer-frontend)
+
 - Loading states: do async components show spinners/skeletons?
 - Error boundaries: what happens when a widget/page crashes?
 - Empty states: what do pages show with no data?
@@ -131,6 +142,7 @@ Each agent uses `subagent_type` appropriate for its work:
 - i18n: are all user-facing strings wrapped in `Trans` or `t()`?
 
 ### 4. API & Data Layer (reviewer-backend)
+
 - Express route handlers: proper error responses? HTTP status codes?
 - SQL injection risk: any raw string interpolation in queries?
 - Missing input validation on API endpoints
@@ -140,6 +152,7 @@ Each agent uses `subagent_type` appropriate for its work:
 - Race conditions: concurrent requests hitting same data?
 
 ### 5. Security (reviewer-security)
+
 - Auth token handling: `X-ACTUAL-TOKEN` — where is it validated? Can it be bypassed?
 - XSS vectors: any `dangerouslySetInnerHTML` or unsanitized user input in DOM?
 - IDOR: can user A access user B's data via parameter manipulation?
@@ -149,6 +162,7 @@ Each agent uses `subagent_type` appropriate for its work:
 - Secrets in code: any hardcoded tokens, URLs, or credentials?
 
 ### 6. Business Logic Correctness (reviewer-logic)
+
 - German holiday computation: correct for all states? Edge cases (Easter algorithm)?
 - Payment deadline calculation: business day awareness, month-end handling
 - Calculator in Quick Add: does "12.50+8.30" actually compute correctly?
@@ -158,6 +172,7 @@ Each agent uses `subagent_type` appropriate for its work:
 - Analytics aggregations: correct date ranges, category grouping, off-by-one errors?
 
 ### 7. Performance (reviewer-backend + reviewer-frontend)
+
 - Vite config: is code splitting effective? Bundle size concerns?
 - React re-renders: are expensive computations memoized?
 - SQLite queries: any N+1 patterns? Missing indexes?
@@ -173,15 +188,19 @@ Each agent produces findings in this structure:
 ## [Dimension Name]
 
 ### Critical (must fix — bugs, security, data loss risk)
+
 - **[FILE:LINE]** — Description of issue. Impact: [what breaks]. Fix: [suggestion].
 
 ### Major (should fix — quality, correctness, maintainability)
+
 - **[FILE:LINE]** — Description. Impact: [degraded UX / tech debt]. Fix: [suggestion].
 
 ### Minor (nice to fix — style, consistency, polish)
+
 - **[FILE:LINE]** — Description. Fix: [suggestion].
 
 ### Observations (not bugs, but noteworthy)
+
 - **[FILE:LINE]** — Description.
 ```
 
@@ -191,18 +210,23 @@ After all agents complete, synthesize into a **Prioritized Fix Plan**:
 ## Prioritized Fix Plan
 
 ### Tier 1 — Fix Now (security, data corruption, crashes)
+
 1. [Finding] — Effort: [S/M/L] — Files: [list]
 
 ### Tier 2 — Fix Soon (correctness, UX, major quality)
+
 1. [Finding] — Effort: [S/M/L] — Files: [list]
 
 ### Tier 3 — Fix Later (tech debt, polish, consistency)
+
 1. [Finding] — Effort: [S/M/L] — Files: [list]
 
 ### Architecture Recommendations
+
 - [Structural improvements that span multiple findings]
 
 ### Summary Statistics
+
 - Critical: N | Major: N | Minor: N | Observations: N
 - Estimated total fix effort: [S/M/L/XL]
 - Top 3 files needing attention: [list]

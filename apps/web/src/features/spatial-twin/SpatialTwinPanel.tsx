@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Trans } from 'react-i18next';
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { apiClient } from '../../core/api/client';
@@ -9,6 +11,7 @@ import type {
   WorkflowCommandExecution,
 } from '../../core/types';
 import { dispatchRunDetailsCommand } from '../runtime/run-details-commands';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -44,7 +47,12 @@ type PromotionEntry = {
   run: WorkflowCommandExecution | null;
 };
 
-const BRANCH_COLORS = ['var(--fo-info)', 'var(--fo-ok)', 'var(--fo-accent)', '#f97316'];
+const BRANCH_COLORS = [
+  'var(--fo-info)',
+  'var(--fo-ok)',
+  'var(--fo-accent)',
+  '#f97316',
+];
 
 function asNumber(input: string, fallback: number): number {
   const parsed = Number(input);
@@ -128,14 +136,17 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
   const [amountDelta, setAmountDelta] = useState('150');
   const [riskDelta, setRiskDelta] = useState('-1');
   const [forceAdopt, setForceAdopt] = useState(false);
-  const [promotionMutationId, setPromotionMutationId] = useState<string | null>(null);
+  const [promotionMutationId, setPromotionMutationId] = useState<string | null>(
+    null,
+  );
   const [promotionExecutionMode, setPromotionExecutionMode] =
     useState<ExecutionMode>('live');
   const [promotionGuardrailProfile, setPromotionGuardrailProfile] =
     useState<GuardrailProfile>('strict');
   const [promotionRollbackWindowMinutes, setPromotionRollbackWindowMinutes] =
     useState(60);
-  const [promotionRollbackOnFailure, setPromotionRollbackOnFailure] = useState(false);
+  const [promotionRollbackOnFailure, setPromotionRollbackOnFailure] =
+    useState(false);
   const [promotionIdempotencyKey, setPromotionIdempotencyKey] = useState('');
   const [promotionAssignee, setPromotionAssignee] = useState('delegate');
 
@@ -161,11 +172,10 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
       setCompareTargetId(null);
       return;
     }
-    const targetStillValid = branches.some(branch => branch.id === compareTargetId);
-    if (
-      !targetStillValid ||
-      compareTargetId === selectedBranch.id
-    ) {
+    const targetStillValid = branches.some(
+      branch => branch.id === compareTargetId,
+    );
+    if (!targetStillValid || compareTargetId === selectedBranch.id) {
       const fallback = branches.find(branch => branch.id !== selectedBranch.id);
       setCompareTargetId(fallback ? fallback.id : null);
     }
@@ -175,7 +185,10 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
     queryKey: ['scenario-compare', selectedBranch?.id, comparisonTarget?.id],
     enabled: !!selectedBranch,
     queryFn: () =>
-      apiClient.compareScenario(selectedBranch!.id, comparisonTarget?.id || undefined),
+      apiClient.compareScenario(
+        selectedBranch!.id,
+        comparisonTarget?.id || undefined,
+      ),
   });
 
   const mutationsQuery = useQuery({
@@ -209,24 +222,19 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
   });
   const commandRunsById = useMemo(
     () =>
-      new Map(
-        (commandRunsQuery.data || []).map(run => [run.id, run] as const),
-      ),
+      new Map((commandRunsQuery.data || []).map(run => [run.id, run] as const)),
     [commandRunsQuery.data],
   );
 
-  const promotionMutationEntries = useMemo<
-    Array<
-      Omit<PromotionEntry, 'run'>
-    >
-  >(
+  const promotionMutationEntries = useMemo<Array<Omit<PromotionEntry, 'run'>>>(
     () =>
       (mutationsQuery.data || [])
         .filter(mutation => mutation.kind === 'run-promotion-link')
         .map(mutation => {
           const runId = optionalString(mutation.payload.runId);
           const promotedAtMs =
-            optionalNumber(mutation.payload.promotedAtMs) || mutation.createdAtMs;
+            optionalNumber(mutation.payload.promotedAtMs) ||
+            mutation.createdAtMs;
           return {
             promotionMutationId: mutation.id,
             sourceMutationId: optionalString(mutation.payload.sourceMutationId),
@@ -308,7 +316,11 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
   }, [promotableMutations, promotionMutationId]);
 
   const adoptionCheckQuery = useQuery({
-    queryKey: ['scenario-adoption-check', selectedBranch?.id, comparisonTarget?.id],
+    queryKey: [
+      'scenario-adoption-check',
+      selectedBranch?.id,
+      comparisonTarget?.id,
+    ],
     enabled: !!selectedBranch,
     queryFn: () =>
       apiClient.getScenarioAdoptionCheck(
@@ -327,7 +339,10 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
     mutationFn: async () => {
       const trimmed = branchName.trim();
       const label = trimmed || `Branch ${branches.length + 1}`;
-      return apiClient.createScenarioBranch(label, selectedBranch?.id || undefined);
+      return apiClient.createScenarioBranch(
+        label,
+        selectedBranch?.id || undefined,
+      );
     },
     onSuccess: async created => {
       setBranchName('');
@@ -338,7 +353,9 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
       }
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['scenario-branches'] }),
-        queryClient.invalidateQueries({ queryKey: ['scenario-adoption-check'] }),
+        queryClient.invalidateQueries({
+          queryKey: ['scenario-adoption-check'],
+        }),
         queryClient.invalidateQueries({ queryKey: ['scenario-lineage'] }),
       ]);
     },
@@ -356,10 +373,14 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
       const numericAmount = asNumber(amountDelta, 0);
       const numericRisk = asNumber(riskDelta, 0);
 
-      return apiClient.applyScenarioMutation(selectedBranch.id, 'manual-adjustment', {
-        amountDelta: numericAmount,
-        riskDelta: numericRisk,
-      });
+      return apiClient.applyScenarioMutation(
+        selectedBranch.id,
+        'manual-adjustment',
+        {
+          amountDelta: numericAmount,
+          riskDelta: numericRisk,
+        },
+      );
     },
     onSuccess: async () => {
       if (onStatus) {
@@ -369,7 +390,9 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
         queryClient.invalidateQueries({ queryKey: ['scenario-branches'] }),
         queryClient.invalidateQueries({ queryKey: ['scenario-compare'] }),
         queryClient.invalidateQueries({ queryKey: ['scenario-mutations'] }),
-        queryClient.invalidateQueries({ queryKey: ['scenario-adoption-check'] }),
+        queryClient.invalidateQueries({
+          queryKey: ['scenario-adoption-check'],
+        }),
       ]);
     },
     onError: error => {
@@ -384,7 +407,9 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
       apiClient.adoptScenarioBranch(input.branchId, {
         force: input.force,
         againstBranchId:
-          selectedBranch?.id === input.branchId ? comparisonTarget?.id || undefined : undefined,
+          selectedBranch?.id === input.branchId
+            ? comparisonTarget?.id || undefined
+            : undefined,
       }),
     onSuccess: async adopted => {
       setForceAdopt(false);
@@ -393,7 +418,9 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
       }
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['scenario-branches'] }),
-        queryClient.invalidateQueries({ queryKey: ['scenario-adoption-check'] }),
+        queryClient.invalidateQueries({
+          queryKey: ['scenario-adoption-check'],
+        }),
         queryClient.invalidateQueries({ queryKey: ['scenario-lineage'] }),
         queryClient.invalidateQueries({ queryKey: ['scenario-compare'] }),
       ]);
@@ -435,7 +462,9 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
         queryClient.invalidateQueries({ queryKey: ['scenario-branches'] }),
         queryClient.invalidateQueries({ queryKey: ['scenario-mutations'] }),
         queryClient.invalidateQueries({ queryKey: ['scenario-compare'] }),
-        queryClient.invalidateQueries({ queryKey: ['scenario-adoption-check'] }),
+        queryClient.invalidateQueries({
+          queryKey: ['scenario-adoption-check'],
+        }),
         queryClient.invalidateQueries({ queryKey: ['scenario-lineage'] }),
         queryClient.invalidateQueries({ queryKey: ['command-runs'] }),
       ]);
@@ -492,7 +521,9 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
         id: 'branch-selected',
         label: 'Branch selected',
         level: selectedBranch ? 'pass' : 'fail',
-        detail: selectedBranch ? selectedBranch.name : 'Select a branch to continue.',
+        detail: selectedBranch
+          ? selectedBranch.name
+          : 'Select a branch to continue.',
       },
       {
         id: 'guardrails',
@@ -529,14 +560,21 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
       {
         id: 'mutation-depth',
         label: 'Mutation depth',
-        level: mutationCount === 0 ? 'warn' : mutationCount > 12 ? 'warn' : 'pass',
+        level:
+          mutationCount === 0 ? 'warn' : mutationCount > 12 ? 'warn' : 'pass',
         detail:
           mutationCount === 0
             ? 'No mutations yet.'
             : `${mutationCount} mutation(s) in current branch.`,
       },
     ],
-    [adoptionCheckQuery.data, blockers.length, mutationCount, riskScore, selectedBranch],
+    [
+      adoptionCheckQuery.data,
+      blockers.length,
+      mutationCount,
+      riskScore,
+      selectedBranch,
+    ],
   );
 
   const safeAdoptDisabled =
@@ -556,8 +594,7 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
   const latestRollbackEligiblePromotion = useMemo(
     () =>
       promotionEntries.find(
-        entry =>
-          !!entry.run && isRollbackOpen(entry.run, Date.now()),
+        entry => !!entry.run && isRollbackOpen(entry.run, Date.now()),
       ) || null,
     [promotionEntries],
   );
@@ -625,51 +662,73 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
   return (
     <section className="fo-panel fo-twin-panel" id="spatial-twin">
       <header className="fo-panel-header">
-        <h2>Spatial Finance Twin</h2>
-        <small>Branch, mutate, compare, and adopt through checkpointed decision flow.</small>
+        <h2>
+          <Trans>Spatial Finance Twin</Trans>
+        </h2>
+        <small>
+          Branch, mutate, compare, and adopt through checkpointed decision flow.
+        </small>
       </header>
 
       <article className="fo-spatial-hud">
         <div className="fo-space-between">
           <strong>Diff HUD</strong>
           <small>
-            {selectedBranch?.name || 'no branch'} vs {comparisonTarget?.name || 'baseline'}
+            {selectedBranch?.name || 'no branch'} vs{' '}
+            {comparisonTarget?.name || 'baseline'}
           </small>
         </div>
 
         <div className="fo-spatial-metric-grid">
           <article className={`fo-card ${metricClass(diffAmount)}`}>
-            <small>Amount Delta</small>
-            <strong>{diffAmount >= 0 ? '+' : ''}{diffAmount.toFixed(2)}</strong>
+            <small><Trans>Amount Delta</Trans></small>
+            <strong>
+              {diffAmount >= 0 ? '+' : ''}
+              {diffAmount.toFixed(2)}
+            </strong>
             <div className="fo-spatial-bar-track">
               <span
                 className="fo-spatial-bar-fill"
-                style={{ width: `${Math.min(100, (clampAbs(diffAmount) / 1000) * 100)}%` }}
+                style={{
+                  width: `${Math.min(100, (clampAbs(diffAmount) / 1000) * 100)}%`,
+                }}
               />
             </div>
           </article>
 
           <article className={`fo-card ${metricClass(diffRisk)}`}>
-            <small>Risk Delta</small>
-            <strong>{diffRisk >= 0 ? '+' : ''}{diffRisk.toFixed(2)}</strong>
+            <small><Trans>Risk Delta</Trans></small>
+            <strong>
+              {diffRisk >= 0 ? '+' : ''}
+              {diffRisk.toFixed(2)}
+            </strong>
             <div className="fo-spatial-bar-track">
               <span
                 className="fo-spatial-bar-fill fo-spatial-bar-fill-risk"
-                style={{ width: `${Math.min(100, (clampAbs(diffRisk) / 20) * 100)}%` }}
+                style={{
+                  width: `${Math.min(100, (clampAbs(diffRisk) / 20) * 100)}%`,
+                }}
               />
             </div>
           </article>
 
-          <article className={`fo-card ${riskScore >= 85 ? 'fo-spatial-metric-negative' : riskScore >= 60 ? 'fo-spatial-metric-neutral' : 'fo-spatial-metric-positive'}`}>
-            <small>Adoption Risk Score</small>
+          <article
+            className={`fo-card ${riskScore >= 85 ? 'fo-spatial-metric-negative' : riskScore >= 60 ? 'fo-spatial-metric-neutral' : 'fo-spatial-metric-positive'}`}
+          >
+            <small><Trans>Adoption Risk Score</Trans></small>
             <strong>{riskScore || '-'}</strong>
-            <small>{adoptionCheckQuery.data?.summary || 'Run adoption check.'}</small>
+            <small>
+              {adoptionCheckQuery.data?.summary || 'Run adoption check.'}
+            </small>
           </article>
         </div>
 
         <div className="fo-spatial-checkpoint-list">
           {checkpoints.map(checkpoint => (
-            <article key={checkpoint.id} className={checkpointClass(checkpoint.level)}>
+            <article
+              key={checkpoint.id}
+              className={checkpointClass(checkpoint.level)}
+            >
               <div className="fo-space-between">
                 <strong>{checkpoint.label}</strong>
                 <small>{checkpoint.level}</small>
@@ -689,9 +748,9 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
               }
               adoptBranch.mutate({ branchId: selectedBranch.id, force: false });
             }}
-          >
+          ><Trans>
             Adopt Selected
-          </Button>
+          </Trans></Button>
           <Button
             variant="secondary"
             disabled={forceAdoptDisabled}
@@ -701,9 +760,9 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
               }
               adoptBranch.mutate({ branchId: selectedBranch.id, force: true });
             }}
-          >
+          ><Trans>
             Force Adopt
-          </Button>
+          </Trans></Button>
         </div>
       </article>
 
@@ -711,25 +770,27 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
         <Input
           value={branchName}
           onChange={event => setBranchName(event.target.value)}
-          placeholder="Create scenario branch"
+          placeholder={t('Create scenario branch')}
         />
         <Button
           disabled={createBranch.isPending}
           onClick={() => createBranch.mutate()}
         >
-          {createBranch.isPending ? 'Creating' : 'Branch'}
+          {createBranch.isPending ? t('Creating') : t('Branch')}
         </Button>
       </div>
 
       <div className="fo-row">
         <label className="fo-space-between fo-spatial-compare-select w-full max-w-[300px]">
-          <small className="mr-4">Compare target</small>
+          <small className="mr-4"><Trans>Compare target</Trans></small>
           <Select
             value={compareTargetId || 'baseline'}
-            onValueChange={value => setCompareTargetId(value === 'baseline' ? null : value)}
+            onValueChange={value =>
+              setCompareTargetId(value === 'baseline' ? null : value)
+            }
           >
             <SelectTrigger className="flex-1">
-              <SelectValue placeholder="Compare target" />
+              <SelectValue placeholder={t('Compare target')} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="baseline">baseline</SelectItem>
@@ -746,9 +807,21 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
       </div>
 
       <div className="fo-twin-canvas">
-        <svg width="100%" height="100%" viewBox="0 0 560 300" preserveAspectRatio="xMidYMid meet">
+        <svg
+          width="100%"
+          height="100%"
+          viewBox="0 0 560 300"
+          preserveAspectRatio="xMidYMid meet"
+        >
           <defs>
-            <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+            <marker
+              id="arrow"
+              markerWidth="8"
+              markerHeight="8"
+              refX="6"
+              refY="4"
+              orient="auto"
+            >
               <path d="M0,0 L8,4 L0,8 Z" fill="#4a6f99" />
             </marker>
           </defs>
@@ -782,16 +855,17 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
           >
             <strong>{node.branch.name}</strong>
             <small>
-              {node.branch.status} · {new Date(node.branch.updatedAtMs).toLocaleDateString()}
+              {node.branch.status} ·{' '}
+              {new Date(node.branch.updatedAtMs).toLocaleDateString()}
             </small>
             <div className="fo-row mt-2">
               <Button
                 size="sm"
                 variant="secondary"
                 onClick={() => setSelectedBranchId(node.branch.id)}
-              >
+              ><Trans>
                 Select
-              </Button>
+              </Trans></Button>
               <Button
                 size="sm"
                 variant="secondary"
@@ -811,7 +885,9 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
                     !adoptionCheckQuery.data.canAdopt)
                 }
               >
-                {selectedBranchId === node.branch.id && forceAdopt ? 'Force Adopt' : 'Adopt'}
+                {selectedBranchId === node.branch.id && forceAdopt
+                  ? t('Force Adopt')
+                  : t('Adopt')}
               </Button>
             </div>
           </article>
@@ -819,7 +895,7 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
 
         {positioned.length === 0 ? (
           <article className="fo-twin-node" style={{ top: 110, left: 160 }}>
-            <strong>No branches yet</strong>
+            <strong><Trans>No branches yet</Trans></strong>
             <small>Create a scenario branch to start simulation.</small>
           </article>
         ) : null}
@@ -829,24 +905,27 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
         <Input
           value={amountDelta}
           onChange={event => setAmountDelta(event.target.value)}
-          placeholder="Amount delta"
+          placeholder={t('Amount delta')}
         />
         <Input
           value={riskDelta}
           onChange={event => setRiskDelta(event.target.value)}
-          placeholder="Risk delta"
+          placeholder={t('Risk delta')}
         />
         <Button
           disabled={!selectedBranch || applyMutation.isPending}
           onClick={() => applyMutation.mutate()}
         >
-          {applyMutation.isPending ? 'Applying' : 'Apply Mutation'}
+          {applyMutation.isPending ? t('Applying') : t('Apply Mutation')}
         </Button>
       </div>
 
       <article className="fo-card">
-        <strong>Adoption Guardrail</strong>
-        <small>{adoptionCheckQuery.data?.summary || 'Select a branch to evaluate adoption risk.'}</small>
+        <strong><Trans>Adoption Guardrail</Trans></strong>
+        <small>
+          {adoptionCheckQuery.data?.summary ||
+            'Select a branch to evaluate adoption risk.'}
+        </small>
         <small>
           risk score: {adoptionCheckQuery.data?.riskScore ?? '-'} · mutations:{' '}
           {adoptionCheckQuery.data?.mutationCount ?? 0} · lineage depth:{' '}
@@ -864,37 +943,48 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
             checked={forceAdopt}
             onChange={event => setForceAdopt(event.target.checked)}
           />
-          <small>
-            Arm force-adopt override {hasCriticalBlockers ? '(blockers detected)' : '(optional)'}
+          <small><Trans>
+            Arm force-adopt override</Trans>{' '}
+            {hasCriticalBlockers ? '(blockers detected)' : '(optional)'}
           </small>
         </label>
       </article>
 
       <article className="fo-card">
-        <strong>Branch Lineage</strong>
+        <strong><Trans>Branch Lineage</Trans></strong>
         {(lineageQuery.data?.nodes || []).map((node, index) => (
           <small key={node.branchId}>
             {index + 1}. {node.name} · {node.status}
-            {node.adoptedAtMs ? ` · adopted ${new Date(node.adoptedAtMs).toLocaleDateString()}` : ''}
+            {node.adoptedAtMs
+              ? ` · adopted ${new Date(node.adoptedAtMs).toLocaleDateString()}`
+              : ''}
           </small>
         ))}
-        {lineageQuery.data?.hasCycle ? <small>Cycle detected in lineage.</small> : null}
+        {lineageQuery.data?.hasCycle ? (
+          <small>Cycle detected in lineage.</small>
+        ) : null}
         {(lineageQuery.data?.nodes || []).length === 0 ? (
           <small>No lineage available.</small>
         ) : null}
       </article>
 
       <article className="fo-card">
-        <strong>Mutation Timeline</strong>
+        <strong><Trans>Mutation Timeline</Trans></strong>
         <small>
-          {selectedBranch?.name || 'No selected branch'} ·{' '}
+          {selectedBranch?.name || t('No selected branch')} ·{' '}
           {mutationsQuery.data?.length || 0} mutation(s)
         </small>
         {(mutationsQuery.data || []).slice(0, 8).map(mutation => (
           <small key={mutation.id}>
-            {new Date(mutation.createdAtMs).toLocaleTimeString()} · {mutation.kind} · Δamount{' '}
-            {Number((mutation.payload as Record<string, unknown>).amountDelta || 0)} · Δrisk{' '}
-            {Number((mutation.payload as Record<string, unknown>).riskDelta || 0)}
+            {new Date(mutation.createdAtMs).toLocaleTimeString()} ·{' '}
+            {mutation.kind} · Δamount{' '}
+            {Number(
+              (mutation.payload as Record<string, unknown>).amountDelta || 0,
+            )}{' '}
+            · Δrisk{' '}
+            {Number(
+              (mutation.payload as Record<string, unknown>).riskDelta || 0,
+            )}
           </small>
         ))}
         {(mutationsQuery.data || []).length === 0 ? (
@@ -903,21 +993,21 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
       </article>
 
       <article className="fo-card">
-        <strong>Promote Simulation</strong>
+        <strong><Trans>Promote Simulation</Trans></strong>
         <small>
-          Promote a simulated chain into autopilot execution while keeping source
-          mutation and run linkage.
+          Promote a simulated chain into autopilot execution while keeping
+          source mutation and run linkage.
         </small>
 
         <div className="fo-row mt-2">
           <label className="fo-space-between fo-spatial-compare-select w-full max-w-[340px]">
-            <small className="mr-4">Simulation source</small>
+            <small className="mr-4"><Trans>Simulation source</Trans></small>
             <Select
               value={promotionMutationId || 'unavailable'}
               onValueChange={value => setPromotionMutationId(value)}
             >
               <SelectTrigger className="flex-1">
-                <SelectValue placeholder="Pick simulation mutation" />
+                <SelectValue placeholder={t('Pick simulation mutation')} />
               </SelectTrigger>
               <SelectContent>
                 {promotableMutations.length === 0 ? (
@@ -939,10 +1029,12 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
         <div className="fo-row mt-2">
           <Select
             value={promotionExecutionMode}
-            onValueChange={value => setPromotionExecutionMode(value as ExecutionMode)}
+            onValueChange={value =>
+              setPromotionExecutionMode(value as ExecutionMode)
+            }
           >
             <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Mode" />
+              <SelectValue placeholder={t('Mode')} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="dry-run">dry-run</SelectItem>
@@ -956,7 +1048,7 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
             }
           >
             <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Guardrail" />
+              <SelectValue placeholder={t('Guardrail')} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="strict">strict</SelectItem>
@@ -976,14 +1068,16 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
                 Math.max(1, Math.min(1440, Number(event.target.value) || 60)),
               )
             }
-            title="Rollback window minutes"
+            title={t('Rollback window minutes')}
           />
           <label className="fo-row">
             <input
               type="checkbox"
               aria-label="spatial twin rollback on failure"
               checked={promotionRollbackOnFailure}
-              onChange={event => setPromotionRollbackOnFailure(event.target.checked)}
+              onChange={event =>
+                setPromotionRollbackOnFailure(event.target.checked)
+              }
             />
             <small>rollback on failure</small>
           </label>
@@ -1009,8 +1103,8 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
             {promoteBranchRun.isPending
               ? 'Promoting...'
               : promotionExecutionMode === 'live'
-                ? 'Promote to live run'
-                : 'Promote to dry-run'}
+                ? t('Promote to live run')
+                : t('Promote to dry-run')}
           </Button>
         </div>
 
@@ -1022,9 +1116,10 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
       </article>
 
       <article className="fo-card">
-        <strong>Run Provenance</strong>
+        <strong><Trans>Run Provenance</Trans></strong>
         <small>
-          Trace promoted simulations to command runs and rollback from this lane.
+          Trace promoted simulations to command runs and rollback from this
+          lane.
         </small>
         {promotionEntries.length === 0 ? (
           <small>No promoted runs for this branch yet.</small>
@@ -1035,10 +1130,12 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
           return (
             <article key={entry.promotionMutationId} className="fo-log">
               <strong>
-                {entry.chain || 'unknown chain'} {run ? `→ ${run.status}` : '→ pending run'}
+                {entry.chain || 'unknown chain'}{' '}
+                {run ? `→ ${run.status}` : '→ pending run'}
               </strong>
               <small>
-                promoted {new Date(entry.promotedAtMs).toLocaleString()} · source {entry.source}
+                promoted {new Date(entry.promotedAtMs).toLocaleString()} ·
+                source {entry.source}
               </small>
               <small>
                 source mutation: {entry.sourceMutationId || 'unknown'} · run:{' '}
@@ -1046,8 +1143,8 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
               </small>
               {run ? (
                 <small>
-                  mode {run.executionMode} · guardrail {run.guardrailProfile} · errors{' '}
-                  {run.errorCount} · status path{' '}
+                  mode {run.executionMode} · guardrail {run.guardrailProfile} ·
+                  errors {run.errorCount} · status path{' '}
                   {run.statusTimeline.map(step => step.status).join(' -> ')}
                 </small>
               ) : (
@@ -1055,7 +1152,8 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
               )}
               {run && typeof run.rollbackWindowUntilMs === 'number' ? (
                 <small>
-                  rollback window until {new Date(run.rollbackWindowUntilMs).toLocaleString()}
+                  rollback window until{' '}
+                  {new Date(run.rollbackWindowUntilMs).toLocaleString()}
                 </small>
               ) : null}
               {entry.note ? <small>note: {entry.note}</small> : null}
@@ -1075,13 +1173,15 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
                       source: 'provenance',
                     });
                   }}
-                >
+                ><Trans>
                   Open run details
-                </Button>
+                </Trans></Button>
                 <Button
                   size="sm"
                   variant="secondary"
-                  disabled={!run || !rollbackOpen || rollbackPromotedRun.isPending}
+                  disabled={
+                    !run || !rollbackOpen || rollbackPromotedRun.isPending
+                  }
                   onClick={() => {
                     if (!run) {
                       return;
@@ -1092,7 +1192,9 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
                     });
                   }}
                 >
-                  {rollbackPromotedRun.isPending ? 'Rolling back...' : 'Rollback promoted run'}
+                  {rollbackPromotedRun.isPending
+                    ? 'Rolling back...'
+                    : t('Rollback promoted run')}
                 </Button>
               </div>
             </article>

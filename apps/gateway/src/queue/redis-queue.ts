@@ -1,5 +1,6 @@
-import { createClient, type RedisClientType } from 'redis';
 import { customAlphabet } from 'nanoid';
+import { createClient } from 'redis';
+import type { RedisClientType } from 'redis';
 
 import type {
   ClaimedQueueJob,
@@ -25,10 +26,7 @@ export class RedisGatewayQueue implements GatewayQueue {
 
   private readonly client: RedisClientType;
 
-  constructor(
-    redisUrl: string,
-    queueKey: string,
-  ) {
+  constructor(redisUrl: string, queueKey: string) {
     this.readyKey = `${queueKey}:ready`;
     this.payloadKey = `${queueKey}:payload`;
     this.processingKey = `${queueKey}:processing`;

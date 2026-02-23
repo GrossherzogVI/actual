@@ -1,7 +1,5 @@
-import {
-  commandEnvelopeSchema,
-  type CommandEnvelope,
-} from '@finance-os/domain-kernel';
+import { commandEnvelopeSchema } from '@finance-os/domain-kernel';
+import type { CommandEnvelope } from '@finance-os/domain-kernel';
 
 export function parseCommandEnvelope(value: unknown): CommandEnvelope {
   return commandEnvelopeSchema.parse(value);

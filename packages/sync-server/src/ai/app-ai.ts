@@ -10,8 +10,8 @@ import {
 import {
   classifyBatch,
   classifyTransaction,
-  getCachedClassification,
   clearClassificationCache,
+  getCachedClassification,
 } from './classifier.js';
 import { isOllamaEnabled } from './ollama-client.js';
 
@@ -47,7 +47,11 @@ function matchSmartRule(
     [payee],
   ) as Record<string, unknown> | undefined;
   if (pinnedExact) {
-    return { category_id: pinnedExact.category_id as string, confidence: 1.0, tier: 'pinned' };
+    return {
+      category_id: pinnedExact.category_id as string,
+      confidence: 1.0,
+      tier: 'pinned',
+    };
   }
 
   // Tier 1: pinned IBAN match
@@ -58,7 +62,11 @@ function matchSmartRule(
       [iban],
     ) as Record<string, unknown> | undefined;
     if (pinnedIban) {
-      return { category_id: pinnedIban.category_id as string, confidence: 1.0, tier: 'pinned' };
+      return {
+        category_id: pinnedIban.category_id as string,
+        confidence: 1.0,
+        tier: 'pinned',
+      };
     }
   }
 
@@ -133,7 +141,13 @@ function updateRuleMatchStats(
        AND match_count >= ?
        AND CAST(correct_count AS REAL) / match_count >= ?
        AND payee_pattern = ? AND match_type = ? AND category_id = ?`,
-    [HIGH_TIER_MIN_MATCHES, HIGH_TIER_MIN_ACCURACY, payeePattern, matchType, categoryId],
+    [
+      HIGH_TIER_MIN_MATCHES,
+      HIGH_TIER_MIN_ACCURACY,
+      payeePattern,
+      matchType,
+      categoryId,
+    ],
   );
 }
 
@@ -151,10 +165,7 @@ app.post('/classify', async (req, res) => {
   const db = getAccountDb();
 
   // Try smart match first
-  const ruleMatch = matchSmartRule(
-    transaction.payee ?? '',
-    transaction.iban,
-  );
+  const ruleMatch = matchSmartRule(transaction.payee ?? '', transaction.iban);
 
   if (ruleMatch) {
     // Update match stats for matched rule
@@ -223,7 +234,10 @@ app.post('/classify', async (req, res) => {
         [
           reviewId,
           transaction.id,
-          JSON.stringify({ category_id: result.categoryId, confidence: result.confidence }),
+          JSON.stringify({
+            category_id: result.categoryId,
+            confidence: result.confidence,
+          }),
           result.confidence,
         ],
       );
@@ -234,7 +248,8 @@ app.post('/classify', async (req, res) => {
       data: {
         category_id: result.categoryId,
         confidence: result.confidence,
-        tier: result.confidence >= HIGH_CONFIDENCE_THRESHOLD ? 'ai_high' : 'ai_low',
+        tier:
+          result.confidence >= HIGH_CONFIDENCE_THRESHOLD ? 'ai_high' : 'ai_low',
         source: 'ollama',
         reasoning: result.reasoning,
       },
@@ -263,19 +278,29 @@ app.post('/classify-batch', async (req, res) => {
   for (const transaction of transactions) {
     const ruleMatch = matchSmartRule(transaction.payee ?? '', transaction.iban);
     if (ruleMatch) {
-      results.push({ ...ruleMatch, transactionId: transaction.id, source: 'rule' });
+      results.push({
+        ...ruleMatch,
+        transactionId: transaction.id,
+        source: 'rule',
+      });
       ruleMatched++;
       continue;
     }
 
     if (!isOllamaEnabled()) {
-      results.push({ transactionId: transaction.id, category_id: null, confidence: 0, source: 'none' });
+      results.push({
+        transactionId: transaction.id,
+        category_id: null,
+        confidence: 0,
+        source: 'none',
+      });
       continue;
     }
 
     try {
       const result = await classifyTransaction(transaction, categories);
-      const tier = result.confidence >= HIGH_CONFIDENCE_THRESHOLD ? 'ai_high' : 'ai_low';
+      const tier =
+        result.confidence >= HIGH_CONFIDENCE_THRESHOLD ? 'ai_high' : 'ai_low';
       results.push({ ...result, tier, source: 'ollama' });
 
       // Store in ai_classifications for learning + auto-pin tracking
@@ -304,7 +329,10 @@ app.post('/classify-batch', async (req, res) => {
           [
             reviewId,
             transaction.id,
-            JSON.stringify({ category_id: result.categoryId, confidence: result.confidence }),
+            JSON.stringify({
+              category_id: result.categoryId,
+              confidence: result.confidence,
+            }),
             result.confidence,
           ],
         );
@@ -313,7 +341,12 @@ app.post('/classify-batch', async (req, res) => {
         ollamaHigh++;
       }
     } catch {
-      results.push({ transactionId: transaction.id, category_id: null, confidence: 0, source: 'error' });
+      results.push({
+        transactionId: transaction.id,
+        category_id: null,
+        confidence: 0,
+        source: 'error',
+      });
       failed++;
     }
   }
@@ -378,7 +411,8 @@ app.get('/rules', (req, res) => {
     params.push(tier);
   }
 
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const whereClause =
+    conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   const limitNum = parseInt(String(limit ?? '200'), 10);
 
   const rows = db.all(
@@ -407,26 +441,21 @@ app.post('/rules', (req, res) => {
     `INSERT INTO smart_match_rules
        (id, payee_pattern, match_type, category_id, tier, confidence, match_count, correct_count, created_by)
      VALUES (?, ?, ?, ?, ?, 1.0, 0, 0, 'user')`,
-    [
-      id,
-      payee_pattern,
-      match_type ?? 'exact',
-      category_id,
-      tier ?? 'pinned',
-    ],
+    [id, payee_pattern, match_type ?? 'exact', category_id, tier ?? 'pinned'],
   );
 
-  const created = db.first('SELECT * FROM smart_match_rules WHERE id = ?', [id]);
+  const created = db.first('SELECT * FROM smart_match_rules WHERE id = ?', [
+    id,
+  ]);
   res.json({ status: 'ok', data: created });
 });
 
 /** DELETE /ai/rules/:id — delete a smart match rule */
 app.delete('/rules/:id', (req, res) => {
   const db = getAccountDb();
-  const existing = db.first(
-    'SELECT id FROM smart_match_rules WHERE id = ?',
-    [req.params.id],
-  );
+  const existing = db.first('SELECT id FROM smart_match_rules WHERE id = ?', [
+    req.params.id,
+  ]);
 
   if (!existing) {
     res.status(404).json({ status: 'error', reason: 'not-found' });
@@ -464,25 +493,33 @@ app.post('/learn', (req, res) => {
 app.get('/stats', (_req, res) => {
   const db = getAccountDb();
 
-  const totalRules = (db.first(
-    'SELECT COUNT(*) as count FROM smart_match_rules',
-    [],
-  ) as Record<string, number>).count;
+  const totalRules = (
+    db.first('SELECT COUNT(*) as count FROM smart_match_rules', []) as Record<
+      string,
+      number
+    >
+  ).count;
 
-  const pinnedRules = (db.first(
-    "SELECT COUNT(*) as count FROM smart_match_rules WHERE tier = 'pinned'",
-    [],
-  ) as Record<string, number>).count;
+  const pinnedRules = (
+    db.first(
+      "SELECT COUNT(*) as count FROM smart_match_rules WHERE tier = 'pinned'",
+      [],
+    ) as Record<string, number>
+  ).count;
 
-  const aiHighRules = (db.first(
-    "SELECT COUNT(*) as count FROM smart_match_rules WHERE tier = 'ai_high'",
-    [],
-  ) as Record<string, number>).count;
+  const aiHighRules = (
+    db.first(
+      "SELECT COUNT(*) as count FROM smart_match_rules WHERE tier = 'ai_high'",
+      [],
+    ) as Record<string, number>
+  ).count;
 
-  const pendingReview = (db.first(
-    "SELECT COUNT(*) as count FROM review_queue WHERE status = 'pending'",
-    [],
-  ) as Record<string, number>).count;
+  const pendingReview = (
+    db.first(
+      "SELECT COUNT(*) as count FROM review_queue WHERE status = 'pending'",
+      [],
+    ) as Record<string, number>
+  ).count;
 
   // Average accuracy across all rules with matches
   const accuracyRow = db.first(
@@ -574,7 +611,10 @@ app.post('/promote-to-pinned', (req, res) => {
   ) as Record<string, unknown> | undefined;
 
   if (existing) {
-    res.json({ status: 'ok', data: { promoted: false, reason: 'already-pinned', id: existing.id } });
+    res.json({
+      status: 'ok',
+      data: { promoted: false, reason: 'already-pinned', id: existing.id },
+    });
     return;
   }
 
@@ -592,7 +632,9 @@ app.post('/promote-to-pinned', (req, res) => {
        WHERE id = ?`,
       [aiRule.id],
     );
-    const updated = db.first('SELECT * FROM smart_match_rules WHERE id = ?', [aiRule.id]);
+    const updated = db.first('SELECT * FROM smart_match_rules WHERE id = ?', [
+      aiRule.id,
+    ]);
     res.json({ status: 'ok', data: { promoted: true, rule: updated } });
     return;
   }
@@ -606,6 +648,8 @@ app.post('/promote-to-pinned', (req, res) => {
     [id, payee_pattern, match_type ?? 'contains', category_id],
   );
 
-  const created = db.first('SELECT * FROM smart_match_rules WHERE id = ?', [id]);
+  const created = db.first('SELECT * FROM smart_match_rules WHERE id = ?', [
+    id,
+  ]);
   res.json({ status: 'ok', data: { promoted: true, rule: created } });
 });

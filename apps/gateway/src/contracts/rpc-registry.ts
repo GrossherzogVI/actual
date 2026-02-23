@@ -519,6 +519,11 @@ export const rpcRegistry: RpcRegistryEntry[] = [
   },
 ];
 
-export function findRpcRegistryEntry(service: string, rpc: string): RpcRegistryEntry | undefined {
-  return rpcRegistry.find(entry => entry.service === service && entry.rpc === rpc);
+export function findRpcRegistryEntry(
+  service: string,
+  rpc: string,
+): RpcRegistryEntry | undefined {
+  return rpcRegistry.find(
+    entry => entry.service === service && entry.rpc === rpc,
+  );
 }

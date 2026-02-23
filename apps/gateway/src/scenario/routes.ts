@@ -1,9 +1,12 @@
+import { commandEnvelopeSchema } from '@finance-os/domain-kernel';
 import type { FastifyInstance } from 'fastify';
 import * as z from 'zod';
 
-import { commandEnvelopeSchema } from '@finance-os/domain-kernel';
-
-import { parseRequestBody, sendConflict, sendNotFound } from '../http/route-utils';
+import {
+  parseRequestBody,
+  sendConflict,
+  sendNotFound,
+} from '../http/route-utils';
 import type { GatewayService } from '../services/gateway-service';
 
 type RequestLike = { body?: unknown };
@@ -89,10 +92,12 @@ export async function registerScenarioRoutes(
   });
 
   app.get('/mutations', async request => {
-    const query = ((request as QueryLike).query || {}) as Record<string, unknown>;
+    const query = ((request as QueryLike).query || {}) as Record<
+      string,
+      unknown
+    >;
     const parsed = scenarioSchemas.listMutations.safeParse({
-      branchId:
-        typeof query.branchId === 'string' ? query.branchId : '',
+      branchId: typeof query.branchId === 'string' ? query.branchId : '',
     });
     if (!parsed.success) {
       return [];
@@ -214,11 +219,15 @@ export async function registerScenarioRoutes(
   });
 
   app.get('/adoption-check', async request => {
-    const query = ((request as QueryLike).query || {}) as Record<string, unknown>;
+    const query = ((request as QueryLike).query || {}) as Record<
+      string,
+      unknown
+    >;
     const parsed = scenarioSchemas.adoptionCheck.safeParse({
       branchId: typeof query.branchId === 'string' ? query.branchId : '',
       againstBranchId:
-        typeof query.againstBranchId === 'string' && query.againstBranchId.trim()
+        typeof query.againstBranchId === 'string' &&
+        query.againstBranchId.trim()
           ? query.againstBranchId.trim()
           : undefined,
     });
@@ -239,7 +248,10 @@ export async function registerScenarioRoutes(
   });
 
   app.get('/lineage', async request => {
-    const query = ((request as QueryLike).query || {}) as Record<string, unknown>;
+    const query = ((request as QueryLike).query || {}) as Record<
+      string,
+      unknown
+    >;
     const parsed = scenarioSchemas.lineage.safeParse({
       branchId: typeof query.branchId === 'string' ? query.branchId : '',
     });

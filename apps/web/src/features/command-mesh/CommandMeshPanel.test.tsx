@@ -1,9 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { WorkflowCommandExecution } from '../../core/types';
 import { dispatchRunDetailsCommand } from '../runtime/run-details-commands';
+
 import { CommandMeshPanel } from './CommandMeshPanel';
 
 const apiClientMock = vi.hoisted(() => ({
@@ -155,9 +156,12 @@ describe('CommandMeshPanel', () => {
       target: { value: '30' },
     });
     fireEvent.click(screen.getByLabelText('command rollback on failure'));
-    fireEvent.change(screen.getByPlaceholderText('idempotency key (optional, 8-128 chars)'), {
-      target: { value: 'command-key-001' },
-    });
+    fireEvent.change(
+      screen.getByPlaceholderText('idempotency key (optional, 8-128 chars)'),
+      {
+        target: { value: 'command-key-001' },
+      },
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Execute' }));
 
@@ -264,10 +268,16 @@ describe('CommandMeshPanel', () => {
     renderPanel();
 
     expect(await screen.findByText(/guardrails:/i)).toBeInTheDocument();
-    expect(screen.getByText(/status path: planned -> running ->/i)).toBeInTheDocument();
-    expect(screen.getByText(/urgent-review-threshold:fail/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/status path: planned -> running ->/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/urgent-review-threshold:fail/i),
+    ).toBeInTheDocument();
     expect(screen.getByText(/effects:/i)).toBeInTheDocument();
-    expect(screen.getByText(/navigation\.open-review:applied/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/navigation\.open-review:applied/i),
+    ).toBeInTheDocument();
   });
 
   it('opens run details drawer and allows rollback from drawer', async () => {
@@ -302,7 +312,9 @@ describe('CommandMeshPanel', () => {
 
     renderPanel();
 
-    const detailsButton = await screen.findByRole('button', { name: 'Details' });
+    const detailsButton = await screen.findByRole('button', {
+      name: 'Details',
+    });
     fireEvent.click(detailsButton);
 
     expect(
@@ -312,7 +324,9 @@ describe('CommandMeshPanel', () => {
     expect(screen.getByText('Guardrails')).toBeInTheDocument();
     expect(screen.getByText('Effects')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Rollback from details' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Rollback from details' }),
+    );
 
     await waitFor(() => {
       expect(apiClientMock.rollbackCommandRun).toHaveBeenCalledWith(

@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { Trans } from 'react-i18next';
 
 import type { PlaybookRun, WorkflowCommandExecution } from '../../core/types';
 
@@ -70,17 +71,24 @@ export function RunDetailsDrawer({
         }
       }}
     >
-      <aside className="fo-run-drawer" role="dialog" aria-modal="true" aria-label="Run details drawer">
+      <aside
+        className="fo-run-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-label={t("Run details drawer")}
+      >
         <header className="fo-run-drawer-header">
           <div className="fo-stack">
-            <strong>Run details</strong>
+            <strong>
+              <Trans>Run details</Trans>
+            </strong>
             <small>
               {runScopeLabel(run)} · {run.executionMode} · {run.id}
             </small>
           </div>
-          <button className="fo-btn-secondary" type="button" onClick={onClose}>
+          <button className="fo-btn-secondary" type="button" onClick={onClose}><Trans>
             Close
-          </button>
+          </Trans></button>
         </header>
 
         <section className="fo-run-drawer-grid">
@@ -98,12 +106,8 @@ export function RunDetailsDrawer({
               ? `eligible until ${formatTime(run.rollbackWindowUntilMs)}`
               : 'not eligible'}
           </small>
-          <small>
-            rollbackOf: {run.rollbackOfRunId || 'n/a'}
-          </small>
-          <small>
-            idempotency: {run.idempotencyKey || 'none'}
-          </small>
+          <small>rollbackOf: {run.rollbackOfRunId || 'n/a'}</small>
+          <small>idempotency: {run.idempotencyKey || 'none'}</small>
           {'playbookId' in run ? (
             <small>
               playbookId: {run.playbookId} · executed steps: {run.executedSteps}
@@ -114,10 +118,12 @@ export function RunDetailsDrawer({
         </section>
 
         <section className="fo-run-drawer-section">
-          <strong>Status timeline</strong>
+          <strong><Trans>Status timeline</Trans></strong>
           <div className="fo-run-drawer-list">
             {run.statusTimeline.length === 0 ? (
-              <small className="fo-muted-line">No status transitions recorded.</small>
+              <small className="fo-muted-line">
+                No status transitions recorded.
+              </small>
             ) : (
               run.statusTimeline.map((transition, index) => (
                 <article
@@ -125,7 +131,9 @@ export function RunDetailsDrawer({
                   className="fo-run-drawer-item"
                 >
                   <div className="fo-space-between">
-                    <small className="fo-run-drawer-pill">{transition.status}</small>
+                    <small className="fo-run-drawer-pill">
+                      {transition.status}
+                    </small>
                     <small>{formatTime(transition.atMs)}</small>
                   </div>
                   <small>{transition.note || 'No note.'}</small>
@@ -136,7 +144,7 @@ export function RunDetailsDrawer({
         </section>
 
         <section className="fo-run-drawer-section">
-          <strong>Guardrails</strong>
+          <strong><Trans>Guardrails</Trans></strong>
           <div className="fo-run-drawer-list">
             {run.guardrailResults.length === 0 ? (
               <small className="fo-muted-line">No guardrail findings.</small>
@@ -159,7 +167,7 @@ export function RunDetailsDrawer({
         </section>
 
         <section className="fo-run-drawer-section">
-          <strong>Effects</strong>
+          <strong><Trans>Effects</Trans></strong>
           <div className="fo-run-drawer-list">
             {run.effectSummaries.length === 0 ? (
               <small className="fo-muted-line">No effect summaries.</small>
@@ -168,10 +176,13 @@ export function RunDetailsDrawer({
                 <article key={effect.effectId} className="fo-run-drawer-item">
                   <div className="fo-space-between">
                     <small>{effect.kind}</small>
-                    <small className="fo-run-drawer-pill">{effect.status}</small>
+                    <small className="fo-run-drawer-pill">
+                      {effect.status}
+                    </small>
                   </div>
                   <small>
-                    {effect.description} · reversible: {effect.reversible ? 'yes' : 'no'}
+                    {effect.description} · reversible:{' '}
+                    {effect.reversible ? 'yes' : 'no'}
                   </small>
                 </article>
               ))
@@ -180,29 +191,44 @@ export function RunDetailsDrawer({
         </section>
 
         <section className="fo-run-drawer-section">
-          <strong>{'playbookId' in run ? 'Executed commands' : 'Command steps'}</strong>
+          <strong>
+            {'playbookId' in run ? t('Executed commands') : t('Command steps')}
+          </strong>
           <div className="fo-run-drawer-list">
             {'playbookId' in run ? (
               run.steps.length === 0 ? (
-                <small className="fo-muted-line">No step execution details.</small>
+                <small className="fo-muted-line">
+                  No step execution details.
+                </small>
               ) : (
                 run.steps.map(step => (
-                  <article key={`${run.id}-${step.index}`} className="fo-run-drawer-item">
+                  <article
+                    key={`${run.id}-${step.index}`}
+                    className="fo-run-drawer-item"
+                  >
                     <div className="fo-space-between">
                       <small>
-                        #{step.index + 1} · {String(step.command.verb || 'unknown')}
+                        #{step.index + 1} ·{' '}
+                        {String(step.command.verb || 'unknown')}
                       </small>
-                      <small className="fo-run-drawer-pill">{step.status}</small>
+                      <small className="fo-run-drawer-pill">
+                        {step.status}
+                      </small>
                     </div>
                     <small>{step.detail || 'No detail.'}</small>
                   </article>
                 ))
               )
             ) : run.steps.length === 0 ? (
-              <small className="fo-muted-line">No step execution details.</small>
+              <small className="fo-muted-line">
+                No step execution details.
+              </small>
             ) : (
               run.steps.map((step, index) => (
-                <article key={`${run.id}-${index}`} className="fo-run-drawer-item">
+                <article
+                  key={`${run.id}-${index}`}
+                  className="fo-run-drawer-item"
+                >
                   <div className="fo-space-between">
                     <small>
                       #{index + 1} · {step.raw}
@@ -217,16 +243,16 @@ export function RunDetailsDrawer({
         </section>
 
         <footer className="fo-run-drawer-footer">
-          <button className="fo-btn-secondary" type="button" onClick={onClose}>
+          <button className="fo-btn-secondary" type="button" onClick={onClose}><Trans>
             Close
-          </button>
+          </Trans></button>
           <button
             className="fo-btn-secondary"
             type="button"
             disabled={!rollbackAllowed || !onRollback || rollbackPending}
             onClick={() => onRollback?.(run.id)}
           >
-            {rollbackPending ? 'Rolling back...' : 'Rollback from details'}
+            {rollbackPending ? 'Rolling back...' : t('Rollback from details')}
           </button>
         </footer>
       </aside>

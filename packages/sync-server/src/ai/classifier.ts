@@ -1,6 +1,5 @@
-import type { ClassificationResult } from './types.js';
-
 import { ollamaChat } from './ollama-client.js';
+import type { ClassificationResult } from './types.js';
 
 // ─── In-memory classification cache by normalized payee ────────────────────
 
@@ -126,10 +125,7 @@ export async function classifyTransaction(
     }
   }
 
-  const { system, user } = buildClassificationPrompt(
-    transaction,
-    categories,
-  );
+  const { system, user } = buildClassificationPrompt(transaction, categories);
 
   let userPrompt = user;
   if (existingRules?.length) {

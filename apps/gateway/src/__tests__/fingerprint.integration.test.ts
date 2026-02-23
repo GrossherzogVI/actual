@@ -29,7 +29,8 @@ type CleanupRedisClient = {
   quit: () => Promise<void>;
 };
 
-const runIntegration = process.env.FINANCE_GATEWAY_RUN_INTEGRATION_PERF === 'true';
+const runIntegration =
+  process.env.FINANCE_GATEWAY_RUN_INTEGRATION_PERF === 'true';
 const databaseUrl = process.env.FINANCE_GATEWAY_INTEGRATION_DATABASE_URL;
 const redisUrl = process.env.FINANCE_GATEWAY_INTEGRATION_REDIS_URL;
 
@@ -39,13 +40,24 @@ if (runIntegration && (!databaseUrl || !redisUrl)) {
   );
 }
 
-const describeIntegration = runIntegration ? describe.sequential : describe.skip;
+const describeIntegration = runIntegration
+  ? describe.sequential
+  : describe.skip;
 
 describeIntegration('fingerprint integration perf (postgres + redis)', () => {
   it('meets fingerprint claim contention and duplicate-skip p95 SLOs', async () => {
-    const contentionRuns = envInt('FINANCE_GATEWAY_INTEGRATION_CONTENTION_RUNS', 200);
-    const duplicateRuns = envInt('FINANCE_GATEWAY_INTEGRATION_DUPLICATE_RUNS', 200);
-    const p95BudgetMs = envInt('FINANCE_GATEWAY_INTEGRATION_P95_BUDGET_MS', 250);
+    const contentionRuns = envInt(
+      'FINANCE_GATEWAY_INTEGRATION_CONTENTION_RUNS',
+      200,
+    );
+    const duplicateRuns = envInt(
+      'FINANCE_GATEWAY_INTEGRATION_DUPLICATE_RUNS',
+      200,
+    );
+    const p95BudgetMs = envInt(
+      'FINANCE_GATEWAY_INTEGRATION_P95_BUDGET_MS',
+      250,
+    );
     const staleRecoveryBudgetMs = envInt(
       'FINANCE_GATEWAY_INTEGRATION_STALE_RECOVERY_BUDGET_MS',
       250,
@@ -87,7 +99,11 @@ describeIntegration('fingerprint integration perf (postgres + redis)', () => {
       url: redisUrl,
     }) as unknown as CleanupRedisClient;
 
-    await Promise.all([repository.init(), queue.init(), cleanupClient.connect()]);
+    await Promise.all([
+      repository.init(),
+      queue.init(),
+      cleanupClient.connect(),
+    ]);
     await cleanupClient.del(
       `${queueKey}:ready`,
       `${queueKey}:payload`,
@@ -132,9 +148,13 @@ describeIntegration('fingerprint integration perf (postgres + redis)', () => {
       expect(contentionP95).toBeLessThanOrEqual(p95BudgetMs);
 
       const contentionThroughput = Number(
-        ((contentionRuns * 1000) / Math.max(1, contentionDurationMs)).toFixed(2),
+        ((contentionRuns * 1000) / Math.max(1, contentionDurationMs)).toFixed(
+          2,
+        ),
       );
-      expect(contentionThroughput).toBeGreaterThanOrEqual(minThroughputOpsPerSec);
+      expect(contentionThroughput).toBeGreaterThanOrEqual(
+        minThroughputOpsPerSec,
+      );
 
       const acquiredClaim = contentionAcquired[0];
       if (!acquiredClaim) {
@@ -186,7 +206,9 @@ describeIntegration('fingerprint integration perf (postgres + redis)', () => {
       const duplicateDurationMs = Date.now() - duplicateStartedAt;
 
       expect(
-        duplicateClaims.every(entry => entry.claim.status === 'already-processed'),
+        duplicateClaims.every(
+          entry => entry.claim.status === 'already-processed',
+        ),
       ).toBe(true);
 
       const duplicateP95 = percentile(
@@ -198,7 +220,9 @@ describeIntegration('fingerprint integration perf (postgres + redis)', () => {
       const duplicateThroughput = Number(
         ((duplicateRuns * 1000) / Math.max(1, duplicateDurationMs)).toFixed(2),
       );
-      expect(duplicateThroughput).toBeGreaterThanOrEqual(minThroughputOpsPerSec);
+      expect(duplicateThroughput).toBeGreaterThanOrEqual(
+        minThroughputOpsPerSec,
+      );
 
       await repository.acquireSystemLease({
         leaseKey: staleLeaseKey,
@@ -216,7 +240,9 @@ describeIntegration('fingerprint integration perf (postgres + redis)', () => {
       const staleRecoveryDurationMs = Date.now() - staleStartedAt;
 
       expect(staleRecovery.status).toBe('acquired');
-      expect(staleRecoveryDurationMs).toBeLessThanOrEqual(staleRecoveryBudgetMs);
+      expect(staleRecoveryDurationMs).toBeLessThanOrEqual(
+        staleRecoveryBudgetMs,
+      );
 
       const metricsAfter = await service.getRuntimeMetrics();
       expect(metricsAfter.workerFingerprintClaimEvents).toBeGreaterThan(
@@ -225,17 +251,14 @@ describeIntegration('fingerprint integration perf (postgres + redis)', () => {
       expect(metricsAfter.workerFingerprintClaimAlreadyClaimed).toBeGreaterThan(
         metricsBefore.workerFingerprintClaimAlreadyClaimed,
       );
-      expect(metricsAfter.workerFingerprintClaimAlreadyProcessed).toBeGreaterThan(
-        metricsBefore.workerFingerprintClaimAlreadyProcessed,
-      );
+      expect(
+        metricsAfter.workerFingerprintClaimAlreadyProcessed,
+      ).toBeGreaterThan(metricsBefore.workerFingerprintClaimAlreadyProcessed);
       expect(metricsAfter.workerFingerprintStaleRecoveries).toBeGreaterThan(
         metricsBefore.workerFingerprintStaleRecoveries,
       );
     } finally {
-      await Promise.allSettled([
-        queue.close(),
-        repository.close(),
-      ]);
+      await Promise.allSettled([queue.close(), repository.close()]);
       await cleanupClient.del(
         `${queueKey}:ready`,
         `${queueKey}:payload`,

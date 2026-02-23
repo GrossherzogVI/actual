@@ -1,10 +1,10 @@
-// @ts-strict-ignore
-import type { ClassificationResult } from './types';
-
 import * as asyncStorage from '../../platform/server/asyncStorage';
 import { createApp } from '../app';
 import { del, get, post } from '../post';
 import { getServer } from '../server-config';
+
+// @ts-strict-ignore
+import type { ClassificationResult } from './types';
 
 export type SmartMatchRule = {
   id: string;
@@ -60,11 +60,9 @@ async function aiClassify(args: {
   if (!userToken) return { error: 'not-logged-in' };
 
   try {
-    const result = await post(
-      getServer().BASE_SERVER + '/ai/classify',
-      args,
-      { 'X-ACTUAL-TOKEN': userToken },
-    );
+    const result = await post(getServer().BASE_SERVER + '/ai/classify', args, {
+      'X-ACTUAL-TOKEN': userToken,
+    });
     return result as ClassificationResult;
   } catch (err) {
     return { error: err.reason || err.message || 'unknown' };
@@ -140,11 +138,9 @@ async function aiRulesCreate(args: {
   if (!userToken) return { error: 'not-logged-in' };
 
   try {
-    const result = await post(
-      getServer().BASE_SERVER + '/ai/rules',
-      args,
-      { 'X-ACTUAL-TOKEN': userToken },
-    );
+    const result = await post(getServer().BASE_SERVER + '/ai/rules', args, {
+      'X-ACTUAL-TOKEN': userToken,
+    });
     return result as SmartMatchRule;
   } catch (err) {
     return { error: err.reason || err.message || 'unknown' };
@@ -178,11 +174,9 @@ async function aiLearn(args: {
   if (!userToken) return { error: 'not-logged-in' };
 
   try {
-    const result = await post(
-      getServer().BASE_SERVER + '/ai/learn',
-      args,
-      { 'X-ACTUAL-TOKEN': userToken },
-    );
+    const result = await post(getServer().BASE_SERVER + '/ai/learn', args, {
+      'X-ACTUAL-TOKEN': userToken,
+    });
     return result as { learned: boolean; rule?: SmartMatchRule };
   } catch (err) {
     return { error: err.reason || err.message || 'unknown' };
@@ -194,10 +188,9 @@ async function aiStats(): Promise<AIStats | { error: string }> {
   if (!userToken) return { error: 'not-logged-in' };
 
   try {
-    const res = await get(
-      getServer().BASE_SERVER + '/ai/stats',
-      { headers: { 'X-ACTUAL-TOKEN': userToken } },
-    );
+    const res = await get(getServer().BASE_SERVER + '/ai/stats', {
+      headers: { 'X-ACTUAL-TOKEN': userToken },
+    });
     if (res) {
       const parsed = JSON.parse(res);
       if (parsed.status === 'ok') return parsed.data;

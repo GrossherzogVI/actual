@@ -32,8 +32,8 @@ vi.mock('../account-db.js', () => {
           // Filter by status if present in SQL
           if (sql.includes('status = ?') && params && params.length > 0) {
             // Find which param is status
-            const paramIdx = (sql.match(/\?/g) || []).findIndex(
-              (_, i) => sql.split('?')[i].includes('status =')
+            const paramIdx = (sql.match(/\?/g) || []).findIndex((_, i) =>
+              sql.split('?')[i].includes('status ='),
             );
             if (paramIdx !== -1) {
               const status = params[paramIdx] as string;
@@ -143,16 +143,10 @@ vi.mock('../account-db.js', () => {
 });
 
 vi.mock('../util/middlewares.js', () => ({
-  requestLoggerMiddleware: (
-    _req: unknown,
-    _res: unknown,
-    next: () => void,
-  ) => next(),
-  validateSessionMiddleware: (
-    _req: unknown,
-    _res: unknown,
-    next: () => void,
-  ) => next(),
+  requestLoggerMiddleware: (_req: unknown, _res: unknown, next: () => void) =>
+    next(),
+  validateSessionMiddleware: (_req: unknown, _res: unknown, next: () => void) =>
+    next(),
 }));
 
 import express from 'express';
@@ -271,9 +265,7 @@ describe('contracts CRUD API', () => {
     });
 
     it('filters by status', async () => {
-      const res = await request(app).get(
-        '/contracts?status=active',
-      );
+      const res = await request(app).get('/contracts?status=active');
       expect(res.status).toBe(200);
       expect(res.body.data).toHaveLength(2);
       expect(res.body.data[0].name).toBe('Contract A');

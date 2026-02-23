@@ -8,16 +8,17 @@
  *   hard   = soft + gracePeriod  (last day before consequences)
  */
 
-import { type Bundesland, getHolidays } from './german-holidays';
+import { getHolidays } from './german-holidays';
+import type { Bundesland } from './german-holidays';
 
 // ─── Payment method lead time defaults (business days) ───────────────────────
 
 export type PaymentMethod =
-  | 'lastschrift'    // direct debit — 0 days
-  | 'dauerauftrag'   // standing order — 1 day
-  | 'manual_sepa'    // manual SEPA transfer — 2 days
-  | 'international'  // international wire — 5 days
-  | 'other';         // fallback — 2 days
+  | 'lastschrift' // direct debit — 0 days
+  | 'dauerauftrag' // standing order — 1 day
+  | 'manual_sepa' // manual SEPA transfer — 2 days
+  | 'international' // international wire — 5 days
+  | 'other'; // fallback — 2 days
 
 export const METHOD_LEAD_DAYS: Record<PaymentMethod, number> = {
   lastschrift: 0,
@@ -41,7 +42,10 @@ export type DeadlineShift = 'before' | 'after';
 
 const holidayCache = new Map<string, Set<string>>();
 
-function getCachedHolidays(year: number, bundesland?: Bundesland | null): Set<string> {
+function getCachedHolidays(
+  year: number,
+  bundesland?: Bundesland | null,
+): Set<string> {
   const key = `${year}-${bundesland || 'ALL'}`;
   if (!holidayCache.has(key)) {
     holidayCache.set(key, getHolidays(year, bundesland));
@@ -58,7 +62,10 @@ function isWeekend(d: Date): boolean {
 /**
  * Check if a date is a business day (not weekend, not holiday).
  */
-export function isBusinessDay(date: Date, bundesland?: Bundesland | null): boolean {
+export function isBusinessDay(
+  date: Date,
+  bundesland?: Bundesland | null,
+): boolean {
   if (isWeekend(date)) return false;
   const holidays = getCachedHolidays(date.getFullYear(), bundesland);
   const y = date.getFullYear();
@@ -99,7 +106,9 @@ export function addBusinessDays(
 ): Date {
   const d = new Date(date);
   if (n === 0) {
-    return isBusinessDay(d, bundesland) ? d : nextBusinessDay(d, 'after', bundesland);
+    return isBusinessDay(d, bundesland)
+      ? d
+      : nextBusinessDay(d, 'after', bundesland);
   }
   const step = n > 0 ? 1 : -1;
   let remaining = Math.abs(n);
@@ -114,7 +123,7 @@ export function addBusinessDays(
 
 // ─── Deadline computation ────────────────────────────────────────────────────
 
-export interface DeadlineConfig {
+export type DeadlineConfig = {
   /** The nominal payment date (YYYY-MM-DD). */
   nominalDate: string;
   /** Payment method for lead time lookup. */
@@ -129,16 +138,16 @@ export interface DeadlineConfig {
   hardShift: DeadlineShift;
   /** Bundesland for holiday awareness. */
   bundesland?: Bundesland | null;
-}
+};
 
-export interface DeadlineResult {
+export type DeadlineResult = {
   /** When to initiate the payment. */
   action: string;
   /** Ideal due date. */
   soft: string;
   /** Last day before consequences. */
   hard: string;
-}
+};
 
 /** Format Date as YYYY-MM-DD. */
 function toISO(d: Date): string {

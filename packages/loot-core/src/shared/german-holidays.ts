@@ -87,7 +87,10 @@ export function easterSunday(year: number): Date {
  * @param bundesland - Optional Bundesland code. If null/undefined, returns federal holidays only.
  * @returns Set of YYYY-MM-DD date strings
  */
-export function getHolidays(year: number, bundesland?: Bundesland | null): Set<string> {
+export function getHolidays(
+  year: number,
+  bundesland?: Bundesland | null,
+): Set<string> {
   const holidays = new Set<string>();
   const easter = easterSunday(year);
 
@@ -99,10 +102,10 @@ export function getHolidays(year: number, bundesland?: Bundesland | null): Set<s
   holidays.add(`${year}-12-26`); // 2. Weihnachtstag
 
   // ── Easter-based federal holidays ───────────────────────────────────────
-  holidays.add(fmt(addDays(easter, -2)));  // Karfreitag
-  holidays.add(fmt(addDays(easter, 1)));   // Ostermontag
-  holidays.add(fmt(addDays(easter, 39)));  // Christi Himmelfahrt
-  holidays.add(fmt(addDays(easter, 50)));  // Pfingstmontag
+  holidays.add(fmt(addDays(easter, -2))); // Karfreitag
+  holidays.add(fmt(addDays(easter, 1))); // Ostermontag
+  holidays.add(fmt(addDays(easter, 39))); // Christi Himmelfahrt
+  holidays.add(fmt(addDays(easter, 50))); // Pfingstmontag
 
   if (!bundesland) return holidays;
 
@@ -135,7 +138,9 @@ export function getHolidays(year: number, bundesland?: Bundesland | null): Set<s
   }
 
   // Reformationstag (Oct 31): BB, HB, HH, MV, NI, SN, ST, SH, TH
-  if (['BB', 'HB', 'HH', 'MV', 'NI', 'SN', 'ST', 'SH', 'TH'].includes(bundesland)) {
+  if (
+    ['BB', 'HB', 'HH', 'MV', 'NI', 'SN', 'ST', 'SH', 'TH'].includes(bundesland)
+  ) {
     holidays.add(`${year}-10-31`);
   }
 
@@ -149,7 +154,7 @@ export function getHolidays(year: number, bundesland?: Bundesland | null): Set<s
     const nov23 = new Date(year, 10, 23); // Nov 23
     const dayOfWeek = nov23.getDay(); // 0=Sun..6=Sat
     // Wednesday before Nov 23: subtract (dayOfWeek + 4) % 7 days
-    const offset = ((dayOfWeek + 4) % 7) || 7;
+    const offset = (dayOfWeek + 4) % 7 || 7;
     holidays.add(fmt(addDays(nov23, -offset)));
   }
 

@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type {
@@ -8,6 +8,7 @@ import type {
   ScenarioLineage,
   ScenarioMutation,
 } from '../../core/types';
+
 import { SpatialTwinPanel } from './SpatialTwinPanel';
 
 const dispatchRunDetailsCommandMock = vi.hoisted(() => vi.fn());
@@ -247,9 +248,12 @@ describe('SpatialTwinPanel', () => {
 
     await screen.findByText('Promote Simulation');
 
-    fireEvent.change(screen.getByLabelText('spatial twin rollback window minutes'), {
-      target: { value: '45' },
-    });
+    fireEvent.change(
+      screen.getByLabelText('spatial twin rollback window minutes'),
+      {
+        target: { value: '45' },
+      },
+    );
     fireEvent.click(screen.getByLabelText('spatial twin rollback on failure'));
     fireEvent.change(screen.getByLabelText('spatial twin promotion assignee'), {
       target: { value: 'ops-delegate' },
@@ -258,7 +262,9 @@ describe('SpatialTwinPanel', () => {
       target: { value: 'spatial-idempotency-1' },
     });
 
-    const promoteButton = screen.getByRole('button', { name: 'Promote to live run' });
+    const promoteButton = screen.getByRole('button', {
+      name: 'Promote to live run',
+    });
     await waitFor(() => {
       expect(promoteButton).toBeEnabled();
     });
@@ -317,12 +323,16 @@ describe('SpatialTwinPanel', () => {
 
     await screen.findByText('Run Provenance');
     await waitFor(() => {
-      expect(apiClientMock.listCommandRunsByIds).toHaveBeenCalledWith(['run-1']);
+      expect(apiClientMock.listCommandRunsByIds).toHaveBeenCalledWith([
+        'run-1',
+      ]);
     });
     const rollbackButtons = await screen.findAllByRole('button', {
       name: 'Rollback promoted run',
     });
-    const enabled = rollbackButtons.find(button => !button.hasAttribute('disabled'));
+    const enabled = rollbackButtons.find(
+      button => !button.hasAttribute('disabled'),
+    );
     expect(enabled).toBeDefined();
     if (!enabled) {
       return;
@@ -345,7 +355,9 @@ describe('SpatialTwinPanel', () => {
     const openButtons = await screen.findAllByRole('button', {
       name: 'Open run details',
     });
-    const enabled = openButtons.find(button => !button.hasAttribute('disabled'));
+    const enabled = openButtons.find(
+      button => !button.hasAttribute('disabled'),
+    );
     expect(enabled).toBeDefined();
     if (!enabled) {
       return;

@@ -1,7 +1,6 @@
+import { commandEnvelopeSchema } from '@finance-os/domain-kernel';
 import type { FastifyInstance } from 'fastify';
 import * as z from 'zod';
-
-import { commandEnvelopeSchema } from '@finance-os/domain-kernel';
 
 import { parseRequestBody } from '../http/route-utils';
 import type { GatewayService } from '../services/gateway-service';

@@ -1,8 +1,15 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { PlaybookRun, WorkflowCommandExecution } from '../core/types';
+
 import { App } from './App';
 
 const dispatchRunDetailsCommandMock = vi.hoisted(() => vi.fn());
@@ -90,7 +97,9 @@ vi.mock('../features/spatial-twin/SpatialTwinPanel', () => ({
 }));
 
 vi.mock('../features/temporal-intelligence/TemporalIntelligencePanel', () => ({
-  TemporalIntelligencePanel: () => <section data-testid="temporal-intelligence-panel" />,
+  TemporalIntelligencePanel: () => (
+    <section data-testid="temporal-intelligence-panel" />
+  ),
 }));
 
 function createCommandRun(
@@ -225,7 +234,9 @@ describe('App anomaly rail', () => {
 
     renderApp();
 
-    expect(await screen.findByText(/live sample:\s*2 runs/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/live sample:\s*2 runs/i),
+    ).toBeInTheDocument();
     const anomalyRail = screen
       .getByText(/live sample:\s*2 runs/i)
       .closest('nav');
@@ -233,8 +244,12 @@ describe('App anomaly rail', () => {
     if (!anomalyRail) {
       return;
     }
-    const blockedBadge = within(anomalyRail).getByRole('button', { name: /blocked/i });
-    const failedBadge = within(anomalyRail).getByRole('button', { name: /failed/i });
+    const blockedBadge = within(anomalyRail).getByRole('button', {
+      name: /blocked/i,
+    });
+    const failedBadge = within(anomalyRail).getByRole('button', {
+      name: /failed/i,
+    });
 
     expect(blockedBadge).toHaveTextContent('1');
     expect(failedBadge).toHaveTextContent('1');
@@ -271,7 +286,9 @@ describe('App anomaly rail', () => {
     ]);
 
     renderApp();
-    expect(await screen.findByText(/live sample:\s*2 runs/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/live sample:\s*2 runs/i),
+    ).toBeInTheDocument();
 
     fireEvent.keyDown(window, {
       key: 'R',

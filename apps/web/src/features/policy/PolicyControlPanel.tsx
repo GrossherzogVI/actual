@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Trans } from 'react-i18next';
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import type { EgressPolicy } from '../../core/types';
 import { apiClient } from '../../core/api/client';
+import type { EgressPolicy } from '../../core/types';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -18,16 +21,22 @@ type PolicyControlPanelProps = {
 };
 
 function parseProviders(input: string): string[] {
-  return [...new Set(input.split(',').map(item => item.trim()).filter(Boolean))];
+  return [
+    ...new Set(
+      input
+        .split(',')
+        .map(item => item.trim())
+        .filter(Boolean),
+    ),
+  ];
 }
 
 export function PolicyControlPanel({ onStatus }: PolicyControlPanelProps) {
   const queryClient = useQueryClient();
   const [allowCloud, setAllowCloud] = useState(false);
   const [providersInput, setProvidersInput] = useState('');
-  const [redactionMode, setRedactionMode] = useState<EgressPolicy['redactionMode']>(
-    'strict',
-  );
+  const [redactionMode, setRedactionMode] =
+    useState<EgressPolicy['redactionMode']>('strict');
 
   const policy = useQuery({
     queryKey: ['egress-policy'],
@@ -72,8 +81,12 @@ export function PolicyControlPanel({ onStatus }: PolicyControlPanelProps) {
   return (
     <section className="fo-panel">
       <header className="fo-panel-header">
-        <h2>Policy Plane</h2>
-        <small>Sovereignty-first model routing and auditable egress controls.</small>
+        <h2>
+          <Trans>Policy Plane</Trans>
+        </h2>
+        <small>
+          Sovereignty-first model routing and auditable egress controls.
+        </small>
       </header>
 
       <div className="fo-card">
@@ -83,7 +96,7 @@ export function PolicyControlPanel({ onStatus }: PolicyControlPanelProps) {
             checked={allowCloud}
             onChange={event => setAllowCloud(event.target.checked)}
           />
-          <span>Allow cloud model egress</span>
+          <span><Trans>Allow cloud model egress</Trans></span>
         </label>
 
         <label className="fo-stack">
@@ -96,13 +109,15 @@ export function PolicyControlPanel({ onStatus }: PolicyControlPanelProps) {
         </label>
 
         <label className="fo-stack">
-          <small>Redaction mode</small>
+          <small><Trans>Redaction mode</Trans></small>
           <Select
             value={redactionMode}
-            onValueChange={value => setRedactionMode(value as EgressPolicy['redactionMode'])}
+            onValueChange={value =>
+              setRedactionMode(value as EgressPolicy['redactionMode'])
+            }
           >
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Redaction Mode" />
+              <SelectValue placeholder={t('Redaction Mode')} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="strict">strict</SelectItem>
@@ -116,14 +131,16 @@ export function PolicyControlPanel({ onStatus }: PolicyControlPanelProps) {
           disabled={savePolicy.isPending || policy.isLoading}
           onClick={() => savePolicy.mutate()}
         >
-          {savePolicy.isPending ? 'Saving...' : 'Save policy'}
+          {savePolicy.isPending ? 'Saving...' : t('Save policy')}
         </Button>
       </div>
 
       <div className="fo-stack">
-        <strong>Egress audit timeline</strong>
+        <strong><Trans>Egress audit timeline</Trans></strong>
         {audit.isLoading ? <small>Loading audit entries...</small> : null}
-        {audit.isError ? <small>Unable to load policy audit entries.</small> : null}
+        {audit.isError ? (
+          <small>Unable to load policy audit entries.</small>
+        ) : null}
         <div className="fo-log-list">
           {(audit.data || []).map(entry => (
             <article className="fo-log" key={entry.id}>
@@ -140,4 +157,3 @@ export function PolicyControlPanel({ onStatus }: PolicyControlPanelProps) {
     </section>
   );
 }
-

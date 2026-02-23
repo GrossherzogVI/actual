@@ -8,7 +8,6 @@ import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 
 import { getAccountDb, isAdmin } from './account-db';
-import { dispatchWebhook } from './webhook.js';
 import { FileNotFound } from './app-sync/errors';
 import {
   File,
@@ -27,6 +26,7 @@ import {
   validateSessionMiddleware,
 } from './util/middlewares';
 import { getPathForGroupFile, getPathForUserFile } from './util/paths';
+import { dispatchWebhook } from './webhook.js';
 
 const app = express();
 app.use(validateSessionMiddleware);

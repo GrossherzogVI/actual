@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Trans } from 'react-i18next';
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { apiClient } from '../../core/api/client';
 import type { RuntimeMetrics, WorkerQueueHealth } from '../../core/types';
 
-import {
-  RUNTIME_COMMAND_EVENT,
-  type RuntimeCommandEventDetail,
-} from './runtime-commands';
+import { RUNTIME_COMMAND_EVENT } from './runtime-commands';
+import type { RuntimeCommandEventDetail } from './runtime-commands';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -76,7 +77,8 @@ function buildRuntimeSignal(input: {
   const queueFailureRate = input.queueHealth?.failureRate ?? 0;
   const queueP95 = input.queueHealth?.processingMs.p95 ?? 0;
   const contentionRate = input.metrics?.workerFingerprintContentionRate ?? 0;
-  const staleRecoveryRate = input.metrics?.workerFingerprintStaleRecoveryRate ?? 0;
+  const staleRecoveryRate =
+    input.metrics?.workerFingerprintStaleRecoveryRate ?? 0;
   const queueInFlight = input.metrics?.queueInFlight ?? 0;
   const pipelineError = input.pipelineError?.trim();
 
@@ -90,7 +92,9 @@ function buildRuntimeSignal(input: {
     triggers.push(`p95 ${queueP95}ms`);
   }
   if (contentionRate >= 0.35) {
-    triggers.push(`fingerprint contention ${(contentionRate * 100).toFixed(1)}%`);
+    triggers.push(
+      `fingerprint contention ${(contentionRate * 100).toFixed(1)}%`,
+    );
   }
   if (staleRecoveryRate >= 0.08) {
     triggers.push(`stale recoveries ${(staleRecoveryRate * 100).toFixed(1)}%`);
@@ -111,7 +115,8 @@ function buildRuntimeSignal(input: {
     return {
       level: 'critical',
       label: 'Critical',
-      guidance: 'Stabilize runtime now, then inspect dead letters and contention hotspots.',
+      guidance:
+        'Stabilize runtime now, then inspect dead letters and contention hotspots.',
       triggers,
     };
   }
@@ -120,7 +125,8 @@ function buildRuntimeSignal(input: {
     return {
       level: 'warn',
       label: 'Watch',
-      guidance: 'Runtime is degraded. Execute stabilization and monitor p95/failure trend.',
+      guidance:
+        'Runtime is degraded. Execute stabilization and monitor p95/failure trend.',
       triggers,
     };
   }
@@ -128,7 +134,8 @@ function buildRuntimeSignal(input: {
   return {
     level: 'stable',
     label: 'Stable',
-    guidance: 'Runtime is healthy. Keep periodic maintenance cadence and monitor drift.',
+    guidance:
+      'Runtime is healthy. Keep periodic maintenance cadence and monitor drift.',
     triggers: [],
   };
 }
@@ -186,11 +193,15 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
   const invalidateRuntimeQueries = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['runtime-metrics'] }),
-      queryClient.invalidateQueries({ queryKey: ['ops-activity-pipeline-status'] }),
+      queryClient.invalidateQueries({
+        queryKey: ['ops-activity-pipeline-status'],
+      }),
       queryClient.invalidateQueries({ queryKey: ['ops-activity'] }),
       queryClient.invalidateQueries({ queryKey: ['worker-queue-health'] }),
       queryClient.invalidateQueries({ queryKey: ['worker-dead-letters'] }),
-      queryClient.invalidateQueries({ queryKey: ['worker-dead-letters-open-count'] }),
+      queryClient.invalidateQueries({
+        queryKey: ['worker-dead-letters-open-count'],
+      }),
     ]);
   };
 
@@ -448,7 +459,10 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
       executeRuntimeCommand(detail.command);
     };
 
-    window.addEventListener(RUNTIME_COMMAND_EVENT, onRuntimeCommand as EventListener);
+    window.addEventListener(
+      RUNTIME_COMMAND_EVENT,
+      onRuntimeCommand as EventListener,
+    );
     return () =>
       window.removeEventListener(
         RUNTIME_COMMAND_EVENT,
@@ -459,15 +473,23 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
   return (
     <section className="fo-panel">
       <header className="fo-panel-header">
-        <h2>Runtime Control</h2>
-        <small>Ops activity backfill, queue resilience, and worker reliability.</small>
+        <h2>
+          <Trans>Runtime Control</Trans>
+        </h2>
+        <small>
+          Ops activity backfill, queue resilience, and worker reliability.
+        </small>
       </header>
 
       <div className="fo-stack">
-        <article className={`fo-card fo-runtime-signal fo-runtime-signal-${runtimeSignal.level}`}>
+        <article
+          className={`fo-card fo-runtime-signal fo-runtime-signal-${runtimeSignal.level}`}
+        >
           <div className="fo-space-between">
-            <small>Runtime signal</small>
-            <span className={`fo-runtime-badge fo-runtime-badge-${runtimeSignal.level}`}>
+            <small><Trans>Runtime signal</Trans></small>
+            <span
+              className={`fo-runtime-badge fo-runtime-badge-${runtimeSignal.level}`}
+            >
               {runtimeSignal.label}
             </span>
           </div>
@@ -482,7 +504,9 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
               disabled={controlsLocked}
               onClick={() => stabilizeRuntime.mutate()}
             >
-              {stabilizeRuntime.isPending ? 'Stabilizing...' : 'Stabilize Runtime'}
+              {stabilizeRuntime.isPending
+                ? 'Stabilizing...'
+                : t('Stabilize Runtime')}
             </Button>
             <Button
               variant="secondary"
@@ -492,7 +516,7 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
               }
               onClick={() => startPipeline.mutate()}
             >
-              {startPipeline.isPending ? 'Starting...' : 'Start Pipeline'}
+              {startPipeline.isPending ? 'Starting...' : t('Start Pipeline')}
             </Button>
           </div>
           <div className="fo-hints">
@@ -505,55 +529,61 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
 
         <article className="fo-card">
           <div className="fo-space-between">
-            <small>Repository</small>
+            <small><Trans>Repository</Trans></small>
             <strong>{metrics.data?.repositoryKind || '-'}</strong>
           </div>
           <div className="fo-space-between">
-            <small>Queue</small>
+            <small><Trans>Queue</Trans></small>
             <strong>{metrics.data?.queueKind || '-'}</strong>
           </div>
           <div className="fo-space-between">
-            <small>Queue size</small>
+            <small><Trans>Queue size</Trans></small>
             <strong>{metrics.data?.queueSize ?? '-'}</strong>
           </div>
           <div className="fo-space-between">
-            <small>In flight</small>
+            <small><Trans>In flight</Trans></small>
             <strong>{metrics.data?.queueInFlight ?? '-'}</strong>
           </div>
           <div className="fo-space-between">
-            <small>Open dead letters</small>
+            <small><Trans>Open dead letters</Trans></small>
             <strong>{openDeadLetters.data?.length ?? '-'}</strong>
           </div>
           <div className="fo-space-between">
-            <small>Ops activity events</small>
+            <small><Trans>Ops activity events</Trans></small>
             <strong>{metrics.data?.opsActivityEvents ?? '-'}</strong>
           </div>
           <div className="fo-space-between">
-            <small>Worker attempts</small>
+            <small><Trans>Worker attempts</Trans></small>
             <strong>{metrics.data?.workerJobAttempts ?? '-'}</strong>
           </div>
           <div className="fo-space-between">
-            <small>Worker dead letters</small>
+            <small><Trans>Worker dead letters</Trans></small>
             <strong>{metrics.data?.workerDeadLetters ?? '-'}</strong>
           </div>
           <div className="fo-space-between">
-            <small>Fingerprint claims</small>
+            <small><Trans>Fingerprint claims</Trans></small>
             <strong>{metrics.data?.workerFingerprintClaimEvents ?? '-'}</strong>
           </div>
           <div className="fo-space-between">
-            <small>Fingerprint contended</small>
-            <strong>{metrics.data?.workerFingerprintClaimAlreadyClaimed ?? '-'}</strong>
+            <small><Trans>Fingerprint contended</Trans></small>
+            <strong>
+              {metrics.data?.workerFingerprintClaimAlreadyClaimed ?? '-'}
+            </strong>
           </div>
           <div className="fo-space-between">
-            <small>Duplicate skips</small>
-            <strong>{metrics.data?.workerFingerprintClaimAlreadyProcessed ?? '-'}</strong>
+            <small><Trans>Duplicate skips</Trans></small>
+            <strong>
+              {metrics.data?.workerFingerprintClaimAlreadyProcessed ?? '-'}
+            </strong>
           </div>
           <div className="fo-space-between">
-            <small>Stale lock recoveries</small>
-            <strong>{metrics.data?.workerFingerprintStaleRecoveries ?? '-'}</strong>
+            <small><Trans>Stale lock recoveries</Trans></small>
+            <strong>
+              {metrics.data?.workerFingerprintStaleRecoveries ?? '-'}
+            </strong>
           </div>
           <div className="fo-space-between">
-            <small>Duplicate skip rate</small>
+            <small><Trans>Duplicate skip rate</Trans></small>
             <strong>
               {metrics.data
                 ? `${(metrics.data.workerFingerprintDuplicateSkipRate * 100).toFixed(2)}%`
@@ -561,7 +591,7 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
             </strong>
           </div>
           <div className="fo-space-between">
-            <small>Fingerprint contention rate</small>
+            <small><Trans>Fingerprint contention rate</Trans></small>
             <strong>
               {metrics.data
                 ? `${(metrics.data.workerFingerprintContentionRate * 100).toFixed(2)}%`
@@ -569,14 +599,14 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
             </strong>
           </div>
           <div className="fo-space-between">
-            <small>Stale recovery rate</small>
+            <small><Trans>Stale recovery rate</Trans></small>
             <strong>
               {metrics.data
                 ? `${(metrics.data.workerFingerprintStaleRecoveryRate * 100).toFixed(2)}%`
                 : '-'}
             </strong>
           </div>
-          <small>Expired claim requeue limit</small>
+          <small><Trans>Expired claim requeue limit</Trans></small>
           <Input
             value={requeueLimit}
             onChange={event => setRequeueLimit(event.target.value)}
@@ -587,42 +617,48 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
             disabled={requeueExpired.isPending}
             onClick={() => requeueExpired.mutate()}
           >
-            {requeueExpired.isPending ? 'Requeueing...' : 'Requeue Expired Claims'}
+            {requeueExpired.isPending
+              ? 'Requeueing...'
+              : t('Requeue Expired Claims')}
           </Button>
           <div className="fo-space-between">
-            <small>Queue throughput/min</small>
+            <small><Trans>Queue throughput/min</Trans></small>
             <strong>{queueHealth.data?.throughputPerMinute ?? '-'}</strong>
           </div>
           <div className="fo-space-between">
-            <small>Queue failure rate</small>
+            <small><Trans>Queue failure rate</Trans></small>
             <strong>
-              {queueHealth.data ? `${(queueHealth.data.failureRate * 100).toFixed(2)}%` : '-'}
+              {queueHealth.data
+                ? `${(queueHealth.data.failureRate * 100).toFixed(2)}%`
+                : '-'}
             </strong>
           </div>
           <div className="fo-space-between">
-            <small>Queue p95 ms</small>
+            <small><Trans>Queue p95 ms</Trans></small>
             <strong>{queueHealth.data?.processingMs.p95 ?? '-'}</strong>
           </div>
         </article>
 
         <article className="fo-card">
           <div className="fo-space-between">
-            <small>Pipeline</small>
+            <small><Trans>Pipeline</Trans></small>
             <strong>
               {pipelineStatus.data?.orchestrator.running ? 'running' : 'idle'}
             </strong>
           </div>
           <div className="fo-space-between">
-            <small>Backfill runs</small>
+            <small><Trans>Backfill runs</Trans></small>
             <strong>{pipelineStatus.data?.backfill.runCount ?? '-'}</strong>
           </div>
           <div className="fo-space-between">
-            <small>Maintenance runs</small>
+            <small><Trans>Maintenance runs</Trans></small>
             <strong>{pipelineStatus.data?.maintenance.runCount ?? '-'}</strong>
           </div>
           <div className="fo-space-between">
-            <small>Last pipeline error</small>
-            <strong>{pipelineStatus.data?.orchestrator.lastError || 'none'}</strong>
+            <small><Trans>Last pipeline error</Trans></small>
+            <strong>
+              {pipelineStatus.data?.orchestrator.lastError || 'none'}
+            </strong>
           </div>
           <Button
             variant="secondary"
@@ -632,12 +668,14 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
             }
             onClick={() => startPipeline.mutate()}
           >
-            {startPipeline.isPending ? 'Starting...' : 'Start Async Pipeline'}
+            {startPipeline.isPending
+              ? 'Starting...'
+              : t('Start Async Pipeline')}
           </Button>
         </article>
 
         <article className="fo-card">
-          <small>Backfill limit per plane</small>
+          <small><Trans>Backfill limit per plane</Trans></small>
           <Input
             value={limitPerPlane}
             onChange={event => setLimitPerPlane(event.target.value)}
@@ -645,21 +683,24 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
           />
           <Button
             variant="secondary"
-            disabled={backfill.isPending || pipelineStatus.data?.backfill.running === true}
+            disabled={
+              backfill.isPending ||
+              pipelineStatus.data?.backfill.running === true
+            }
             onClick={() => backfill.mutate()}
           >
-            {backfill.isPending ? 'Backfilling...' : 'Run Backfill'}
+            {backfill.isPending ? 'Backfilling...' : t('Run Backfill')}
           </Button>
         </article>
 
         <article className="fo-card">
-          <small>Retention days</small>
+          <small><Trans>Retention days</Trans></small>
           <Input
             value={retentionDays}
             onChange={event => setRetentionDays(event.target.value)}
             inputMode="decimal"
           />
-          <small>Max rows</small>
+          <small><Trans>Max rows</Trans></small>
           <Input
             value={maxRows}
             onChange={event => setMaxRows(event.target.value)}
@@ -673,26 +714,24 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
             }
             onClick={() => maintenance.mutate()}
           >
-            {maintenance.isPending ? 'Running...' : 'Run Maintenance'}
+            {maintenance.isPending ? 'Running...' : t('Run Maintenance')}
           </Button>
         </article>
 
         <article className="fo-card">
           <div className="fo-space-between">
-            <small>Dead letter queue</small>
+            <small><Trans>Dead letter queue</Trans></small>
             <strong>{deadLetters.data?.length ?? 0}</strong>
           </div>
-          <small>Status filter</small>
+          <small><Trans>Status filter</Trans></small>
           <Select
             value={deadLetterStatus}
             onValueChange={value =>
-              setDeadLetterStatus(
-                value as 'open' | 'replayed' | 'resolved',
-              )
+              setDeadLetterStatus(value as 'open' | 'replayed' | 'resolved')
             }
           >
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Status" />
+              <SelectValue placeholder={t('Status')} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="open">open</SelectItem>
@@ -720,27 +759,27 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
                       variant="secondary"
                       disabled={replaySingleDeadLetter.isPending}
                       onClick={() => replaySingleDeadLetter.mutate(entry.id)}
-                    >
+                    ><Trans>
                       Replay
-                    </Button>
+                    </Trans></Button>
                     {entry.status === 'resolved' ? (
                       <Button
                         size="sm"
                         variant="secondary"
                         disabled={reopenDeadLetter.isPending}
                         onClick={() => reopenDeadLetter.mutate(entry.id)}
-                      >
+                      ><Trans>
                         Reopen
-                      </Button>
+                      </Trans></Button>
                     ) : (
                       <Button
                         size="sm"
                         variant="secondary"
                         disabled={resolveDeadLetter.isPending}
                         onClick={() => resolveDeadLetter.mutate(entry.id)}
-                      >
+                      ><Trans>
                         Resolve
-                      </Button>
+                      </Trans></Button>
                     )}
                   </div>
                 </div>
@@ -749,13 +788,13 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
           ) : (
             <small>No worker dead letters.</small>
           )}
-          <small>Replay limit</small>
+          <small><Trans>Replay limit</Trans></small>
           <Input
             value={replayLimit}
             onChange={event => setReplayLimit(event.target.value)}
             inputMode="numeric"
           />
-          <small>Replay max attempt</small>
+          <small><Trans>Replay max attempt</Trans></small>
           <Input
             value={replayMaxAttempt}
             onChange={event => setReplayMaxAttempt(event.target.value)}
@@ -766,7 +805,9 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
             disabled={replayDeadLetters.isPending}
             onClick={() => replayDeadLetters.mutate()}
           >
-            {replayDeadLetters.isPending ? 'Replaying...' : 'Replay Dead Letters'}
+            {replayDeadLetters.isPending
+              ? 'Replaying...'
+              : t('Replay Dead Letters')}
           </Button>
         </article>
       </div>

@@ -143,9 +143,13 @@ async function clearDeliveries(): Promise<{ error?: string }> {
   if (!userToken) return { error: 'not-logged-in' };
 
   try {
-    await del(getServer().BASE_SERVER + '/webhooks/deliveries', {}, {
-      'X-ACTUAL-TOKEN': userToken,
-    });
+    await del(
+      getServer().BASE_SERVER + '/webhooks/deliveries',
+      {},
+      {
+        'X-ACTUAL-TOKEN': userToken,
+      },
+    );
     return {};
   } catch (err) {
     return { error: err.reason || err.message || 'unknown' };

@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Trans } from 'react-i18next';
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import type { DelegateLane } from '../../core/types';
 import { apiClient } from '../../core/api/client';
+import type { DelegateLane } from '../../core/types';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -69,9 +72,13 @@ function dueLabel(ms?: number, nowMs = Date.now()) {
   return `due ${formatDate(ms)}`;
 }
 
-function canTransition(current: DelegateLane['status'], next: LaneTransitionTarget) {
+function canTransition(
+  current: DelegateLane['status'],
+  next: LaneTransitionTarget,
+) {
   if (current === 'assigned') return next === 'accepted' || next === 'rejected';
-  if (current === 'accepted') return next === 'completed' || next === 'rejected';
+  if (current === 'accepted')
+    {return next === 'completed' || next === 'rejected';}
   return next === 'assigned';
 }
 
@@ -109,7 +116,13 @@ function computeLaneRisk(lane: DelegateLane, nowMs: number) {
 
   const score = priority + dueScore + statusScore;
   const tier: LaneRiskTier =
-    overdue || score >= 7 ? 'critical' : score >= 5.2 ? 'high' : score >= 3.8 ? 'medium' : 'low';
+    overdue || score >= 7
+      ? 'critical'
+      : score >= 5.2
+        ? 'high'
+        : score >= 3.8
+          ? 'medium'
+          : 'low';
 
   return {
     score,
@@ -141,7 +154,8 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
   const [dueDate, setDueDate] = useState('');
 
   const [statusFilter, setStatusFilter] = useState<LaneStatusFilter>('all');
-  const [priorityFilter, setPriorityFilter] = useState<LanePriorityFilter>('all');
+  const [priorityFilter, setPriorityFilter] =
+    useState<LanePriorityFilter>('all');
   const [riskFilter, setRiskFilter] = useState<LaneRiskFilter>('all');
   const [assigneeFilter, setAssigneeFilter] = useState('');
   const [searchFilter, setSearchFilter] = useState('');
@@ -241,7 +255,9 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
 
   const assign = useMutation({
     mutationFn: async () => {
-      const dueAtMs = dueDate ? new Date(`${dueDate}T10:00:00`).getTime() : undefined;
+      const dueAtMs = dueDate
+        ? new Date(`${dueDate}T10:00:00`).getTime()
+        : undefined;
       return apiClient.assignDelegateLane(title.trim(), assignee.trim(), {
         priority,
         dueAtMs: Number.isFinite(dueAtMs) ? dueAtMs : undefined,
@@ -275,7 +291,10 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
   });
 
   const batchTransition = useMutation({
-    mutationFn: async (input: { laneIds: string[]; next: LaneTransitionTarget }) => {
+    mutationFn: async (input: {
+      laneIds: string[];
+      next: LaneTransitionTarget;
+    }) => {
       let successCount = 0;
       let failureCount = 0;
 
@@ -298,7 +317,7 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
       if (result.successCount > 0) {
         onStatus(
           `${transitionLabel(result.next)} batch: ${result.successCount} succeeded` +
-          (result.failureCount > 0 ? ` / ${result.failureCount} failed` : ''),
+            (result.failureCount > 0 ? ` / ${result.failureCount} failed` : ''),
         );
       } else {
         onStatus(`No lanes transitioned (${result.failureCount} failed).`);
@@ -319,17 +338,22 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
     onSuccess: async () => {
       setComment('');
       onStatus('Delegate lane note added.');
-      await queryClient.invalidateQueries({ queryKey: ['delegate-lane-events'] });
+      await queryClient.invalidateQueries({
+        queryKey: ['delegate-lane-events'],
+      });
     },
   });
 
   const missionStats = useMemo(() => {
     const active = lanesWithRisk.filter(
-      entry => entry.lane.status === 'assigned' || entry.lane.status === 'accepted',
+      entry =>
+        entry.lane.status === 'assigned' || entry.lane.status === 'accepted',
     );
     const overdue = active.filter(entry => entry.risk.overdue).length;
     const dueSoon = active.filter(entry => entry.risk.dueSoon).length;
-    const critical = active.filter(entry => entry.risk.tier === 'critical').length;
+    const critical = active.filter(
+      entry => entry.risk.tier === 'critical',
+    ).length;
     return {
       active: active.length,
       overdue,
@@ -359,7 +383,9 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
 
   const toggleSelectedLane = useCallback((laneId: string) => {
     setSelectedLaneIds(current =>
-      current.includes(laneId) ? current.filter(id => id !== laneId) : [...current, laneId],
+      current.includes(laneId)
+        ? current.filter(id => id !== laneId)
+        : [...current, laneId],
     );
   }, []);
 
@@ -374,8 +400,13 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
   return (
     <section className="fo-panel" id="delegate-lanes">
       <header className="fo-panel-header">
-        <h2>Delegate Mission Lanes</h2>
-        <small>Batch-capable lane board with SLA risk shaping and lifecycle telemetry.</small>
+        <h2>
+          <Trans>Delegate Mission Lanes</Trans>
+        </h2>
+        <small>
+          Batch-capable lane board with SLA risk shaping and lifecycle
+          telemetry.
+        </small>
       </header>
 
       <div className="fo-mission-metrics">
@@ -402,7 +433,7 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
           <Input
             value={title}
             onChange={event => setTitle(event.target.value)}
-            placeholder="Mission title"
+            placeholder={t('Mission title')}
           />
         </div>
 
@@ -410,14 +441,16 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
           <Input
             value={assignee}
             onChange={event => setAssignee(event.target.value)}
-            placeholder="Assignee"
+            placeholder={t('Assignee')}
           />
           <Select
             value={priority}
-            onValueChange={value => setPriority(value as DelegateLane['priority'])}
+            onValueChange={value =>
+              setPriority(value as DelegateLane['priority'])
+            }
           >
             <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Priority" />
+              <SelectValue placeholder={t('Priority')} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="low">low</SelectItem>
@@ -439,7 +472,7 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
             disabled={!title.trim() || !assignee.trim() || assign.isPending}
             onClick={() => assign.mutate()}
           >
-            {assign.isPending ? 'Assigning...' : 'Assign lane'}
+            {assign.isPending ? 'Assigning...' : t('Assign lane')}
           </Button>
         </div>
       </div>
@@ -448,7 +481,7 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
         <Input
           value={searchFilter}
           onChange={event => setSearchFilter(event.target.value)}
-          placeholder="Search title/assignee"
+          placeholder={t('Search title/assignee')}
           className="w-[200px]"
         />
         <Select
@@ -456,7 +489,7 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
           onValueChange={value => setStatusFilter(value as LaneStatusFilter)}
         >
           <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder="Status" />
+            <SelectValue placeholder={t('Status')} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">all statuses</SelectItem>
@@ -469,10 +502,12 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
         </Select>
         <Select
           value={priorityFilter}
-          onValueChange={value => setPriorityFilter(value as LanePriorityFilter)}
+          onValueChange={value =>
+            setPriorityFilter(value as LanePriorityFilter)
+          }
         >
           <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder="Priority" />
+            <SelectValue placeholder={t('Priority')} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">all priorities</SelectItem>
@@ -487,7 +522,7 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
           onValueChange={value => setRiskFilter(value as LaneRiskFilter)}
         >
           <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder="Risk" />
+            <SelectValue placeholder={t('Risk')} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">all risk</SelectItem>
@@ -505,22 +540,24 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
         <Input
           value={assigneeFilter}
           onChange={event => setAssigneeFilter(event.target.value)}
-          placeholder="Filter assignee"
+          placeholder={t('Filter assignee')}
           className="w-[200px]"
         />
-        <Button variant="secondary" onClick={selectAllVisible}>
+        <Button variant="secondary" onClick={selectAllVisible}><Trans>
           Select all visible
-        </Button>
-        <Button variant="secondary" onClick={clearSelection}>
+        </Trans></Button>
+        <Button variant="secondary" onClick={clearSelection}><Trans>
           Clear
-        </Button>
+        </Trans></Button>
       </div>
 
       <div className="fo-mission-toolbar">
         <small>{selectedLaneIds.length} selected</small>
         <Button
           variant="secondary"
-          disabled={batchCandidates.accepted.length === 0 || batchTransition.isPending}
+          disabled={
+            batchCandidates.accepted.length === 0 || batchTransition.isPending
+          }
           onClick={() =>
             batchTransition.mutate({
               laneIds: batchCandidates.accepted,
@@ -532,7 +569,9 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
         </Button>
         <Button
           variant="secondary"
-          disabled={batchCandidates.completed.length === 0 || batchTransition.isPending}
+          disabled={
+            batchCandidates.completed.length === 0 || batchTransition.isPending
+          }
           onClick={() =>
             batchTransition.mutate({
               laneIds: batchCandidates.completed,
@@ -544,7 +583,9 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
         </Button>
         <Button
           variant="secondary"
-          disabled={batchCandidates.rejected.length === 0 || batchTransition.isPending}
+          disabled={
+            batchCandidates.rejected.length === 0 || batchTransition.isPending
+          }
           onClick={() =>
             batchTransition.mutate({
               laneIds: batchCandidates.rejected,
@@ -556,7 +597,9 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
         </Button>
         <Button
           variant="secondary"
-          disabled={batchCandidates.assigned.length === 0 || batchTransition.isPending}
+          disabled={
+            batchCandidates.assigned.length === 0 || batchTransition.isPending
+          }
           onClick={() =>
             batchTransition.mutate({
               laneIds: batchCandidates.assigned,
@@ -570,12 +613,15 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
 
       <div className="fo-delegate-grid">
         <div className="fo-mission-board-list">
-          {visibleLanes.length === 0 ? <small>No lanes match current filters.</small> : null}
+          {visibleLanes.length === 0 ? (
+            <small>No lanes match current filters.</small>
+          ) : null}
           {visibleLanes.map(({ lane, risk }) => (
             <article
               key={lane.id}
-              className={`fo-card fo-lane-card fo-lane-${lane.status} ${selectedLaneId === lane.id ? 'fo-lane-selected' : ''
-                } ${risk.overdue ? 'fo-lane-overdue' : ''}`}
+              className={`fo-card fo-lane-card fo-lane-${lane.status} ${
+                selectedLaneId === lane.id ? 'fo-lane-selected' : ''
+              } ${risk.overdue ? 'fo-lane-overdue' : ''}`}
               onClick={() => setSelectedLaneId(lane.id)}
               role="button"
               tabIndex={0}
@@ -599,7 +645,9 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
                   />
                   <strong>{lane.title}</strong>
                 </label>
-                <small className={`fo-lane-status fo-lane-status-${lane.status}`}>
+                <small
+                  className={`fo-lane-status fo-lane-status-${lane.status}`}
+                >
                   {lane.status}
                 </small>
               </div>
@@ -608,7 +656,9 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
                 <small>
                   {lane.assignedBy} -&gt; {lane.assignee}
                 </small>
-                <small className={`fo-risk-badge fo-risk-badge-${risk.tier}`}>{risk.tier}</small>
+                <small className={`fo-risk-badge fo-risk-badge-${risk.tier}`}>
+                  {risk.tier}
+                </small>
               </div>
 
               <small>
@@ -631,9 +681,9 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
                         });
                       }}
                       disabled={transition.isPending}
-                    >
+                    ><Trans>
                       Accept
-                    </Button>
+                    </Trans></Button>
                     <Button
                       size="sm"
                       variant="secondary"
@@ -646,9 +696,9 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
                         });
                       }}
                       disabled={transition.isPending}
-                    >
+                    ><Trans>
                       Reject
-                    </Button>
+                    </Trans></Button>
                   </>
                 ) : null}
 
@@ -666,9 +716,9 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
                         });
                       }}
                       disabled={transition.isPending}
-                    >
+                    ><Trans>
                       Complete
-                    </Button>
+                    </Trans></Button>
                     <Button
                       size="sm"
                       variant="secondary"
@@ -681,9 +731,9 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
                         });
                       }}
                       disabled={transition.isPending}
-                    >
+                    ><Trans>
                       Reject
-                    </Button>
+                    </Trans></Button>
                   </>
                 ) : null}
 
@@ -700,9 +750,9 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
                       });
                     }}
                     disabled={transition.isPending}
-                  >
+                  ><Trans>
                     Reopen
-                  </Button>
+                  </Trans></Button>
                 ) : null}
               </div>
             </article>
@@ -714,7 +764,9 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
             <>
               <div className="fo-space-between">
                 <strong>{selectedLane.title}</strong>
-                <small className={`fo-risk-badge fo-risk-badge-${selectedLaneRisk.tier}`}>
+                <small
+                  className={`fo-risk-badge fo-risk-badge-${selectedLaneRisk.tier}`}
+                >
                   {selectedLaneRisk.tier} risk
                 </small>
               </div>
@@ -722,21 +774,31 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
                 {selectedLane.assignedBy} -&gt; {selectedLane.assignee}
               </small>
               <small>
-                {selectedLane.priority} priority · {dueLabel(selectedLane.dueAtMs, nowMs)}
+                {selectedLane.priority} priority ·{' '}
+                {dueLabel(selectedLane.dueAtMs, nowMs)}
               </small>
               <small>created: {formatDateTime(selectedLane.createdAtMs)}</small>
-              <small>accepted: {formatDateTime(selectedLane.acceptedAtMs)}</small>
-              <small>completed: {formatDateTime(selectedLane.completedAtMs)}</small>
-              <small>rejected: {formatDateTime(selectedLane.rejectedAtMs)}</small>
+              <small>
+                accepted: {formatDateTime(selectedLane.acceptedAtMs)}
+              </small>
+              <small>
+                completed: {formatDateTime(selectedLane.completedAtMs)}
+              </small>
+              <small>
+                rejected: {formatDateTime(selectedLane.rejectedAtMs)}
+              </small>
 
               <div className="fo-row mt-2">
-                {(['accepted', 'completed', 'rejected', 'assigned'] as const).map(next => (
+                {(
+                  ['accepted', 'completed', 'rejected', 'assigned'] as const
+                ).map(next => (
                   <Button
                     key={next}
                     size="sm"
                     variant="secondary"
                     disabled={
-                      !canTransition(selectedLane.status, next) || transition.isPending
+                      !canTransition(selectedLane.status, next) ||
+                      transition.isPending
                     }
                     onClick={() =>
                       transition.mutate({
@@ -752,13 +814,17 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
               </div>
 
               <div className="fo-stack">
-                <strong>Lane timeline</strong>
-                {laneEvents.isLoading ? <small>Loading lane timeline...</small> : null}
+                <strong><Trans>Lane timeline</Trans></strong>
+                {laneEvents.isLoading ? (
+                  <small>Loading lane timeline...</small>
+                ) : null}
                 <div className="fo-log-list">
                   {(laneEvents.data || []).map(event => (
                     <article className="fo-log" key={event.id}>
                       <div className="fo-space-between">
-                        <strong className={`fo-event-badge fo-event-badge-${event.type}`}>
+                        <strong
+                          className={`fo-event-badge fo-event-badge-${event.type}`}
+                        >
                           {event.type}
                         </strong>
                         <small>{formatDateTime(event.createdAtMs)}</small>
@@ -778,7 +844,10 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
                   onChange={event => setComment(event.target.value)}
                   placeholder="Add mission note (Ctrl+Enter to submit)"
                   onKeyDown={event => {
-                    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+                    if (
+                      (event.ctrlKey || event.metaKey) &&
+                      event.key === 'Enter'
+                    ) {
                       event.preventDefault();
                       if (!comment.trim() || addComment.isPending) {
                         return;
@@ -790,9 +859,9 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
                 <Button
                   disabled={!comment.trim() || addComment.isPending}
                   onClick={() => addComment.mutate(selectedLane.id)}
-                >
+                ><Trans>
                   Add note
-                </Button>
+                </Trans></Button>
               </div>
             </>
           ) : (

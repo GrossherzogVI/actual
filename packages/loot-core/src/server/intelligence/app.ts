@@ -1,10 +1,7 @@
 // @ts-strict-ignore
 import * as asyncStorage from '../../platform/server/asyncStorage';
 import { createApp } from '../app';
-import {
-  createGatewayEnvelope,
-  gatewayPost,
-} from '../financeos-gateway';
+import { createGatewayEnvelope, gatewayPost } from '../financeos-gateway';
 
 type HandlerError = { error: string };
 

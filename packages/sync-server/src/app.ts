@@ -7,6 +7,7 @@ import express from 'express';
 import rateLimit from 'express-rate-limit';
 
 import { bootstrap } from './account-db';
+import * as aiApp from './ai/app-ai';
 import * as accountApp from './app-account';
 import * as adminApp from './app-admin';
 import * as corsApp from './app-cors-proxy';
@@ -17,14 +18,13 @@ import * as secretApp from './app-secrets';
 import * as simpleFinApp from './app-simplefin/app-simplefin';
 import * as syncApp from './app-sync';
 import * as webhooksApp from './app-webhooks';
-import * as aiApp from './ai/app-ai';
+import * as categoriesApp from './categories/app-categories';
 import * as contractsApp from './contracts/app-contracts';
 import { startDeadlineChecker } from './contracts/deadline-checker';
-import * as reviewApp from './review/app-review';
 import * as importApp from './import/app-import';
-import * as categoriesApp from './categories/app-categories';
-import * as quickAddApp from './quick-add/app-quick-add';
 import { config } from './load-config';
+import * as quickAddApp from './quick-add/app-quick-add';
+import * as reviewApp from './review/app-review';
 
 const app = express();
 
