@@ -35,6 +35,12 @@ export function SpatialTwinPanel() {
       apiClient.compareScenario(selectedBranch!.id, comparisonTarget?.id),
   });
 
+  const mutationsQuery = useQuery({
+    queryKey: ['scenario-mutations', selectedBranch?.id],
+    enabled: !!selectedBranch,
+    queryFn: () => apiClient.listScenarioMutations(selectedBranch!.id),
+  });
+
   const createBranch = useMutation({
     mutationFn: async () => {
       const trimmed = branchName.trim();
@@ -64,6 +70,7 @@ export function SpatialTwinPanel() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['scenario-branches'] }),
         queryClient.invalidateQueries({ queryKey: ['scenario-compare'] }),
+        queryClient.invalidateQueries({ queryKey: ['scenario-mutations'] }),
       ]);
     },
   });
@@ -209,6 +216,24 @@ export function SpatialTwinPanel() {
           Amount delta: {compareQuery.data?.diff.amountDelta ?? 0} · Risk delta:{' '}
           {compareQuery.data?.diff.riskDelta ?? 0}
         </small>
+      </article>
+
+      <article className="fo-card">
+        <strong>Mutation Timeline</strong>
+        <small>
+          {selectedBranch?.name || 'No selected branch'} ·{' '}
+          {mutationsQuery.data?.length || 0} mutation(s)
+        </small>
+        {(mutationsQuery.data || []).slice(0, 8).map(mutation => (
+          <small key={mutation.id}>
+            {new Date(mutation.createdAtMs).toLocaleTimeString()} · {mutation.kind} · Δamount{' '}
+            {Number((mutation.payload as Record<string, unknown>).amountDelta || 0)} · Δrisk{' '}
+            {Number((mutation.payload as Record<string, unknown>).riskDelta || 0)}
+          </small>
+        ))}
+        {(mutationsQuery.data || []).length === 0 ? (
+          <small>No mutations recorded yet.</small>
+        ) : null}
       </article>
     </section>
   );

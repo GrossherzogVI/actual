@@ -11,6 +11,7 @@ import type { GatewayQueue, QueueJob } from '../queue/types';
 import type {
   CloseRun,
   DelegateLane,
+  DelegateLaneEvent,
   EgressAuditEntry,
   EgressPolicy,
   FocusPanel,
@@ -44,6 +45,16 @@ const DELEGATE_BLOCKED_STEPS = new Set([
   'create-default-playbook',
   'assign-expiring-contracts-lane',
 ]);
+
+const DELEGATE_ALLOWED_TRANSITIONS: Record<
+  DelegateLane['status'],
+  DelegateLane['status'][]
+> = {
+  assigned: ['accepted', 'rejected'],
+  accepted: ['completed', 'rejected'],
+  completed: ['assigned'],
+  rejected: ['assigned'],
+};
 
 export function createGatewayService(
   repository: GatewayRepository,
@@ -92,8 +103,19 @@ export function createGatewayService(
     return repository.listPlaybooks();
   }
 
-  async function listWorkflowCommandRuns(limit = 20) {
-    return repository.listWorkflowCommandRuns(Math.max(1, Math.min(limit, 200)));
+  async function listWorkflowCommandRuns(
+    limit = 20,
+    filters?: {
+      actorId?: string;
+      sourceSurface?: string;
+      dryRun?: boolean;
+      hasErrors?: boolean;
+    },
+  ) {
+    return repository.listWorkflowCommandRuns(
+      Math.max(1, Math.min(limit, 200)),
+      filters,
+    );
   }
 
   async function createPlaybook(input: {
@@ -206,6 +228,7 @@ export function createGatewayService(
     assignee?: string;
     dryRun?: boolean;
     actorId?: string;
+    sourceSurface?: string;
   }): Promise<WorkflowCommandExecution> {
     const parsed = parseCommandChain(input.chain);
     const steps: WorkflowCommandExecutionStep[] = [];
@@ -405,6 +428,8 @@ export function createGatewayService(
           title: 'Renegotiate expiring contracts',
           assignee: input.assignee || 'delegate',
           assignedBy: 'owner',
+          actorId: input.actorId || 'owner',
+          priority: 'high',
           payload: {
             source: 'workflow.execute-chain',
           },
@@ -448,6 +473,9 @@ export function createGatewayService(
       chain: input.chain,
       steps,
       errorCount: steps.filter(step => step.status === 'error').length,
+      actorId: input.actorId || 'owner',
+      sourceSurface: input.sourceSurface || 'unknown',
+      dryRun,
       executedAtMs: Date.now(),
     };
 
@@ -457,6 +485,19 @@ export function createGatewayService(
 
   async function getAdaptiveFocusPanel(): Promise<FocusPanel> {
     const state = await repository.getOpsState();
+    const now = Date.now();
+    const activeLanes = await repository.listDelegateLanes(200, {
+      assignedBy: 'owner',
+    });
+    const openLanes = activeLanes.filter(
+      lane => lane.status === 'assigned' || lane.status === 'accepted',
+    );
+    const dueSoonLanes = openLanes.filter(
+      lane => typeof lane.dueAtMs === 'number' && lane.dueAtMs <= now + 72 * 60 * 60 * 1000,
+    );
+    const staleAssignedLanes = openLanes.filter(
+      lane => lane.status === 'assigned' && now - lane.updatedAtMs >= 48 * 60 * 60 * 1000,
+    );
 
     const actions = [
       {
@@ -479,6 +520,26 @@ export function createGatewayService(
         route: '/ops',
         score: Math.max(20, state.pendingReviews * 8),
         reason: 'Close loop compresses unresolved manual operations.',
+      },
+      {
+        id: 'focus-delegate-lanes-due',
+        title: 'Review delegate lanes due in 72h',
+        route: '/ops#delegate-lanes',
+        score: dueSoonLanes.length * 92,
+        reason:
+          dueSoonLanes.length > 0
+            ? `${dueSoonLanes.length} mission lane(s) are close to deadline.`
+            : 'No due-soon mission lanes.',
+      },
+      {
+        id: 'focus-delegate-lanes-stale',
+        title: 'Nudge stale assigned delegate lanes',
+        route: '/ops#delegate-lanes',
+        score: staleAssignedLanes.length * 76,
+        reason:
+          staleAssignedLanes.length > 0
+            ? `${staleAssignedLanes.length} assigned lane(s) have no progress for 48h.`
+            : 'No stale assigned mission lanes.',
       },
     ]
       .filter(action => action.score > 0)
@@ -532,6 +593,10 @@ export function createGatewayService(
     );
 
     return branch;
+  }
+
+  async function listScenarioMutations(branchId: string): Promise<ScenarioMutation[]> {
+    return repository.listScenarioMutations(branchId);
   }
 
   async function applyScenarioMutation(input: {
@@ -619,8 +684,28 @@ export function createGatewayService(
     return branch;
   }
 
-  async function listDelegateLanes(): Promise<DelegateLane[]> {
-    return repository.listDelegateLanes();
+  async function listDelegateLanes(input?: {
+    limit?: number;
+    status?: DelegateLane['status'];
+    assignee?: string;
+    assignedBy?: string;
+    priority?: DelegateLane['priority'];
+  }): Promise<DelegateLane[]> {
+    const limit = Math.max(1, Math.min(input?.limit ?? 50, 200));
+    return repository.listDelegateLanes(limit, {
+      status: input?.status,
+      assignee: input?.assignee,
+      assignedBy: input?.assignedBy,
+      priority: input?.priority,
+    });
+  }
+
+  async function listDelegateLaneEvents(input: {
+    laneId: string;
+    limit?: number;
+  }): Promise<DelegateLaneEvent[]> {
+    const limit = Math.max(1, Math.min(input.limit ?? 50, 200));
+    return repository.listDelegateLaneEvents(input.laneId, limit);
   }
 
   async function assignDelegateLane(input: {
@@ -628,56 +713,140 @@ export function createGatewayService(
     assignee: string;
     assignedBy: string;
     payload: Record<string, unknown>;
+    priority?: DelegateLane['priority'];
+    dueAtMs?: number;
+    actorId?: string;
   }): Promise<DelegateLane> {
     const now = Date.now();
     const lane: DelegateLane = {
       id: nanoid(),
       title: input.title,
+      priority: input.priority || 'normal',
       status: 'assigned',
       assignee: input.assignee,
       assignedBy: input.assignedBy,
       payload: input.payload,
       createdAtMs: now,
       updatedAtMs: now,
+      dueAtMs: input.dueAtMs,
     };
 
     await repository.createDelegateLane(lane);
+    await repository.createDelegateLaneEvent({
+      id: nanoid(),
+      laneId: lane.id,
+      type: 'assigned',
+      actorId: input.actorId || input.assignedBy,
+      message: 'Lane assigned.',
+      payload: {
+        title: lane.title,
+        assignee: lane.assignee,
+        priority: lane.priority,
+        dueAtMs: lane.dueAtMs,
+      },
+      createdAtMs: now,
+    });
     await queue.enqueue(
       queueJob('delegate.lane.assigned', {
         laneId: lane.id,
         assignee: lane.assignee,
+        priority: lane.priority,
       }),
     );
 
     return lane;
   }
 
-  async function transitionDelegateLane(
-    laneId: string,
-    status: DelegateLane['status'],
-  ): Promise<DelegateLane | null> {
-    const lane = await repository.getDelegateLaneById(laneId);
-    if (!lane) return null;
+  async function transitionDelegateLane(input: {
+    laneId: string;
+    status: DelegateLane['status'];
+    actorId: string;
+    message?: string;
+  }): Promise<
+    | { ok: true; lane: DelegateLane }
+    | { ok: false; error: 'lane-not-found' | 'invalid-lane-transition' }
+  > {
+    const lane = await repository.getDelegateLaneById(input.laneId);
+    if (!lane) return { ok: false, error: 'lane-not-found' };
+
+    if (lane.status !== input.status) {
+      const allowed = DELEGATE_ALLOWED_TRANSITIONS[lane.status];
+      if (!allowed.includes(input.status)) {
+        return { ok: false, error: 'invalid-lane-transition' };
+      }
+    }
 
     const now = Date.now();
     const updated: DelegateLane = {
       ...lane,
-      status,
+      status: input.status,
       updatedAtMs: now,
-      acceptedAtMs: status === 'accepted' ? now : lane.acceptedAtMs,
-      completedAtMs: status === 'completed' ? now : lane.completedAtMs,
-      rejectedAtMs: status === 'rejected' ? now : lane.rejectedAtMs,
+      acceptedAtMs: input.status === 'accepted' ? now : lane.acceptedAtMs,
+      completedAtMs: input.status === 'completed' ? now : lane.completedAtMs,
+      rejectedAtMs: input.status === 'rejected' ? now : lane.rejectedAtMs,
     };
 
     await repository.updateDelegateLane(updated);
+    await repository.createDelegateLaneEvent({
+      id: nanoid(),
+      laneId: input.laneId,
+      type:
+        input.status === 'assigned' && lane.status !== 'assigned'
+          ? 'reopened'
+          : input.status,
+      actorId: input.actorId,
+      message: input.message,
+      payload: {
+        fromStatus: lane.status,
+        toStatus: input.status,
+      },
+      createdAtMs: now,
+    });
     await queue.enqueue(
       queueJob('delegate.lane.transitioned', {
-        laneId,
-        status,
+        laneId: input.laneId,
+        status: input.status,
+        actorId: input.actorId,
       }),
     );
 
-    return updated;
+    return { ok: true, lane: updated };
+  }
+
+  async function commentDelegateLane(input: {
+    laneId: string;
+    actorId: string;
+    message: string;
+    payload?: Record<string, unknown>;
+  }): Promise<DelegateLaneEvent | null> {
+    const lane = await repository.getDelegateLaneById(input.laneId);
+    if (!lane) return null;
+
+    const now = Date.now();
+    const updatedLane: DelegateLane = {
+      ...lane,
+      updatedAtMs: now,
+    };
+    await repository.updateDelegateLane(updatedLane);
+
+    const event = await repository.createDelegateLaneEvent({
+      id: nanoid(),
+      laneId: input.laneId,
+      type: 'comment',
+      actorId: input.actorId,
+      message: input.message,
+      payload: input.payload,
+      createdAtMs: now,
+    });
+
+    await queue.enqueue(
+      queueJob('delegate.lane.commented', {
+        laneId: input.laneId,
+        actorId: input.actorId,
+      }),
+    );
+
+    return event;
   }
 
   async function getEgressPolicy(): Promise<EgressPolicy> {
@@ -885,7 +1054,7 @@ export function createGatewayService(
     const queueSize = await queue.size();
     const queueInFlight = await queue.inFlightSize();
     const playbooks = await repository.listPlaybooks();
-    const lanes = await repository.listDelegateLanes();
+    const lanes = await repository.listDelegateLanes(1000);
     const corrections = await repository.listCorrections(1000);
     const branches = await repository.listScenarioBranches();
 
@@ -917,12 +1086,15 @@ export function createGatewayService(
     recordActionOutcome,
     listScenarioBranches,
     createScenarioBranch,
+    listScenarioMutations,
     applyScenarioMutation,
     compareScenarioOutcomes,
     adoptScenarioBranch,
     listDelegateLanes,
+    listDelegateLaneEvents,
     assignDelegateLane,
     transitionDelegateLane,
+    commentDelegateLane,
     getEgressPolicy,
     setEgressPolicy,
     listEgressAudit,

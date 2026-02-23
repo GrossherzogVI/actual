@@ -7,6 +7,7 @@ import { parseRequestBody, sendNotFound } from '../http/route-utils';
 import type { GatewayService } from '../services/gateway-service';
 
 type RequestLike = { body?: unknown };
+type QueryLike = { query?: Record<string, unknown> };
 
 export const scenarioSchemas = {
   createBranch: z.object({
@@ -29,6 +30,9 @@ export const scenarioSchemas = {
     envelope: commandEnvelopeSchema,
     branchId: z.string().min(1),
   }),
+  listMutations: z.object({
+    branchId: z.string().min(1),
+  }),
 };
 
 export async function registerScenarioRoutes(
@@ -37,6 +41,28 @@ export async function registerScenarioRoutes(
 ) {
   app.get('/branches', async () => {
     return service.listScenarioBranches();
+  });
+
+  app.get('/mutations', async request => {
+    const query = ((request as QueryLike).query || {}) as Record<string, unknown>;
+    const parsed = scenarioSchemas.listMutations.safeParse({
+      branchId:
+        typeof query.branchId === 'string' ? query.branchId : '',
+    });
+    if (!parsed.success) {
+      return [];
+    }
+    return service.listScenarioMutations(parsed.data.branchId);
+  });
+
+  app.post('/list-mutations', async (request, reply) => {
+    const payload = parseRequestBody(
+      scenarioSchemas.listMutations,
+      (request as RequestLike).body,
+      reply,
+    );
+    if (!payload) return;
+    return service.listScenarioMutations(payload.branchId);
   });
 
   app.post('/create-branch', async (request, reply) => {

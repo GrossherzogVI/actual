@@ -2,6 +2,7 @@ import type {
   CloseRun,
   Correction,
   DelegateLane,
+  DelegateLaneEvent,
   EgressAuditEntry,
   EgressPolicy,
   LedgerEvent,
@@ -13,6 +14,20 @@ import type {
   WorkflowCommandExecution,
   WorkflowPlaybook,
 } from '../types';
+
+export type WorkflowCommandRunFilters = {
+  actorId?: string;
+  sourceSurface?: string;
+  dryRun?: boolean;
+  hasErrors?: boolean;
+};
+
+export type DelegateLaneFilters = {
+  status?: DelegateLane['status'];
+  assignee?: string;
+  assignedBy?: string;
+  priority?: DelegateLane['priority'];
+};
 
 export interface GatewayRepository {
   readonly kind: 'memory' | 'postgres';
@@ -38,7 +53,10 @@ export interface GatewayRepository {
   createWorkflowCommandRun(
     run: WorkflowCommandExecution,
   ): Promise<WorkflowCommandExecution>;
-  listWorkflowCommandRuns(limit: number): Promise<WorkflowCommandExecution[]>;
+  listWorkflowCommandRuns(
+    limit: number,
+    filters?: WorkflowCommandRunFilters,
+  ): Promise<WorkflowCommandExecution[]>;
 
   listScenarioBranches(): Promise<ScenarioBranch[]>;
   getScenarioBranchById(branchId: string): Promise<ScenarioBranch | null>;
@@ -50,10 +68,18 @@ export interface GatewayRepository {
     adoptedAtMs: number,
   ): Promise<ScenarioBranch | null>;
 
-  listDelegateLanes(): Promise<DelegateLane[]>;
+  listDelegateLanes(
+    limit: number,
+    filters?: DelegateLaneFilters,
+  ): Promise<DelegateLane[]>;
   getDelegateLaneById(laneId: string): Promise<DelegateLane | null>;
   createDelegateLane(lane: DelegateLane): Promise<DelegateLane>;
   updateDelegateLane(lane: DelegateLane): Promise<DelegateLane>;
+  createDelegateLaneEvent(event: DelegateLaneEvent): Promise<DelegateLaneEvent>;
+  listDelegateLaneEvents(
+    laneId: string,
+    limit: number,
+  ): Promise<DelegateLaneEvent[]>;
 
   recordActionOutcome(input: {
     id: string;

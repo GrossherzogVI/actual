@@ -41,6 +41,10 @@ export const workflowSchemas = {
   }),
   listCommandRuns: z.object({
     limit: z.number().int().min(1).max(200).default(20),
+    actorId: z.string().min(1).optional(),
+    sourceSurface: z.string().min(1).optional(),
+    dryRun: z.boolean().optional(),
+    hasErrors: z.boolean().optional(),
   }),
 };
 
@@ -69,14 +73,45 @@ export async function registerWorkflowRoutes(
 
   app.get('/command-runs', async request => {
     const query = ((request as QueryLike).query || {}) as Record<string, unknown>;
-    const limitRaw = query.limit;
-    const limit =
-      typeof limitRaw === 'string'
-        ? Number(limitRaw)
-        : typeof limitRaw === 'number'
-          ? limitRaw
-          : 20;
-    return service.listWorkflowCommandRuns(Number.isFinite(limit) ? limit : 20);
+    const parsed = workflowSchemas.listCommandRuns.safeParse({
+      limit:
+        typeof query.limit === 'string'
+          ? Number(query.limit)
+          : typeof query.limit === 'number'
+            ? query.limit
+            : 20,
+      actorId:
+        typeof query.actorId === 'string' && query.actorId.trim()
+          ? query.actorId.trim()
+          : undefined,
+      sourceSurface:
+        typeof query.sourceSurface === 'string' && query.sourceSurface.trim()
+          ? query.sourceSurface.trim()
+          : undefined,
+      dryRun:
+        typeof query.dryRun === 'string'
+          ? query.dryRun === 'true'
+          : typeof query.dryRun === 'boolean'
+            ? query.dryRun
+            : undefined,
+      hasErrors:
+        typeof query.hasErrors === 'string'
+          ? query.hasErrors === 'true'
+          : typeof query.hasErrors === 'boolean'
+            ? query.hasErrors
+            : undefined,
+    });
+
+    if (!parsed.success) {
+      return service.listWorkflowCommandRuns(20);
+    }
+
+    return service.listWorkflowCommandRuns(parsed.data.limit, {
+      actorId: parsed.data.actorId,
+      sourceSurface: parsed.data.sourceSurface,
+      dryRun: parsed.data.dryRun,
+      hasErrors: parsed.data.hasErrors,
+    });
   });
 
   app.post('/list-command-runs', async (request, reply) => {
@@ -86,7 +121,12 @@ export async function registerWorkflowRoutes(
       reply,
     );
     if (!payload) return;
-    return service.listWorkflowCommandRuns(payload.limit);
+    return service.listWorkflowCommandRuns(payload.limit, {
+      actorId: payload.actorId,
+      sourceSurface: payload.sourceSurface,
+      dryRun: payload.dryRun,
+      hasErrors: payload.hasErrors,
+    });
   });
 
   app.post('/playbooks', async (request, reply) => {
@@ -153,6 +193,7 @@ export async function registerWorkflowRoutes(
       assignee: payload.assignee,
       dryRun: payload.dryRun,
       actorId: payload.envelope.actorId,
+      sourceSurface: payload.envelope.sourceSurface,
     });
   });
 }

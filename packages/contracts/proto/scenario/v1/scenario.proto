@@ -8,6 +8,7 @@ service ScenarioService {
   rpc CreateBranch(CreateBranchRequest) returns (CreateBranchResponse);
   rpc ApplyMutation(ApplyMutationRequest) returns (ApplyMutationResponse);
   rpc CompareOutcomes(CompareOutcomesRequest) returns (CompareOutcomesResponse);
+  rpc ListMutations(ListMutationsRequest) returns (ListMutationsResponse);
   rpc AdoptBranch(AdoptBranchRequest) returns (AdoptBranchResponse);
 }
 
@@ -41,6 +42,22 @@ message CompareOutcomesRequest {
 message CompareOutcomesResponse {
   double amount_delta = 1;
   double risk_delta = 2;
+}
+
+message ListMutationsRequest {
+  string branch_id = 1;
+}
+
+message ListMutationsResponse {
+  repeated ScenarioMutation mutations = 1;
+}
+
+message ScenarioMutation {
+  string mutation_id = 1;
+  string branch_id = 2;
+  string mutation_kind = 3;
+  bytes payload = 4;
+  int64 created_at_ms = 5;
 }
 
 message AdoptBranchRequest {

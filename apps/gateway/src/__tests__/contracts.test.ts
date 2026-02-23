@@ -130,6 +130,9 @@ describe('command envelope enforcement', () => {
         assignee: 'delegate',
         title: 'lane',
         laneId: 'lane-1',
+        message: 'lane comment',
+        priority: 'normal',
+        dueAtMs: 1_771_100_000_000,
         policy: {
           allowCloud: false,
           allowedProviders: [],
@@ -215,6 +218,9 @@ describe('command envelope enforcement', () => {
           assignee: 'delegate',
           title: 'lane',
           laneId: 'lane-1',
+          message: 'lane comment',
+          priority: 'normal',
+          dueAtMs: 1_771_100_000_000,
           policy: {
             allowCloud: false,
             allowedProviders: [],

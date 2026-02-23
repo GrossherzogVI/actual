@@ -26,9 +26,33 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
   const [command, setCommand] = useState('triage -> close-weekly');
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [dryRunMode, setDryRunMode] = useState(true);
+  const [historyErrorFilter, setHistoryErrorFilter] = useState<
+    'all' | 'errors' | 'clean'
+  >('all');
+  const [historyModeFilter, setHistoryModeFilter] = useState<
+    'all' | 'dry-run' | 'live'
+  >('all');
+  const [historyActorFilter, setHistoryActorFilter] = useState('');
   const history = useQuery({
-    queryKey: ['command-runs'],
-    queryFn: () => apiClient.listCommandRuns(10),
+    queryKey: [
+      'command-runs',
+      historyErrorFilter,
+      historyModeFilter,
+      historyActorFilter,
+    ],
+    queryFn: () =>
+      apiClient.listCommandRuns({
+        limit: 20,
+        actorId: historyActorFilter.trim() || undefined,
+        hasErrors:
+          historyErrorFilter === 'all'
+            ? undefined
+            : historyErrorFilter === 'errors',
+        dryRun:
+          historyModeFilter === 'all'
+            ? undefined
+            : historyModeFilter === 'dry-run',
+      }),
     refetchInterval: 15_000,
   });
 
@@ -37,8 +61,12 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
   };
 
   const execute = useMutation({
-    mutationFn: async (chain: string) => {
-      const run = await apiClient.executeCommandChain(chain, 'delegate', dryRunMode);
+    mutationFn: async (input: { chain: string; dryRun: boolean }) => {
+      const run = await apiClient.executeCommandChain(
+        input.chain,
+        'delegate',
+        input.dryRun,
+      );
 
       for (const step of run.steps) {
         addLog({
@@ -55,7 +83,7 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
       onStatus(
         run.errorCount > 0
           ? `Command chain executed with ${run.errorCount} error(s)`
-          : dryRunMode
+          : input.dryRun
             ? 'Dry-run command chain executed'
             : 'Command chain executed',
       );
@@ -89,7 +117,7 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
           className="fo-btn"
           type="button"
           disabled={execute.isPending}
-          onClick={() => execute.mutate(command)}
+          onClick={() => execute.mutate({ chain: command, dryRun: dryRunMode })}
         >
           {execute.isPending ? 'Running' : 'Execute'}
         </button>
@@ -116,12 +144,78 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
 
       <div className="fo-log-list">
         <small>Recent command runs</small>
-        {history.data?.slice(0, 5).map(run => (
+        <div className="fo-row">
+          <button
+            className="fo-btn-secondary"
+            type="button"
+            onClick={() => setHistoryErrorFilter('all')}
+          >
+            All
+          </button>
+          <button
+            className="fo-btn-secondary"
+            type="button"
+            onClick={() => setHistoryErrorFilter('errors')}
+          >
+            Errors
+          </button>
+          <button
+            className="fo-btn-secondary"
+            type="button"
+            onClick={() => setHistoryErrorFilter('clean')}
+          >
+            Clean
+          </button>
+          <button
+            className="fo-btn-secondary"
+            type="button"
+            onClick={() =>
+              setHistoryModeFilter(current =>
+                current === 'all'
+                  ? 'dry-run'
+                  : current === 'dry-run'
+                    ? 'live'
+                    : 'all',
+              )
+            }
+          >
+            {historyModeFilter}
+          </button>
+        </div>
+        <input
+          className="fo-input"
+          placeholder="Filter by actor (owner, delegate)"
+          value={historyActorFilter}
+          onChange={event => setHistoryActorFilter(event.target.value)}
+        />
+        {history.data?.slice(0, 8).map(run => (
           <article key={run.id} className="fo-log">
             <strong>{run.chain}</strong>
             <span>
-              {new Date(run.executedAtMs).toLocaleTimeString()} - {run.errorCount} errors
+              {new Date(run.executedAtMs).toLocaleTimeString()} · {run.actorId} ·{' '}
+              {run.sourceSurface} · {run.dryRun ? 'dry-run' : 'live'} · {run.errorCount}{' '}
+              errors
             </span>
+            <div className="fo-row">
+              <button
+                className="fo-btn-secondary"
+                type="button"
+                onClick={() =>
+                  execute.mutate({ chain: run.chain, dryRun: run.dryRun })
+                }
+                disabled={execute.isPending}
+              >
+                Replay
+              </button>
+              <button
+                className="fo-btn-secondary"
+                type="button"
+                onClick={() => execute.mutate({ chain: run.chain, dryRun: false })}
+                disabled={execute.isPending}
+              >
+                Replay Live
+              </button>
+            </div>
           </article>
         ))}
       </div>

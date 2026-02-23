@@ -27,6 +27,9 @@ type CommandChainRun = {
   id: string;
   chain: string;
   errorCount: number;
+  actorId: string;
+  sourceSurface: string;
+  dryRun: boolean;
   executedAtMs: number;
   steps: Array<{
     id: string;

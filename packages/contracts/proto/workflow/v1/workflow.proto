@@ -81,11 +81,18 @@ message ExecuteChainResponse {
   string chain = 2;
   repeated CommandExecutionStep steps = 3;
   int32 error_count = 4;
-  int64 executed_at_ms = 5;
+  string actor_id = 5;
+  string source_surface = 6;
+  bool dry_run = 7;
+  int64 executed_at_ms = 8;
 }
 
 message ListCommandRunsRequest {
   int32 limit = 1;
+  string actor_id = 2;
+  string source_surface = 3;
+  bool dry_run = 4;
+  bool has_errors = 5;
 }
 
 message ListCommandRunsResponse {
@@ -97,7 +104,10 @@ message CommandRun {
   string chain = 2;
   repeated CommandExecutionStep steps = 3;
   int32 error_count = 4;
-  int64 executed_at_ms = 5;
+  string actor_id = 5;
+  string source_surface = 6;
+  bool dry_run = 7;
+  int64 executed_at_ms = 8;
 }
 
 message CommandExecutionStep {

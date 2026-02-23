@@ -13,6 +13,7 @@ import { CommandMeshPanel } from '../features/command-mesh/CommandMeshPanel';
 import { DecisionGraphPanel } from '../features/decision-graph/DecisionGraphPanel';
 import { DelegateLanesPanel } from '../features/delegate-lanes/DelegateLanesPanel';
 import { PlaybooksPanel } from '../features/ops-playbooks/PlaybooksPanel';
+import { PolicyControlPanel } from '../features/policy/PolicyControlPanel';
 import { SpatialTwinPanel } from '../features/spatial-twin/SpatialTwinPanel';
 
 export function App() {
@@ -73,6 +74,10 @@ export function App() {
     }
     if (route.includes('#spatial-twin')) {
       setActiveLoop('simulation');
+      return;
+    }
+    if (route.includes('#delegate-lanes')) {
+      setActiveLoop('execution');
       return;
     }
     setActiveLoop('morning');
@@ -207,6 +212,7 @@ export function App() {
         <aside className="fo-column fo-right-column">
           <AdaptiveFocusRail onRoute={handleRoute} />
           <DelegateLanesPanel onStatus={setStatus} />
+          <PolicyControlPanel onStatus={setStatus} />
         </aside>
       </main>
 

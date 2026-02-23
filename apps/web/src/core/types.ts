@@ -32,12 +32,27 @@ export type Playbook = {
 export type DelegateLane = {
   id: string;
   title: string;
+  priority: 'low' | 'normal' | 'high' | 'critical';
   status: 'assigned' | 'accepted' | 'completed' | 'rejected';
   assignee: string;
   assignedBy: string;
   payload: Record<string, unknown>;
   createdAtMs: number;
   updatedAtMs: number;
+  dueAtMs?: number;
+  acceptedAtMs?: number;
+  completedAtMs?: number;
+  rejectedAtMs?: number;
+};
+
+export type DelegateLaneEvent = {
+  id: string;
+  laneId: string;
+  type: 'assigned' | 'accepted' | 'completed' | 'rejected' | 'comment' | 'reopened';
+  actorId: string;
+  message?: string;
+  payload?: Record<string, unknown>;
+  createdAtMs: number;
 };
 
 export type ScenarioComparison = {
@@ -59,7 +74,29 @@ export type ScenarioBranch = {
   adoptedAtMs?: number;
 };
 
+export type ScenarioMutation = {
+  id: string;
+  branchId: string;
+  kind: string;
+  payload: Record<string, unknown>;
+  createdAtMs: number;
+};
+
 export type AppRecommendation = Recommendation;
+
+export type EgressPolicy = {
+  allowCloud: boolean;
+  allowedProviders: string[];
+  redactionMode: 'strict' | 'balanced' | 'off';
+};
+
+export type EgressAuditEntry = {
+  id: string;
+  eventType: string;
+  provider?: string;
+  payload?: Record<string, unknown>;
+  createdAtMs: number;
+};
 
 export type WorkflowCommandExecutionStep = {
   id: string;
@@ -75,5 +112,8 @@ export type WorkflowCommandExecution = {
   chain: string;
   steps: WorkflowCommandExecutionStep[];
   errorCount: number;
+  actorId: string;
+  sourceSurface: string;
+  dryRun: boolean;
   executedAtMs: number;
 };

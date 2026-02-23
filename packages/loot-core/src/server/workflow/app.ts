@@ -63,6 +63,10 @@ async function workflowMoneyPulse(): Promise<WorkflowMoneyPulse | HandlerError> 
 
 async function workflowCommandRuns(args: {
   limit?: number;
+  actorId?: string;
+  sourceSurface?: string;
+  dryRun?: boolean;
+  hasErrors?: boolean;
 }): Promise<Array<Record<string, unknown>> | HandlerError> {
   const userToken = await asyncStorage.getItem('user-token');
   if (!userToken) {
@@ -71,8 +75,22 @@ async function workflowCommandRuns(args: {
 
   try {
     const limit = Math.max(1, Math.min(Number(args.limit ?? 20), 200));
+    const params = new URLSearchParams();
+    params.set('limit', String(limit));
+    if (args.actorId) {
+      params.set('actorId', String(args.actorId));
+    }
+    if (args.sourceSurface) {
+      params.set('sourceSurface', String(args.sourceSurface));
+    }
+    if (typeof args.dryRun === 'boolean') {
+      params.set('dryRun', String(args.dryRun));
+    }
+    if (typeof args.hasErrors === 'boolean') {
+      params.set('hasErrors', String(args.hasErrors));
+    }
     return await gatewayGet<Array<Record<string, unknown>>>(
-      `/workflow/v1/command-runs?limit=${limit}`,
+      `/workflow/v1/command-runs?${params.toString()}`,
       userToken,
     );
   } catch (err) {

@@ -43,6 +43,9 @@ export type WorkflowCommandExecution = {
   chain: string;
   steps: WorkflowCommandExecutionStep[];
   errorCount: number;
+  actorId: string;
+  sourceSurface: string;
+  dryRun: boolean;
   executedAtMs: number;
 };
 
@@ -92,15 +95,27 @@ export type ScenarioComparison = {
 export type DelegateLane = {
   id: string;
   title: string;
+  priority: 'low' | 'normal' | 'high' | 'critical';
   status: 'assigned' | 'accepted' | 'completed' | 'rejected';
   assignee: string;
   assignedBy: string;
   payload: Record<string, unknown>;
   createdAtMs: number;
   updatedAtMs: number;
+  dueAtMs?: number;
   acceptedAtMs?: number;
   completedAtMs?: number;
   rejectedAtMs?: number;
+};
+
+export type DelegateLaneEvent = {
+  id: string;
+  laneId: string;
+  type: 'assigned' | 'accepted' | 'completed' | 'rejected' | 'comment' | 'reopened';
+  actorId: string;
+  message?: string;
+  payload?: Record<string, unknown>;
+  createdAtMs: number;
 };
 
 export type FocusAction = {

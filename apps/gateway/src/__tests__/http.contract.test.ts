@@ -111,6 +111,9 @@ function payloadFor(service: string, rpc: string, seeds: RuntimeSeeds) {
     assignedBy: 'owner',
     title: 'lane title',
     laneId: seeds.laneId,
+    message: 'status update',
+    priority: 'normal',
+    dueAtMs: Date.now() + 86_400_000,
     policy: {
       allowCloud: false,
       allowedProviders: [],
@@ -302,6 +305,13 @@ describe('gateway HTTP contract/runtime', () => {
       laneId: shared.laneId,
     });
     expect(acceptLane.statusCode).toBe(404);
+
+    const commentLane = await invoke(app, 'POST', '/delegate/v1/comment-lane', {
+      envelope: shared.envelope,
+      laneId: shared.laneId,
+      message: 'missing lane',
+    });
+    expect(commentLane.statusCode).toBe(404);
   });
 
   it('returns command run history after execute-chain calls', async () => {
@@ -318,5 +328,49 @@ describe('gateway HTTP contract/runtime', () => {
     expect(history.statusCode).toBe(200);
     expect(Array.isArray(history.body)).toBe(true);
     expect((history.body as Array<{ chain: string }>)[0]?.chain).toBeTruthy();
+  });
+
+  it('supports filtered command run queries via workflow RPC', async () => {
+    const { app } = await createHarness();
+
+    await invoke(app, 'POST', '/workflow/v1/execute-chain', {
+      envelope: envelope(),
+      chain: 'open-review',
+      dryRun: false,
+    });
+
+    await invoke(app, 'POST', '/workflow/v1/execute-chain', {
+      envelope: {
+        ...envelope(),
+        actorId: 'delegate',
+        sourceSurface: 'desktop-client',
+      },
+      chain: 'triage -> open-review',
+      dryRun: true,
+    });
+
+    const filtered = await invoke(app, 'POST', '/workflow/v1/list-command-runs', {
+      limit: 10,
+      actorId: 'delegate',
+      dryRun: true,
+    });
+
+    expect(filtered.statusCode).toBe(200);
+    expect(Array.isArray(filtered.body)).toBe(true);
+    const runs = filtered.body as Array<{ actorId: string; dryRun: boolean }>;
+    expect(runs.length).toBeGreaterThan(0);
+    expect(runs.every(run => run.actorId === 'delegate')).toBe(true);
+    expect(runs.every(run => run.dryRun === true)).toBe(true);
+  });
+
+  it('returns 409 for invalid delegate status transitions', async () => {
+    const { app, seeds } = await createHarness();
+
+    const invalidTransition = await invoke(app, 'POST', '/delegate/v1/complete-lane', {
+      envelope: envelope(),
+      laneId: seeds.laneId,
+    });
+
+    expect(invalidTransition.statusCode).toBe(409);
   });
 });

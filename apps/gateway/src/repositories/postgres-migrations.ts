@@ -34,10 +34,20 @@ export const POSTGRES_MIGRATIONS: string[] = [
       chain TEXT NOT NULL,
       steps_json JSONB NOT NULL,
       error_count INTEGER NOT NULL,
+      actor_id TEXT NOT NULL DEFAULT 'owner',
+      source_surface TEXT NOT NULL DEFAULT 'unknown',
+      dry_run BOOLEAN NOT NULL DEFAULT false,
       executed_at_ms BIGINT NOT NULL
     );`,
+  `ALTER TABLE workflow_command_runs ADD COLUMN IF NOT EXISTS actor_id TEXT NOT NULL DEFAULT 'owner';`,
+  `ALTER TABLE workflow_command_runs ADD COLUMN IF NOT EXISTS source_surface TEXT NOT NULL DEFAULT 'unknown';`,
+  `ALTER TABLE workflow_command_runs ADD COLUMN IF NOT EXISTS dry_run BOOLEAN NOT NULL DEFAULT false;`,
   `CREATE INDEX IF NOT EXISTS idx_workflow_command_runs_executed
     ON workflow_command_runs(executed_at_ms DESC);`,
+  `CREATE INDEX IF NOT EXISTS idx_workflow_command_runs_actor
+    ON workflow_command_runs(actor_id, executed_at_ms DESC);`,
+  `CREATE INDEX IF NOT EXISTS idx_workflow_command_runs_surface
+    ON workflow_command_runs(source_surface, executed_at_ms DESC);`,
   `CREATE TABLE IF NOT EXISTS scenario_branches (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -59,17 +69,33 @@ export const POSTGRES_MIGRATIONS: string[] = [
   `CREATE TABLE IF NOT EXISTS delegate_lanes (
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,
+      priority TEXT NOT NULL DEFAULT 'normal',
       status TEXT NOT NULL,
       assignee TEXT NOT NULL,
       assigned_by TEXT NOT NULL,
       payload_json JSONB NOT NULL,
       created_at_ms BIGINT NOT NULL,
       updated_at_ms BIGINT NOT NULL,
+      due_at_ms BIGINT,
       accepted_at_ms BIGINT,
       completed_at_ms BIGINT,
       rejected_at_ms BIGINT
     );`,
+  `ALTER TABLE delegate_lanes ADD COLUMN IF NOT EXISTS priority TEXT NOT NULL DEFAULT 'normal';`,
+  `ALTER TABLE delegate_lanes ADD COLUMN IF NOT EXISTS due_at_ms BIGINT;`,
   `CREATE INDEX IF NOT EXISTS idx_delegate_lanes_status ON delegate_lanes(status, updated_at_ms DESC);`,
+  `CREATE INDEX IF NOT EXISTS idx_delegate_lanes_assignee ON delegate_lanes(assignee, updated_at_ms DESC);`,
+  `CREATE INDEX IF NOT EXISTS idx_delegate_lanes_priority ON delegate_lanes(priority, updated_at_ms DESC);`,
+  `CREATE TABLE IF NOT EXISTS delegate_lane_events (
+      id TEXT PRIMARY KEY,
+      lane_id TEXT NOT NULL REFERENCES delegate_lanes(id) ON DELETE CASCADE,
+      event_type TEXT NOT NULL,
+      actor_id TEXT NOT NULL,
+      message TEXT,
+      payload_json JSONB,
+      created_at_ms BIGINT NOT NULL
+    );`,
+  `CREATE INDEX IF NOT EXISTS idx_delegate_lane_events_lane ON delegate_lane_events(lane_id, created_at_ms DESC);`,
   `CREATE TABLE IF NOT EXISTS action_outcomes (
       id TEXT PRIMARY KEY,
       action_id TEXT NOT NULL,

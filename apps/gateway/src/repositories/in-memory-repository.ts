@@ -4,6 +4,7 @@ import type {
   CloseRun,
   Correction,
   DelegateLane,
+  DelegateLaneEvent,
   EgressAuditEntry,
   EgressPolicy,
   LedgerEvent,
@@ -19,7 +20,11 @@ import {
   decodeLedgerCursor,
   encodeLedgerCursor,
 } from './ledger-cursor';
-import type { GatewayRepository } from './types';
+import type {
+  DelegateLaneFilters,
+  GatewayRepository,
+  WorkflowCommandRunFilters,
+} from './types';
 
 const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 16);
 
@@ -40,6 +45,7 @@ export class InMemoryGatewayRepository implements GatewayRepository {
   private readonly scenarioMutations = new Map<string, ScenarioMutation[]>();
 
   private readonly delegateLanes = new Map<string, DelegateLane>();
+  private readonly delegateLaneEvents = new Map<string, DelegateLaneEvent[]>();
   private readonly actionOutcomes = new Map<string, Record<string, unknown>>();
 
   private readonly egressAudit: EgressAuditEntry[] = [];
@@ -80,14 +86,30 @@ export class InMemoryGatewayRepository implements GatewayRepository {
     const defaultLane: DelegateLane = {
       id: nanoid(),
       title: 'Re-negotiate mobile contract',
+      priority: 'high',
       status: 'assigned',
       assignee: 'assistant',
       assignedBy: 'owner',
       payload: { contractId: 'mobile-1', deadline: '2026-03-05' },
       createdAtMs: now,
       updatedAtMs: now,
+      dueAtMs: now + 10 * 24 * 60 * 60 * 1000,
     };
     this.delegateLanes.set(defaultLane.id, defaultLane);
+    this.delegateLaneEvents.set(defaultLane.id, [
+      {
+        id: nanoid(),
+        laneId: defaultLane.id,
+        type: 'assigned',
+        actorId: 'owner',
+        message: 'Lane created by system bootstrap.',
+        payload: {
+          title: defaultLane.title,
+          assignee: defaultLane.assignee,
+        },
+        createdAtMs: now,
+      },
+    ]);
   }
 
   async close(): Promise<void> {
@@ -151,8 +173,35 @@ export class InMemoryGatewayRepository implements GatewayRepository {
     return run;
   }
 
-  async listWorkflowCommandRuns(limit: number): Promise<WorkflowCommandExecution[]> {
+  async listWorkflowCommandRuns(
+    limit: number,
+    filters?: WorkflowCommandRunFilters,
+  ): Promise<WorkflowCommandExecution[]> {
     return [...this.commandRuns.values()]
+      .filter(run => {
+        if (filters?.actorId && run.actorId !== filters.actorId) {
+          return false;
+        }
+        if (
+          filters?.sourceSurface &&
+          run.sourceSurface !== filters.sourceSurface
+        ) {
+          return false;
+        }
+        if (
+          typeof filters?.dryRun === 'boolean' &&
+          run.dryRun !== filters.dryRun
+        ) {
+          return false;
+        }
+        if (
+          typeof filters?.hasErrors === 'boolean' &&
+          (run.errorCount > 0) !== filters.hasErrors
+        ) {
+          return false;
+        }
+        return true;
+      })
       .sort((a, b) => b.executedAtMs - a.executedAtMs)
       .slice(0, limit);
   }
@@ -215,8 +264,28 @@ export class InMemoryGatewayRepository implements GatewayRepository {
     return updated;
   }
 
-  async listDelegateLanes(): Promise<DelegateLane[]> {
-    return [...this.delegateLanes.values()].sort((a, b) => b.updatedAtMs - a.updatedAtMs);
+  async listDelegateLanes(
+    limit: number,
+    filters?: DelegateLaneFilters,
+  ): Promise<DelegateLane[]> {
+    return [...this.delegateLanes.values()]
+      .filter(lane => {
+        if (filters?.status && lane.status !== filters.status) {
+          return false;
+        }
+        if (filters?.assignee && lane.assignee !== filters.assignee) {
+          return false;
+        }
+        if (filters?.assignedBy && lane.assignedBy !== filters.assignedBy) {
+          return false;
+        }
+        if (filters?.priority && lane.priority !== filters.priority) {
+          return false;
+        }
+        return true;
+      })
+      .sort((a, b) => b.updatedAtMs - a.updatedAtMs)
+      .slice(0, limit);
   }
 
   async getDelegateLaneById(laneId: string): Promise<DelegateLane | null> {
@@ -225,12 +294,31 @@ export class InMemoryGatewayRepository implements GatewayRepository {
 
   async createDelegateLane(lane: DelegateLane): Promise<DelegateLane> {
     this.delegateLanes.set(lane.id, lane);
+    if (!this.delegateLaneEvents.has(lane.id)) {
+      this.delegateLaneEvents.set(lane.id, []);
+    }
     return lane;
   }
 
   async updateDelegateLane(lane: DelegateLane): Promise<DelegateLane> {
     this.delegateLanes.set(lane.id, lane);
     return lane;
+  }
+
+  async createDelegateLaneEvent(event: DelegateLaneEvent): Promise<DelegateLaneEvent> {
+    const list = this.delegateLaneEvents.get(event.laneId) || [];
+    list.push(event);
+    this.delegateLaneEvents.set(event.laneId, list);
+    return event;
+  }
+
+  async listDelegateLaneEvents(
+    laneId: string,
+    limit: number,
+  ): Promise<DelegateLaneEvent[]> {
+    return [...(this.delegateLaneEvents.get(laneId) || [])]
+      .sort((a, b) => b.createdAtMs - a.createdAtMs)
+      .slice(0, limit);
   }
 
   async recordActionOutcome(input: {

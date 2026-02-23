@@ -4,6 +4,7 @@ import type {
   CloseRun,
   Correction,
   DelegateLane,
+  DelegateLaneEvent,
   EgressAuditEntry,
   EgressPolicy,
   LedgerEvent,
@@ -20,13 +21,51 @@ import {
   encodeLedgerCursor,
 } from './ledger-cursor';
 import { POSTGRES_MIGRATIONS } from './postgres-migrations';
-import type { GatewayRepository } from './types';
+import type {
+  DelegateLaneFilters,
+  GatewayRepository,
+  WorkflowCommandRunFilters,
+} from './types';
 
 function asRecord(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return {};
   }
   return value as Record<string, unknown>;
+}
+
+function asDelegateLane(
+  row: Record<string, unknown>,
+): DelegateLane {
+  return {
+    id: String(row.id),
+    title: String(row.title),
+    priority: String(row.priority) as DelegateLane['priority'],
+    status: String(row.status) as DelegateLane['status'],
+    assignee: String(row.assignee),
+    assignedBy: String(row.assigned_by),
+    payload: asRecord(row.payload_json),
+    createdAtMs: Number(row.created_at_ms),
+    updatedAtMs: Number(row.updated_at_ms),
+    dueAtMs: row.due_at_ms ? Number(row.due_at_ms) : undefined,
+    acceptedAtMs: row.accepted_at_ms ? Number(row.accepted_at_ms) : undefined,
+    completedAtMs: row.completed_at_ms ? Number(row.completed_at_ms) : undefined,
+    rejectedAtMs: row.rejected_at_ms ? Number(row.rejected_at_ms) : undefined,
+  };
+}
+
+function asDelegateLaneEvent(
+  row: Record<string, unknown>,
+): DelegateLaneEvent {
+  return {
+    id: String(row.id),
+    laneId: String(row.lane_id),
+    type: String(row.event_type) as DelegateLaneEvent['type'],
+    actorId: String(row.actor_id),
+    message: row.message ? String(row.message) : undefined,
+    payload: row.payload_json ? asRecord(row.payload_json) : undefined,
+    createdAtMs: Number(row.created_at_ms),
+  };
 }
 
 export class PostgresGatewayRepository implements GatewayRepository {
@@ -71,15 +110,33 @@ export class PostgresGatewayRepository implements GatewayRepository {
 
     await this.pool.query(
       `INSERT INTO delegate_lanes
-         (id, title, status, assignee, assigned_by, payload_json, created_at_ms, updated_at_ms)
+         (id, title, priority, status, assignee, assigned_by, payload_json, created_at_ms, updated_at_ms, due_at_ms)
        VALUES (
          'default-lane-mobile',
          'Re-negotiate mobile contract',
+         'high',
          'assigned',
          'assistant',
          'owner',
          '{\"contractId\":\"mobile-1\",\"deadline\":\"2026-03-05\"}'::jsonb,
          $1,
+         $1,
+         $2
+       )
+       ON CONFLICT (id) DO NOTHING`,
+      [now, now + 10 * 24 * 60 * 60 * 1000],
+    );
+
+    await this.pool.query(
+      `INSERT INTO delegate_lane_events
+         (id, lane_id, event_type, actor_id, message, payload_json, created_at_ms)
+       VALUES (
+         'default-lane-mobile-assigned',
+         'default-lane-mobile',
+         'assigned',
+         'owner',
+         'Lane created by system bootstrap.',
+         '{"title":"Re-negotiate mobile contract","assignee":"assistant"}'::jsonb,
          $1
        )
        ON CONFLICT (id) DO NOTHING`,
@@ -236,13 +293,16 @@ export class PostgresGatewayRepository implements GatewayRepository {
   ): Promise<WorkflowCommandExecution> {
     await this.pool.query(
       `INSERT INTO workflow_command_runs
-         (id, chain, steps_json, error_count, executed_at_ms)
-       VALUES ($1, $2, $3::jsonb, $4, $5)`,
+         (id, chain, steps_json, error_count, actor_id, source_surface, dry_run, executed_at_ms)
+       VALUES ($1, $2, $3::jsonb, $4, $5, $6, $7, $8)`,
       [
         run.id,
         run.chain,
         JSON.stringify(run.steps),
         run.errorCount,
+        run.actorId,
+        run.sourceSurface,
+        run.dryRun,
         run.executedAtMs,
       ],
     );
@@ -250,13 +310,42 @@ export class PostgresGatewayRepository implements GatewayRepository {
     return run;
   }
 
-  async listWorkflowCommandRuns(limit: number): Promise<WorkflowCommandExecution[]> {
+  async listWorkflowCommandRuns(
+    limit: number,
+    filters?: WorkflowCommandRunFilters,
+  ): Promise<WorkflowCommandExecution[]> {
+    const predicates: string[] = [];
+    const params: unknown[] = [];
+
+    if (filters?.actorId) {
+      const index = params.push(filters.actorId);
+      predicates.push(`actor_id = $${index}`);
+    }
+
+    if (filters?.sourceSurface) {
+      const index = params.push(filters.sourceSurface);
+      predicates.push(`source_surface = $${index}`);
+    }
+
+    if (typeof filters?.dryRun === 'boolean') {
+      const index = params.push(filters.dryRun);
+      predicates.push(`dry_run = $${index}`);
+    }
+
+    if (typeof filters?.hasErrors === 'boolean') {
+      predicates.push(filters.hasErrors ? 'error_count > 0' : 'error_count = 0');
+    }
+
+    const where = predicates.length > 0 ? `WHERE ${predicates.join(' AND ')}` : '';
+    const limitIndex = params.push(limit);
+
     const result = await this.pool.query(
-      `SELECT id, chain, steps_json, error_count, executed_at_ms
+      `SELECT id, chain, steps_json, error_count, actor_id, source_surface, dry_run, executed_at_ms
        FROM workflow_command_runs
+       ${where}
        ORDER BY executed_at_ms DESC
-       LIMIT $1`,
-      [limit],
+       LIMIT $${limitIndex}`,
+      params,
     );
 
     return result.rows.map(row => ({
@@ -266,6 +355,9 @@ export class PostgresGatewayRepository implements GatewayRepository {
         ? (row.steps_json as WorkflowCommandExecution['steps'])
         : [],
       errorCount: Number(row.error_count),
+      actorId: String(row.actor_id || 'owner'),
+      sourceSurface: String(row.source_surface || 'unknown'),
+      dryRun: !!row.dry_run,
       executedAtMs: Number(row.executed_at_ms),
     }));
   }
@@ -408,33 +500,51 @@ export class PostgresGatewayRepository implements GatewayRepository {
     };
   }
 
-  async listDelegateLanes(): Promise<DelegateLane[]> {
+  async listDelegateLanes(
+    limit: number,
+    filters?: DelegateLaneFilters,
+  ): Promise<DelegateLane[]> {
+    const clauses: string[] = [];
+    const values: unknown[] = [];
+
+    if (filters?.status) {
+      values.push(filters.status);
+      clauses.push(`status = $${values.length}`);
+    }
+    if (filters?.assignee) {
+      values.push(filters.assignee);
+      clauses.push(`assignee = $${values.length}`);
+    }
+    if (filters?.assignedBy) {
+      values.push(filters.assignedBy);
+      clauses.push(`assigned_by = $${values.length}`);
+    }
+    if (filters?.priority) {
+      values.push(filters.priority);
+      clauses.push(`priority = $${values.length}`);
+    }
+
+    values.push(limit);
+    const limitPlaceholder = `$${values.length}`;
+    const where = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
+
     const result = await this.pool.query(
-      `SELECT id, title, status, assignee, assigned_by, payload_json, created_at_ms, updated_at_ms,
-              accepted_at_ms, completed_at_ms, rejected_at_ms
+      `SELECT id, title, priority, status, assignee, assigned_by, payload_json, created_at_ms, updated_at_ms,
+              due_at_ms, accepted_at_ms, completed_at_ms, rejected_at_ms
        FROM delegate_lanes
-       ORDER BY updated_at_ms DESC`,
+       ${where}
+       ORDER BY updated_at_ms DESC
+       LIMIT ${limitPlaceholder}`,
+      values,
     );
 
-    return result.rows.map(row => ({
-      id: String(row.id),
-      title: String(row.title),
-      status: String(row.status) as DelegateLane['status'],
-      assignee: String(row.assignee),
-      assignedBy: String(row.assigned_by),
-      payload: asRecord(row.payload_json),
-      createdAtMs: Number(row.created_at_ms),
-      updatedAtMs: Number(row.updated_at_ms),
-      acceptedAtMs: row.accepted_at_ms ? Number(row.accepted_at_ms) : undefined,
-      completedAtMs: row.completed_at_ms ? Number(row.completed_at_ms) : undefined,
-      rejectedAtMs: row.rejected_at_ms ? Number(row.rejected_at_ms) : undefined,
-    }));
+    return result.rows.map(row => asDelegateLane(row as Record<string, unknown>));
   }
 
   async getDelegateLaneById(laneId: string): Promise<DelegateLane | null> {
     const result = await this.pool.query(
-      `SELECT id, title, status, assignee, assigned_by, payload_json, created_at_ms, updated_at_ms,
-              accepted_at_ms, completed_at_ms, rejected_at_ms
+      `SELECT id, title, priority, status, assignee, assigned_by, payload_json, created_at_ms, updated_at_ms,
+              due_at_ms, accepted_at_ms, completed_at_ms, rejected_at_ms
        FROM delegate_lanes
        WHERE id = $1`,
       [laneId],
@@ -443,36 +553,26 @@ export class PostgresGatewayRepository implements GatewayRepository {
     const row = result.rows[0];
     if (!row) return null;
 
-    return {
-      id: String(row.id),
-      title: String(row.title),
-      status: String(row.status) as DelegateLane['status'],
-      assignee: String(row.assignee),
-      assignedBy: String(row.assigned_by),
-      payload: asRecord(row.payload_json),
-      createdAtMs: Number(row.created_at_ms),
-      updatedAtMs: Number(row.updated_at_ms),
-      acceptedAtMs: row.accepted_at_ms ? Number(row.accepted_at_ms) : undefined,
-      completedAtMs: row.completed_at_ms ? Number(row.completed_at_ms) : undefined,
-      rejectedAtMs: row.rejected_at_ms ? Number(row.rejected_at_ms) : undefined,
-    };
+    return asDelegateLane(row as Record<string, unknown>);
   }
 
   async createDelegateLane(lane: DelegateLane): Promise<DelegateLane> {
     await this.pool.query(
       `INSERT INTO delegate_lanes
-         (id, title, status, assignee, assigned_by, payload_json, created_at_ms, updated_at_ms,
-          accepted_at_ms, completed_at_ms, rejected_at_ms)
-       VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10, $11)`,
+         (id, title, priority, status, assignee, assigned_by, payload_json, created_at_ms, updated_at_ms,
+          due_at_ms, accepted_at_ms, completed_at_ms, rejected_at_ms)
+       VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13)`,
       [
         lane.id,
         lane.title,
+        lane.priority,
         lane.status,
         lane.assignee,
         lane.assignedBy,
         JSON.stringify(lane.payload),
         lane.createdAtMs,
         lane.updatedAtMs,
+        lane.dueAtMs ?? null,
         lane.acceptedAtMs ?? null,
         lane.completedAtMs ?? null,
         lane.rejectedAtMs ?? null,
@@ -485,29 +585,66 @@ export class PostgresGatewayRepository implements GatewayRepository {
     await this.pool.query(
       `UPDATE delegate_lanes
           SET title = $2,
-              status = $3,
-              assignee = $4,
-              assigned_by = $5,
-              payload_json = $6::jsonb,
-              updated_at_ms = $7,
-              accepted_at_ms = $8,
-              completed_at_ms = $9,
-              rejected_at_ms = $10
+              priority = $3,
+              status = $4,
+              assignee = $5,
+              assigned_by = $6,
+              payload_json = $7::jsonb,
+              updated_at_ms = $8,
+              due_at_ms = $9,
+              accepted_at_ms = $10,
+              completed_at_ms = $11,
+              rejected_at_ms = $12
         WHERE id = $1`,
       [
         lane.id,
         lane.title,
+        lane.priority,
         lane.status,
         lane.assignee,
         lane.assignedBy,
         JSON.stringify(lane.payload),
         lane.updatedAtMs,
+        lane.dueAtMs ?? null,
         lane.acceptedAtMs ?? null,
         lane.completedAtMs ?? null,
         lane.rejectedAtMs ?? null,
       ],
     );
     return lane;
+  }
+
+  async createDelegateLaneEvent(event: DelegateLaneEvent): Promise<DelegateLaneEvent> {
+    await this.pool.query(
+      `INSERT INTO delegate_lane_events
+         (id, lane_id, event_type, actor_id, message, payload_json, created_at_ms)
+       VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7)`,
+      [
+        event.id,
+        event.laneId,
+        event.type,
+        event.actorId,
+        event.message ?? null,
+        event.payload ? JSON.stringify(event.payload) : null,
+        event.createdAtMs,
+      ],
+    );
+    return event;
+  }
+
+  async listDelegateLaneEvents(
+    laneId: string,
+    limit: number,
+  ): Promise<DelegateLaneEvent[]> {
+    const result = await this.pool.query(
+      `SELECT id, lane_id, event_type, actor_id, message, payload_json, created_at_ms
+       FROM delegate_lane_events
+       WHERE lane_id = $1
+       ORDER BY created_at_ms DESC
+       LIMIT $2`,
+      [laneId, limit],
+    );
+    return result.rows.map(row => asDelegateLaneEvent(row as Record<string, unknown>));
   }
 
   async recordActionOutcome(input: {

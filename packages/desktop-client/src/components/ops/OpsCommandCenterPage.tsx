@@ -566,6 +566,8 @@ export function OpsCommandCenterPage() {
                 </Text>
                 <Text style={{ fontSize: 12, color: theme.pageTextSubdued }}>
                   {new Date(Number(run.executedAtMs || 0)).toLocaleTimeString()} ·{' '}
+                  {String(run.actorId || 'owner')} · {String(run.sourceSurface || 'unknown')}{' '}
+                  · {run.dryRun ? t('dry-run') : t('live')} ·{' '}
                   {t('Errors: {{count}}', { count: Number(run.errorCount || 0) })}
                 </Text>
               </View>

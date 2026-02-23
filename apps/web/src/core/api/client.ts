@@ -3,11 +3,15 @@ import { createCommandEnvelope } from '@finance-os/domain-kernel';
 import type {
   AppRecommendation,
   DelegateLane,
+  DelegateLaneEvent,
+  EgressAuditEntry,
+  EgressPolicy,
   FocusPanel,
   MoneyPulse,
   Playbook,
   ScenarioBranch,
   ScenarioComparison,
+  ScenarioMutation,
   WorkflowCommandExecution,
 } from '../types';
 
@@ -122,28 +126,148 @@ export const apiClient = {
     });
   },
 
-  listCommandRuns(limit = 20) {
+  listCommandRuns(input?: {
+    limit?: number;
+    actorId?: string;
+    sourceSurface?: string;
+    dryRun?: boolean;
+    hasErrors?: boolean;
+  }) {
+    const limit = input?.limit ?? 20;
     const clamped = Math.max(1, Math.min(limit, 200));
+    const params = new URLSearchParams();
+    params.set('limit', String(clamped));
+    if (input?.actorId) {
+      params.set('actorId', input.actorId);
+    }
+    if (input?.sourceSurface) {
+      params.set('sourceSurface', input.sourceSurface);
+    }
+    if (typeof input?.dryRun === 'boolean') {
+      params.set('dryRun', String(input.dryRun));
+    }
+    if (typeof input?.hasErrors === 'boolean') {
+      params.set('hasErrors', String(input.hasErrors));
+    }
     return request<WorkflowCommandExecution[]>(
-      `/workflow/v1/command-runs?limit=${clamped}`,
+      `/workflow/v1/command-runs?${params.toString()}`,
     );
   },
 
-  listDelegateLanes() {
-    return request<DelegateLane[]>('/delegate/v1/lanes');
+  listDelegateLanes(input?: {
+    limit?: number;
+    status?: DelegateLane['status'];
+    assignee?: string;
+    assignedBy?: string;
+    priority?: DelegateLane['priority'];
+  }) {
+    const params = new URLSearchParams();
+    params.set('limit', String(Math.max(1, Math.min(input?.limit ?? 50, 200))));
+    if (input?.status) {
+      params.set('status', input.status);
+    }
+    if (input?.assignee) {
+      params.set('assignee', input.assignee);
+    }
+    if (input?.assignedBy) {
+      params.set('assignedBy', input.assignedBy);
+    }
+    if (input?.priority) {
+      params.set('priority', input.priority);
+    }
+    return request<DelegateLane[]>(`/delegate/v1/lanes?${params.toString()}`);
   },
 
-  assignDelegateLane(title: string, assignee: string) {
+  listDelegateLaneEvents(laneId: string, limit = 50) {
+    const params = new URLSearchParams();
+    params.set('laneId', laneId);
+    params.set('limit', String(Math.max(1, Math.min(limit, 200))));
+    return request<DelegateLaneEvent[]>(`/delegate/v1/lane-events?${params.toString()}`);
+  },
+
+  assignDelegateLane(
+    title: string,
+    assignee: string,
+    options?: {
+      priority?: DelegateLane['priority'];
+      dueAtMs?: number;
+      assignedBy?: string;
+      payload?: Record<string, unknown>;
+    },
+  ) {
     return request<DelegateLane>('/delegate/v1/assign-lane', {
       method: 'POST',
       body: JSON.stringify({
         envelope: commandEnvelope('assign-lane'),
         title,
         assignee,
-        assignedBy: 'owner',
+        assignedBy: options?.assignedBy || 'owner',
+        priority: options?.priority || 'normal',
+        dueAtMs: options?.dueAtMs,
         payload: {
           source: 'web-command-center',
+          ...(options?.payload || {}),
         },
+      }),
+    });
+  },
+
+  acceptDelegateLane(laneId: string, message?: string) {
+    return request<DelegateLane>('/delegate/v1/accept-lane', {
+      method: 'POST',
+      body: JSON.stringify({
+        envelope: commandEnvelope('accept-lane'),
+        laneId,
+        message,
+      }),
+    });
+  },
+
+  completeDelegateLane(laneId: string, message?: string) {
+    return request<DelegateLane>('/delegate/v1/complete-lane', {
+      method: 'POST',
+      body: JSON.stringify({
+        envelope: commandEnvelope('complete-lane'),
+        laneId,
+        message,
+      }),
+    });
+  },
+
+  rejectDelegateLane(laneId: string, message?: string) {
+    return request<DelegateLane>('/delegate/v1/reject-lane', {
+      method: 'POST',
+      body: JSON.stringify({
+        envelope: commandEnvelope('reject-lane'),
+        laneId,
+        message,
+      }),
+    });
+  },
+
+  reopenDelegateLane(laneId: string, message?: string) {
+    return request<DelegateLane>('/delegate/v1/reopen-lane', {
+      method: 'POST',
+      body: JSON.stringify({
+        envelope: commandEnvelope('reopen-lane'),
+        laneId,
+        message,
+      }),
+    });
+  },
+
+  commentDelegateLane(
+    laneId: string,
+    message: string,
+    payload?: Record<string, unknown>,
+  ) {
+    return request<DelegateLaneEvent>('/delegate/v1/comment-lane', {
+      method: 'POST',
+      body: JSON.stringify({
+        envelope: commandEnvelope('comment-lane'),
+        laneId,
+        message,
+        payload,
       }),
     });
   },
@@ -160,6 +284,12 @@ export const apiClient = {
 
   listScenarioBranches() {
     return request<ScenarioBranch[]>('/scenario/v1/branches');
+  },
+
+  listScenarioMutations(branchId: string) {
+    const params = new URLSearchParams();
+    params.set('branchId', branchId);
+    return request<ScenarioMutation[]>(`/scenario/v1/mutations?${params.toString()}`);
   },
 
   createScenarioBranch(name: string, baseBranchId?: string, notes?: string) {
@@ -208,6 +338,29 @@ export const apiClient = {
       method: 'POST',
       body: JSON.stringify({
         envelope: commandEnvelope('recommend'),
+      }),
+    });
+  },
+
+  getEgressPolicy() {
+    return request<EgressPolicy>('/policy/v1/egress-policy');
+  },
+
+  setEgressPolicy(policy: EgressPolicy) {
+    return request<EgressPolicy>('/policy/v1/set-egress-policy', {
+      method: 'POST',
+      body: JSON.stringify({
+        envelope: commandEnvelope('set-egress-policy'),
+        policy,
+      }),
+    });
+  },
+
+  listEgressAudit(limit = 50) {
+    return request<EgressAuditEntry[]>('/policy/v1/list-egress-audit', {
+      method: 'POST',
+      body: JSON.stringify({
+        limit: Math.max(1, Math.min(limit, 200)),
       }),
     });
   },

@@ -88,6 +88,53 @@ describe('gateway service contract behavior', () => {
     );
     expect(recentRuns.some(run => run.id === firstRun.id)).toBe(true);
     expect(recentRuns.some(run => run.id === secondRun.id)).toBe(true);
+    expect(recentRuns.every(run => typeof run.actorId === 'string')).toBe(true);
+    expect(recentRuns.every(run => typeof run.sourceSurface === 'string')).toBe(true);
+  });
+
+  it('filters command runs by actor, surface, mode, and error state', async () => {
+    const { service } = await createHarness();
+
+    const delegateDryRun = await service.executeWorkflowCommandChain({
+      chain: 'triage -> open-review',
+      actorId: 'delegate',
+      sourceSurface: 'desktop-client',
+      dryRun: true,
+    });
+
+    const ownerLive = await service.executeWorkflowCommandChain({
+      chain: 'open-review',
+      actorId: 'owner',
+      sourceSurface: 'finance-os-web',
+      dryRun: false,
+    });
+
+    const blocked = await service.executeWorkflowCommandChain({
+      chain: 'close -> weekly',
+      actorId: 'delegate',
+      sourceSurface: 'desktop-client',
+      dryRun: false,
+    });
+
+    const byActor = await service.listWorkflowCommandRuns(20, {
+      actorId: 'delegate',
+    });
+    expect(byActor.some(run => run.id === delegateDryRun.id)).toBe(true);
+    expect(byActor.some(run => run.id === ownerLive.id)).toBe(false);
+
+    const bySurface = await service.listWorkflowCommandRuns(20, {
+      sourceSurface: 'finance-os-web',
+    });
+    expect(bySurface.some(run => run.id === ownerLive.id)).toBe(true);
+    expect(bySurface.some(run => run.id === delegateDryRun.id)).toBe(false);
+
+    const dryRuns = await service.listWorkflowCommandRuns(20, { dryRun: true });
+    expect(dryRuns.some(run => run.id === delegateDryRun.id)).toBe(true);
+    expect(dryRuns.some(run => run.id === ownerLive.id)).toBe(false);
+
+    const errorsOnly = await service.listWorkflowCommandRuns(20, { hasErrors: true });
+    expect(errorsOnly.some(run => run.id === blocked.id)).toBe(true);
+    expect(errorsOnly.every(run => run.errorCount > 0)).toBe(true);
   });
 
   it('supports dry-run command chains without mutating queue state', async () => {
@@ -128,6 +175,58 @@ describe('gateway service contract behavior', () => {
 
     const queued = await queue.dequeue(20);
     expect(queued.some(job => job.name === 'workflow.close.run')).toBe(false);
+  });
+
+  it('enforces delegate lane transitions and records lifecycle events', async () => {
+    const { service } = await createHarness();
+
+    const lane = await service.assignDelegateLane({
+      title: 'Renegotiate internet contract',
+      assignee: 'delegate',
+      assignedBy: 'owner',
+      priority: 'high',
+      payload: { contractId: 'internet-1' },
+    });
+
+    const invalid = await service.transitionDelegateLane({
+      laneId: lane.id,
+      status: 'completed',
+      actorId: 'delegate',
+    });
+    expect(invalid).toEqual({
+      ok: false,
+      error: 'invalid-lane-transition',
+    });
+
+    const accepted = await service.transitionDelegateLane({
+      laneId: lane.id,
+      status: 'accepted',
+      actorId: 'delegate',
+    });
+    expect(accepted.ok).toBe(true);
+
+    const completed = await service.transitionDelegateLane({
+      laneId: lane.id,
+      status: 'completed',
+      actorId: 'delegate',
+    });
+    expect(completed.ok).toBe(true);
+
+    const note = await service.commentDelegateLane({
+      laneId: lane.id,
+      actorId: 'owner',
+      message: 'Validate cancellation fee before call.',
+    });
+    expect(note?.type).toBe('comment');
+
+    const events = await service.listDelegateLaneEvents({
+      laneId: lane.id,
+      limit: 20,
+    });
+    expect(events.map(event => event.type)).toContain('assigned');
+    expect(events.map(event => event.type)).toContain('accepted');
+    expect(events.map(event => event.type)).toContain('completed');
+    expect(events.map(event => event.type)).toContain('comment');
   });
 
   it('submits and streams ledger events', async () => {

@@ -40,3 +40,14 @@ export function sendNotFound(
 
   return null;
 }
+
+export function sendConflict(
+  reply: FastifyReply,
+  error: string,
+): null {
+  reply.code(409).send({
+    error,
+  });
+
+  return null;
+}
