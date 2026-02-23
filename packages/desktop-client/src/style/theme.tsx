@@ -54,6 +54,7 @@ export function ThemeStyle() {
     | typeof developmentTheme
     | undefined
   >(undefined);
+  const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
     if (activeTheme === 'auto') {
@@ -62,8 +63,10 @@ export function ThemeStyle() {
       function darkThemeMediaQueryListener(event: MediaQueryListEvent) {
         if (event.matches) {
           setThemeColors(darkTheme.colors);
+          setIsDark(true);
         } else {
           setThemeColors(themes['light'].colors);
+          setIsDark(false);
         }
       }
       const darkThemeMediaQuery = window.matchMedia(
@@ -77,8 +80,10 @@ export function ThemeStyle() {
 
       if (darkThemeMediaQuery.matches) {
         setThemeColors(darkTheme.colors);
+        setIsDark(true);
       } else {
         setThemeColors(themes['light'].colors);
+        setIsDark(false);
       }
 
       return () => {
@@ -89,8 +94,19 @@ export function ThemeStyle() {
       };
     } else {
       setThemeColors(themes[activeTheme as ThemeKey]?.colors);
+      setIsDark(activeTheme !== 'light');
     }
   }, [activeTheme, darkThemePreference]);
+
+  // Sync the 'dark' class on <html> so Tailwind/shadcn dark mode activates
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isDark) {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+  }, [isDark]);
 
   if (!themeColors) return null;
 

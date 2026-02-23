@@ -1,12 +1,11 @@
 import React from 'react';
 import type { ComponentType, SVGProps, CSSProperties } from 'react';
-import { useLocation } from 'react-router';
+import { NavLink, useLocation } from 'react-router';
 
 import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
-import { Link } from '@desktop-client/components/common/Link';
 
 type SecondaryItemProps = {
   title: string;
@@ -34,27 +33,25 @@ export function SecondaryItem({
   const content = (
     <>
       {Icon && <Icon className="w-4 h-4 shrink-0" />}
-      <span className={bold ? 'font-semibold' : ''}>{title}</span>
+      <span className={`truncate ${bold ? 'font-semibold' : ''}`}>{title}</span>
     </>
   );
 
   return (
     <SidebarMenuItem style={{ paddingLeft: indent }}>
       <SidebarMenuButton
-        asChild
+        asChild={!!to}
         size="sm"
         isActive={isActive}
-        onClick={onClick}
+        onClick={!to ? onClick : undefined}
         tooltip={title}
       >
         {to ? (
-          <Link variant="internal" to={to} style={{ textDecoration: 'none' }}>
+          <NavLink to={to}>
             {content}
-          </Link>
+          </NavLink>
         ) : (
-          <button onClick={onClick}>
-            {content}
-          </button>
+          content
         )}
       </SidebarMenuButton>
     </SidebarMenuItem>

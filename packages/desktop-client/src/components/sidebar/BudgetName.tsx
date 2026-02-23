@@ -31,17 +31,11 @@ export function BudgetName({ children }: BudgetNameProps) {
 
   return (
     <View
+      className="flex flex-row items-center select-none"
       style={{
-        paddingTop: 35,
-        height: 30,
-        flexDirection: 'row',
-        alignItems: 'center',
-        margin: '0 8px 23px 20px',
-        userSelect: 'none',
-        transition: 'padding .4s',
+        margin: '0 8px 0 8px',
         ...(hasWindowButtons
           ? {
-              paddingTop: 20,
               justifyContent: 'flex-start',
             }
           : {}),
@@ -126,8 +120,8 @@ function EditableBudgetName() {
       <Button
         ref={triggerRef}
         variant="bare"
+        className="text-sidebar-foreground"
         style={{
-          color: theme.sidebarBudgetName,
           fontSize: 16,
           fontWeight: 500,
           marginLeft: -5,

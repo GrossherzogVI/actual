@@ -284,22 +284,12 @@ export function FinancesApp() {
               />
             )}
             <View
-              style={{
-                flexDirection: 'row',
-                backgroundColor: theme.pageBackground,
-                flex: 1,
-              }}
+              className="bg-background flex-1 flex-row"
             >
               <FloatableSidebar />
 
               <View
-                style={{
-                  color: theme.pageText,
-                  backgroundColor: theme.pageBackground,
-                  flex: 1,
-                  overflow: 'hidden',
-                  width: '100%',
-                }}
+                className="text-foreground bg-background flex-1 overflow-hidden w-full"
               >
                 <ScrollProvider
                   isDisabled={!isNarrowWidth}

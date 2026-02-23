@@ -1,13 +1,11 @@
 import React from 'react';
 import type { ComponentType, SVGProps, ReactNode, CSSProperties } from 'react';
-import { useLocation } from 'react-router';
+import { NavLink, useLocation } from 'react-router';
 
 import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
-import { Link } from '@desktop-client/components/common/Link';
-import { Button } from '@/components/ui/button';
 
 type ItemProps = {
   title: string;
@@ -37,27 +35,25 @@ export function Item({
 
   const content = (
     <>
-      <Icon className="w-4 h-4" />
-      <span>{title}</span>
+      <Icon className="w-4 h-4 shrink-0" />
+      <span className="truncate">{title}</span>
     </>
   );
 
   return (
     <SidebarMenuItem style={{ paddingLeft: indent }}>
       <SidebarMenuButton
-        asChild
+        asChild={!!to}
         isActive={isActive}
-        onClick={onClick}
+        onClick={!to ? onClick : undefined}
         tooltip={title}
       >
         {to ? (
-          <Link variant="internal" to={to} style={{ textDecoration: 'none' }}>
+          <NavLink to={to}>
             {content}
-          </Link>
+          </NavLink>
         ) : (
-          <button onClick={onClick}>
-            {content}
-          </button>
+          content
         )}
       </SidebarMenuButton>
       {children && <div className="mt-1">{children}</div>}

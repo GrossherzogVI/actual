@@ -50,7 +50,7 @@ import { useDispatch } from '@desktop-client/redux';
 import type { Binding, SheetFields } from '@desktop-client/spreadsheet';
 
 import { SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
-import { useLocation } from 'react-router';
+import { NavLink, useLocation } from 'react-router';
 
 export const accountNameStyle: CSSProperties = {
   marginTop: -2,
@@ -143,8 +143,8 @@ export function Account<FieldName extends SheetFields<'account'>>({
   const reopenAccount = useReopenAccountMutation();
   const updateAccount = useUpdateAccountMutation();
 
-  const isActive = isExactPathMatch 
-    ? location.pathname === to 
+  const isActive = isExactPathMatch
+    ? location.pathname === to
     : location.pathname.startsWith(to);
 
   const accountRow = (
@@ -165,90 +165,63 @@ export function Account<FieldName extends SheetFields<'account'>>({
               updated && "font-bold"
             )}
           >
-          <Link
-            variant="internal"
-            to={to}
-            isDisabled={isEditing}
-            isExactPathMatch={isExactPathMatch}
-            style={{
-              ...style,
-              position: 'relative',
-              borderLeft: '4px solid transparent',
-              ...(updated && { fontWeight: 700 }),
-            }}
-            activeStyle={{
-              borderColor: theme.sidebarItemAccentSelected,
-              color: theme.sidebarItemTextSelected,
-              fontWeight: (style && style.fontWeight) || 'normal',
-              '& .dot': {
-                backgroundColor: theme.sidebarItemAccentSelected,
-                transform: 'translateX(-4.5px)',
-              },
-            }}
-          >
-            <View
-              style={{
-                position: 'absolute',
-                left: 0,
-                top: 0,
-                bottom: 0,
-                flexDirection: 'row',
-                alignItems: 'center',
-              }}
+            <NavLink
+              to={to}
+              onClick={isEditing ? (e: React.MouseEvent) => e.preventDefault() : undefined}
+              className="relative flex items-center gap-2 text-sidebar-foreground no-underline"
             >
-              <div
-                className={cx(
-                  'dot',
-                  css({
-                    marginRight: 3,
-                    width: 5,
-                    height: 5,
-                    borderRadius: 5,
-                    backgroundColor: pending
-                      ? theme.sidebarItemBackgroundPending
-                      : failed
-                        ? theme.sidebarItemBackgroundFailed
-                        : theme.sidebarItemBackgroundPositive,
-                    marginLeft: 2,
-                    transition: 'transform .3s',
-                    opacity: connected ? 1 : 0,
-                  }),
-                )}
-              />
-            </View>
+              {connected && (
+                <div
+                  className={cx(
+                    'dot',
+                    css({
+                      width: 5,
+                      height: 5,
+                      borderRadius: 5,
+                      backgroundColor: pending
+                        ? theme.sidebarItemBackgroundPending
+                        : failed
+                          ? theme.sidebarItemBackgroundFailed
+                          : theme.sidebarItemBackgroundPositive,
+                      transition: 'transform .3s',
+                      flexShrink: 0,
+                    }),
+                  )}
+                />
+              )}
 
-            <AlignedText
-              left={
-                isEditing ? (
-                  <InitialFocus>
-                    <Input
-                      style={{
-                        padding: 0,
-                        width: '100%',
-                      }}
-                      onBlur={() => setIsEditing(false)}
-                      onEnter={newAccountName => {
-                        if (newAccountName.trim() !== '') {
-                          updateAccount.mutate({
-                            account: {
-                              ...account,
-                              name: newAccountName,
-                            },
-                          });
-                        }
-                        setIsEditing(false);
-                      }}
-                      onEscape={() => setIsEditing(false)}
-                      defaultValue={name}
-                    />
-                  </InitialFocus>
-                ) : (
-                  name
-                )
-              }
-              right={<CellValue binding={query} type="financial" />}
-            />
-          </Link>
+              <AlignedText
+                left={
+                  isEditing ? (
+                    <InitialFocus>
+                      <Input
+                        style={{
+                          padding: 0,
+                          width: '100%',
+                        }}
+                        onBlur={() => setIsEditing(false)}
+                        onEnter={newAccountName => {
+                          if (newAccountName.trim() !== '') {
+                            updateAccount.mutate({
+                              account: {
+                                ...account,
+                                name: newAccountName,
+                              },
+                            });
+                          }
+                          setIsEditing(false);
+                        }}
+                        onEscape={() => setIsEditing(false)}
+                        defaultValue={name}
+                      />
+                    </InitialFocus>
+                  ) : (
+                    name
+                  )
+                }
+                right={<CellValue binding={query} type="financial" />}
+              />
+            </NavLink>
           </SidebarMenuButton>
           {account && (
             <Popover
