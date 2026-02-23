@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { apiClient } from '../../core/api/client';
 import type { ActionOutcome } from '../../core/types';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 type AdaptiveFocusRailProps = {
   onRoute: (route: string) => void;
@@ -164,22 +166,20 @@ export function AdaptiveFocusRail({ onRoute, onStatus }: AdaptiveFocusRailProps)
       {focus.isError ? <small>Focus engine unavailable.</small> : null}
 
       <div className="fo-row">
-        <button
-          className="fo-btn-secondary"
-          type="button"
+        <Button
+          variant="secondary"
           disabled={runResolveNext.isPending}
           onClick={() => runResolveNext.mutate()}
         >
           {runResolveNext.isPending ? 'Resolving...' : 'Resolve Next + Open'}
-        </button>
-        <button
-          className="fo-btn-secondary"
-          type="button"
+        </Button>
+        <Button
+          variant="secondary"
           disabled={acceptTopActions.isPending || rankedActions.length === 0}
           onClick={() => acceptTopActions.mutate(3)}
         >
           {acceptTopActions.isPending ? 'Applying...' : 'Accept Top 3'}
-        </button>
+        </Button>
       </div>
 
       <div className="fo-focus-workbench">
@@ -227,45 +227,40 @@ export function AdaptiveFocusRail({ onRoute, onStatus }: AdaptiveFocusRailProps)
                 route: <code>{selectedAction.route}</code>
               </small>
 
-              <input
-                className="fo-input"
+              <Input
                 value={note}
                 onChange={event => setNote(event.target.value)}
                 placeholder="Outcome note (optional)"
               />
 
-              <div className="fo-row">
-                <button
-                  className="fo-btn-secondary"
-                  type="button"
+              <div className="fo-row pt-1">
+                <Button
+                  variant="secondary"
                   onClick={() => onRoute(selectedAction.route)}
                 >
                   Open
-                </button>
-                <button
-                  className="fo-btn-secondary"
-                  type="button"
+                </Button>
+                <Button
+                  variant="secondary"
                   disabled={recordOutcome.isPending}
                   onClick={() => applyOutcome('accepted')}
                 >
                   Accept
-                </button>
-                <button
-                  className="fo-btn-secondary"
-                  type="button"
+                </Button>
+                <Button
+                  variant="secondary"
                   disabled={recordOutcome.isPending}
                   onClick={() => applyOutcome('deferred')}
                 >
                   Defer
-                </button>
-                <button
-                  className="fo-btn-secondary"
-                  type="button"
+                </Button>
+                <Button
+                  variant="secondary"
                   disabled={recordOutcome.isPending}
                   onClick={() => applyOutcome('rejected')}
                 >
                   Reject
-                </button>
+                </Button>
               </div>
 
               <div className="fo-focus-outcomes">

@@ -29,6 +29,7 @@ import type {
   ScenarioComparison,
   ScenarioLineage,
   ScenarioMutation,
+  TemporalSignals,
   ReplayWorkerDeadLettersResult,
   WorkerDeadLetter,
   WorkerQueueHealth,
@@ -759,6 +760,23 @@ export const apiClient = {
         envelope: commandEnvelope('recommend'),
       }),
     });
+  },
+
+  getTemporalSignals(input?: { bundesland?: string; horizonDays?: number }) {
+    const params = new URLSearchParams();
+    if (input?.bundesland) {
+      params.set('bundesland', input.bundesland.toUpperCase());
+    }
+    if (typeof input?.horizonDays === 'number') {
+      params.set(
+        'horizonDays',
+        String(Math.max(7, Math.min(45, Math.trunc(input.horizonDays)))),
+      );
+    }
+    const query = params.toString();
+    return request<TemporalSignals>(
+      `/intelligence/v1/temporal-signals${query ? `?${query}` : ''}`,
+    );
   },
 
   explainRecommendation(recommendation: AppRecommendation) {

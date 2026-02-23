@@ -3,6 +3,7 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 
 import type { OpsActivityKind, OpsActivitySeverity } from '../../core/types';
 import { apiClient } from '../../core/api/client';
+import { Button } from '@/components/ui/button';
 
 type OpsActivityFeedPanelProps = {
   onRoute: (route: string) => void;
@@ -111,13 +112,13 @@ export function OpsActivityFeedPanel({ onRoute }: OpsActivityFeedPanelProps) {
               <div className="fo-space-between">
                 <code>{event.kind}</code>
                 {event.route ? (
-                  <button
-                    className="fo-btn-secondary"
-                    type="button"
+                  <Button
+                    size="sm"
+                    variant="secondary"
                     onClick={() => onRoute(event.route || '/ops')}
                   >
                     Open
-                  </button>
+                  </Button>
                 ) : null}
               </div>
             </article>
@@ -125,16 +126,15 @@ export function OpsActivityFeedPanel({ onRoute }: OpsActivityFeedPanelProps) {
         </div>
 
         {activity.hasNextPage ? (
-          <button
-            className="fo-btn-secondary"
-            type="button"
+          <Button
+            variant="secondary"
             disabled={activity.isFetchingNextPage}
             onClick={() => {
               void activity.fetchNextPage();
             }}
           >
             {activity.isFetchingNextPage ? 'Loading more...' : 'Load More'}
-          </button>
+          </Button>
         ) : null}
       </div>
     </section>

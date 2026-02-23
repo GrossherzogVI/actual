@@ -89,6 +89,10 @@ vi.mock('../features/spatial-twin/SpatialTwinPanel', () => ({
   SpatialTwinPanel: () => <section data-testid="spatial-twin-panel" />,
 }));
 
+vi.mock('../features/temporal-intelligence/TemporalIntelligencePanel', () => ({
+  TemporalIntelligencePanel: () => <section data-testid="temporal-intelligence-panel" />,
+}));
+
 function createCommandRun(
   overrides: Partial<WorkflowCommandExecution> = {},
 ): WorkflowCommandExecution {

@@ -822,4 +822,15 @@ describe('gateway HTTP contract/runtime', () => {
     });
     expect(forcedAdopt.statusCode).toBe(200);
   });
+
+  it('serves temporal intelligence signals over HTTP query params', async () => {
+    const { app } = await createHarness();
+
+    const ok = await invoke(app, 'GET', '/intelligence/v1/temporal-signals');
+    expect(ok.statusCode).toBe(200);
+    expect((ok.body as { bundesland?: string }).bundesland).toBeTruthy();
+    expect(
+      Array.isArray((ok.body as { calendar?: unknown[] }).calendar),
+    ).toBe(true);
+  });
 });

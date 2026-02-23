@@ -7,6 +7,15 @@ import type {
   GuardrailProfile,
 } from '../../core/types';
 import { apiClient } from '../../core/api/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 type DecisionGraphPanelProps = {
   recommendations: AppRecommendation[];
@@ -191,7 +200,7 @@ export function DecisionGraphPanel({
           'executed',
           `Decision graph execution (${run.executionMode}) run=${run.id}`,
         )
-        .catch(() => {});
+        .catch(() => { });
 
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['command-runs'] }),
@@ -262,44 +271,51 @@ export function DecisionGraphPanel({
       </header>
 
       <div className="fo-row">
-        <select
-          className="fo-input"
+        <Select
           value={selected.id}
-          onChange={event => setSelectedRecommendationId(event.target.value)}
-          aria-label="decision recommendation"
+          onValueChange={value => setSelectedRecommendationId(value)}
         >
-          {(recommendations || []).map(recommendation => (
-            <option key={recommendation.id} value={recommendation.id}>
-              {recommendation.title}
-            </option>
-          ))}
-        </select>
-        <select
-          className="fo-input"
-          aria-label="decision execution mode"
+          <SelectTrigger className="w-[240px]">
+            <SelectValue placeholder="Recommendation" />
+          </SelectTrigger>
+          <SelectContent>
+            {(recommendations || []).map(recommendation => (
+              <SelectItem key={recommendation.id} value={recommendation.id}>
+                {recommendation.title}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
           value={executionMode}
-          onChange={event => setExecutionMode(event.target.value as ExecutionMode)}
+          onValueChange={value => setExecutionMode(value as ExecutionMode)}
         >
-          <option value="dry-run">dry-run</option>
-          <option value="live">live</option>
-        </select>
-        <select
-          className="fo-input"
-          aria-label="decision guardrail profile"
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="Mode" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="dry-run">dry-run</SelectItem>
+            <SelectItem value="live">live</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select
           value={guardrailProfile}
-          onChange={event =>
-            setGuardrailProfile(event.target.value as GuardrailProfile)
-          }
+          onValueChange={value => setGuardrailProfile(value as GuardrailProfile)}
         >
-          <option value="strict">strict</option>
-          <option value="balanced">balanced</option>
-          <option value="off">off</option>
-        </select>
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="Guardrail" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="strict">strict</SelectItem>
+            <SelectItem value="balanced">balanced</SelectItem>
+            <SelectItem value="off">off</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="fo-row">
-        <input
-          className="fo-input"
+        <Input
+          className="w-[120px]"
           aria-label="decision rollback window minutes"
           type="number"
           min={1}
@@ -311,20 +327,18 @@ export function DecisionGraphPanel({
             )
           }
         />
-        <button
-          className="fo-btn-secondary"
-          type="button"
+        <Button
+          variant="secondary"
           onClick={() => onRoute(blueprint.route)}
         >
           Open impacted surface
-        </button>
-        <button
-          className="fo-btn-secondary"
-          type="button"
+        </Button>
+        <Button
+          variant="secondary"
           onClick={() => onRoute('/ops#spatial-twin')}
         >
           Simulate in spatial twin
-        </button>
+        </Button>
       </div>
 
       <div className="fo-decision-graph">
@@ -448,9 +462,7 @@ export function DecisionGraphPanel({
       </article>
 
       <div className="fo-row">
-        <button
-          className="fo-btn"
-          type="button"
+        <Button
           disabled={executeRecommendation.isPending}
           onClick={() => executeRecommendation.mutate()}
         >
@@ -459,18 +471,16 @@ export function DecisionGraphPanel({
             : executionMode === 'live'
               ? 'Execute live recommendation'
               : 'Dry-run recommendation'}
-        </button>
-        <button
-          className="fo-btn-secondary"
-          type="button"
+        </Button>
+        <Button
+          variant="secondary"
           disabled={createPlaybook.isPending}
           onClick={() => createPlaybook.mutate()}
         >
           {createPlaybook.isPending ? 'Creating...' : 'Generate playbook'}
-        </button>
-        <button
-          className="fo-btn-secondary"
-          type="button"
+        </Button>
+        <Button
+          variant="secondary"
           disabled={captureOutcome.isPending}
           onClick={() =>
             captureOutcome.mutate({
@@ -480,10 +490,9 @@ export function DecisionGraphPanel({
           }
         >
           Mark accepted
-        </button>
-        <button
-          className="fo-btn-secondary"
-          type="button"
+        </Button>
+        <Button
+          variant="secondary"
           disabled={captureOutcome.isPending}
           onClick={() =>
             captureOutcome.mutate({
@@ -493,7 +502,7 @@ export function DecisionGraphPanel({
           }
         >
           Mark deferred
-        </button>
+        </Button>
       </div>
     </section>
   );

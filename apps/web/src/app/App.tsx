@@ -21,6 +21,7 @@ import { RuntimeControlPanel } from '../features/runtime/RuntimeControlPanel';
 import { dispatchRunDetailsCommand } from '../features/runtime/run-details-commands';
 import { dispatchRuntimeCommand } from '../features/runtime/runtime-commands';
 import { SpatialTwinPanel } from '../features/spatial-twin/SpatialTwinPanel';
+import { TemporalIntelligencePanel } from '../features/temporal-intelligence/TemporalIntelligencePanel';
 
 type RunAnomalyCandidate = {
   scope: 'command' | 'playbook';
@@ -731,6 +732,7 @@ export function App() {
               ))}
             </div>
           </section>
+          <TemporalIntelligencePanel onStatus={setStatus} onRoute={handleRoute} />
         </aside>
 
         <section className="fo-column fo-center-column">

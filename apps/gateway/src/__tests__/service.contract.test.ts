@@ -1671,4 +1671,21 @@ describe('gateway service contract behavior', () => {
     });
     expect(acquiredAfterRelease).toBe(true);
   });
+
+  it('builds temporal signals with calendar windows and lane pressure metadata', async () => {
+    const { service } = await createHarness();
+
+    const signals = await service.getTemporalSignals({
+      bundesland: 'BE',
+      horizonDays: 14,
+    });
+
+    expect(signals.bundesland).toBe('BE');
+    expect(signals.calendar).toHaveLength(14);
+    expect(signals.summary.businessDays).toBeGreaterThan(0);
+    expect(signals.recommendedChains.length).toBeGreaterThan(0);
+    expect(signals.nextBusinessDay).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(signals.laneSignals.length).toBeGreaterThan(0);
+    expect(signals.laneSignals[0]?.recommendedChain.includes('triage')).toBe(true);
+  });
 });

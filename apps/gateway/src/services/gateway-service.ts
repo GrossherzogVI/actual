@@ -1,6 +1,8 @@
 import { customAlphabet } from 'nanoid';
 
 import {
+  buildGermanHolidaySet,
+  isBusinessDay,
   parseCommandChain,
   rankRecommendations,
   type CommandParseStep,
@@ -42,6 +44,9 @@ import type {
   ScenarioLineage,
   ScenarioLineageNode,
   ScenarioMutation,
+  TemporalLaneSignal,
+  TemporalSignalSeverity,
+  TemporalSignals,
   WorkerDeadLetter,
   WorkerJobFingerprintClaimResult,
   WorkerQueueHealth,
@@ -112,9 +117,131 @@ const OPS_ACTIVITY_PIPELINE_LEASE_TTL_MS = 30 * 60 * 1000;
 const DEFAULT_QUEUE_VISIBILITY_TIMEOUT_MS = 60_000;
 const DEFAULT_WORKER_QUEUE_LEASE_KEY = 'worker-queue-drain';
 const WORKER_FINGERPRINT_LEASE_KEY_PREFIX = 'worker-fingerprint';
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const TEMPORAL_WEEKDAY_FORMATTER = new Intl.DateTimeFormat('en-US', {
+  weekday: 'short',
+});
+const BUNDESLAND_CODES = [
+  'BW',
+  'BY',
+  'BE',
+  'BB',
+  'HB',
+  'HH',
+  'HE',
+  'MV',
+  'NI',
+  'NW',
+  'RP',
+  'SL',
+  'SN',
+  'ST',
+  'SH',
+  'TH',
+] as const;
+type KernelBundesland = NonNullable<Parameters<typeof buildGermanHolidaySet>[1]>;
 
 function workerFingerprintLeaseKey(fingerprint: string): string {
   return `${WORKER_FINGERPRINT_LEASE_KEY_PREFIX}:${fingerprint}`;
+}
+
+function normalizeBundesland(input?: string): KernelBundesland {
+  const upper = typeof input === 'string' ? input.trim().toUpperCase() : '';
+  if ((BUNDESLAND_CODES as readonly string[]).includes(upper)) {
+    return upper as KernelBundesland;
+  }
+  return 'BE';
+}
+
+function dateKey(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+function startOfDay(date: Date): Date {
+  const next = new Date(date);
+  next.setHours(0, 0, 0, 0);
+  return next;
+}
+
+function addDays(date: Date, days: number): Date {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function parseLaneDeadline(lane: DelegateLane): {
+  dueAtMs?: number;
+  deadlineDate?: string;
+} {
+  if (typeof lane.dueAtMs === 'number' && Number.isFinite(lane.dueAtMs)) {
+    const dueDate = startOfDay(new Date(lane.dueAtMs));
+    return {
+      dueAtMs: dueDate.getTime(),
+      deadlineDate: dateKey(dueDate),
+    };
+  }
+
+  const rawDeadline = lane.payload?.deadline;
+  if (typeof rawDeadline === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawDeadline)) {
+    const parsed = Date.parse(`${rawDeadline}T00:00:00`);
+    if (Number.isFinite(parsed)) {
+      return {
+        dueAtMs: parsed,
+        deadlineDate: rawDeadline,
+      };
+    }
+  }
+
+  return {};
+}
+
+function laneSeverity(
+  lane: DelegateLane,
+  daysUntilDue?: number,
+): TemporalSignalSeverity {
+  if (typeof daysUntilDue !== 'number') {
+    return lane.priority === 'critical' ? 'warn' : 'info';
+  }
+  if (daysUntilDue < 0) {
+    return 'critical';
+  }
+  if (daysUntilDue <= 1) {
+    return 'critical';
+  }
+  if (daysUntilDue <= 3) {
+    return 'warn';
+  }
+  if (
+    daysUntilDue <= 7 &&
+    (lane.priority === 'critical' || lane.priority === 'high')
+  ) {
+    return 'warn';
+  }
+  return 'info';
+}
+
+function laneReason(daysUntilDue?: number): string {
+  if (typeof daysUntilDue !== 'number') {
+    return 'No due date linked to this lane.';
+  }
+  if (daysUntilDue < 0) {
+    return `Deadline missed by ${Math.abs(daysUntilDue)} day(s).`;
+  }
+  if (daysUntilDue === 0) {
+    return 'Deadline is today.';
+  }
+  if (daysUntilDue === 1) {
+    return 'Deadline is tomorrow.';
+  }
+  return `Deadline in ${daysUntilDue} day(s).`;
+}
+
+function severitySortValue(severity: TemporalSignalSeverity): number {
+  if (severity === 'critical') return 0;
+  if (severity === 'warn') return 1;
+  return 2;
 }
 
 function createEmptyOpsTaskStatus(): OpsActivityTaskStatus {
@@ -2793,6 +2920,139 @@ export function createGatewayService(
     };
   }
 
+  async function getTemporalSignals(input?: {
+    bundesland?: string;
+    horizonDays?: number;
+  }): Promise<TemporalSignals> {
+    const bundesland = normalizeBundesland(input?.bundesland);
+    const horizonDays = Math.max(7, Math.min(45, Math.trunc(input?.horizonDays ?? 14)));
+    const today = startOfDay(new Date());
+    const todayMs = today.getTime();
+
+    const holidayCache = new Map<number, Set<string>>();
+    const calendar = Array.from({ length: horizonDays }, (_unused, index) => {
+      const date = addDays(today, index);
+      const key = dateKey(date);
+      const year = date.getFullYear();
+      if (!holidayCache.has(year)) {
+        holidayCache.set(year, buildGermanHolidaySet(year, bundesland));
+      }
+      const holidays = holidayCache.get(year)!;
+      const holiday = holidays.has(key);
+      return {
+        date: key,
+        weekday: TEMPORAL_WEEKDAY_FORMATTER.format(date),
+        isBusinessDay: isBusinessDay(date, holidays),
+        isHoliday: holiday,
+      };
+    });
+
+    const nextBusinessDay = calendar.find(day => day.isBusinessDay)?.date;
+    const nextHolidayDate = calendar.find(day => day.isHoliday)?.date;
+
+    const lanes = await repository.listDelegateLanes(500);
+    const activeLanes = lanes.filter(
+      lane => lane.status === 'assigned' || lane.status === 'accepted',
+    );
+
+    const laneSignals = activeLanes
+      .map(lane => {
+        const deadline = parseLaneDeadline(lane);
+        const daysUntilDue =
+          typeof deadline.dueAtMs === 'number'
+            ? Math.floor((deadline.dueAtMs - todayMs) / MS_PER_DAY)
+            : undefined;
+        const severity = laneSeverity(lane, daysUntilDue);
+        const recommendedChain =
+          severity === 'critical'
+            ? 'triage -> delegate-triage-batch -> apply-batch-policy'
+            : severity === 'warn'
+              ? 'triage -> open-review -> delegate-triage-batch'
+              : 'triage -> refresh';
+
+        return {
+          signal: {
+            laneId: lane.id,
+            title: lane.title,
+            assignee: lane.assignee,
+            priority: lane.priority,
+            status: lane.status,
+            dueAtMs: deadline.dueAtMs,
+            deadlineDate: deadline.deadlineDate,
+            daysUntilDue,
+            severity,
+            reason: laneReason(daysUntilDue),
+            recommendedChain,
+          } satisfies TemporalLaneSignal,
+          daysUntilDue: daysUntilDue ?? Number.POSITIVE_INFINITY,
+          updatedAtMs: lane.updatedAtMs,
+        };
+      })
+      .sort((left, right) => {
+        const severityDiff =
+          severitySortValue(left.signal.severity) -
+          severitySortValue(right.signal.severity);
+        if (severityDiff !== 0) {
+          return severityDiff;
+        }
+        if (left.daysUntilDue !== right.daysUntilDue) {
+          return left.daysUntilDue - right.daysUntilDue;
+        }
+        return right.updatedAtMs - left.updatedAtMs;
+      })
+      .map(entry => entry.signal);
+
+    const summary = {
+      critical: laneSignals.filter(signal => signal.severity === 'critical').length,
+      warn: laneSignals.filter(signal => signal.severity === 'warn').length,
+      info: laneSignals.filter(signal => signal.severity === 'info').length,
+      businessDays: calendar.filter(day => day.isBusinessDay).length,
+      holidays: calendar.filter(day => day.isHoliday).length,
+    };
+
+    const state = await repository.getOpsState();
+    const recommendedChains = [
+      {
+        id: 'temporal-close-safe',
+        label: 'Run safe close window',
+        chain: 'triage -> close-safe -> refresh',
+        reason: nextBusinessDay
+          ? `Next business-day execution window starts ${nextBusinessDay}.`
+          : 'No business-day window detected in horizon.',
+      },
+      {
+        id: 'temporal-delegate-batch',
+        label: 'Batch delegate deadline triage',
+        chain: 'triage -> delegate-triage-batch -> apply-batch-policy',
+        reason:
+          summary.critical + summary.warn > 0
+            ? `${summary.critical} critical and ${summary.warn} warning lane(s) need coordinated action.`
+            : 'No urgent lane pressure right now.',
+      },
+      {
+        id: 'temporal-review-stabilize',
+        label: 'Stabilize review pressure',
+        chain: 'triage -> open-review -> refresh',
+        reason:
+          state.urgentReviews > 0
+            ? `${state.urgentReviews} urgent review item(s) can compound deadline risk.`
+            : 'Urgent review pressure is currently low.',
+      },
+    ];
+
+    return {
+      generatedAtMs: Date.now(),
+      bundesland,
+      horizonDays,
+      nextBusinessDay,
+      nextHolidayDate,
+      calendar,
+      laneSignals,
+      recommendedChains,
+      summary,
+    };
+  }
+
   async function learnCorrection(input: {
     input: Record<string, unknown>;
     correctOutput: Record<string, unknown>;
@@ -3478,6 +3738,7 @@ export function createGatewayService(
     explain,
     classify,
     forecast,
+    getTemporalSignals,
     learnCorrection,
     submitLedgerCommand,
     streamLedgerEvents,

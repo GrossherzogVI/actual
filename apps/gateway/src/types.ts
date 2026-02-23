@@ -248,6 +248,54 @@ export type NarrativePulse = {
   generatedAtMs: number;
 };
 
+export type TemporalSignalSeverity = 'info' | 'warn' | 'critical';
+
+export type TemporalCalendarDay = {
+  date: string;
+  weekday: string;
+  isBusinessDay: boolean;
+  isHoliday: boolean;
+};
+
+export type TemporalLaneSignal = {
+  laneId: string;
+  title: string;
+  assignee: string;
+  priority: DelegateLane['priority'];
+  status: DelegateLane['status'];
+  dueAtMs?: number;
+  deadlineDate?: string;
+  daysUntilDue?: number;
+  severity: TemporalSignalSeverity;
+  reason: string;
+  recommendedChain: string;
+};
+
+export type TemporalRecommendedChain = {
+  id: string;
+  label: string;
+  chain: string;
+  reason: string;
+};
+
+export type TemporalSignals = {
+  generatedAtMs: number;
+  bundesland: string;
+  horizonDays: number;
+  nextBusinessDay?: string;
+  nextHolidayDate?: string;
+  calendar: TemporalCalendarDay[];
+  laneSignals: TemporalLaneSignal[];
+  recommendedChains: TemporalRecommendedChain[];
+  summary: {
+    critical: number;
+    warn: number;
+    info: number;
+    businessDays: number;
+    holidays: number;
+  };
+};
+
 export type OpsActivityKind =
   | 'workflow-command-run'
   | 'workflow-playbook-run'

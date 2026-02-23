@@ -7,6 +7,26 @@ import { parseRequestBody } from '../http/route-utils';
 import type { GatewayService } from '../services/gateway-service';
 
 type RequestLike = { body?: unknown };
+type QueryLike = { query?: Record<string, unknown> };
+
+const bundeslandCodes = [
+  'BW',
+  'BY',
+  'BE',
+  'BB',
+  'HB',
+  'HH',
+  'HE',
+  'MV',
+  'NI',
+  'NW',
+  'RP',
+  'SL',
+  'SN',
+  'ST',
+  'SH',
+  'TH',
+] as const;
 
 export const intelligenceSchemas = {
   recommend: z.object({
@@ -39,12 +59,36 @@ export const intelligenceSchemas = {
     input: z.record(z.string(), z.unknown()),
     correctOutput: z.record(z.string(), z.unknown()),
   }),
+  temporalSignalsQuery: z.object({
+    bundesland: z.enum(bundeslandCodes).optional(),
+    horizonDays: z.number().int().min(7).max(45).default(14),
+  }),
 };
 
 export async function registerIntelligenceRoutes(
   app: FastifyInstance,
   service: GatewayService,
 ) {
+  app.get('/temporal-signals', async request => {
+    const query = ((request as QueryLike).query || {}) as Record<string, unknown>;
+    const parsed = intelligenceSchemas.temporalSignalsQuery.safeParse({
+      bundesland:
+        typeof query.bundesland === 'string'
+          ? query.bundesland.toUpperCase()
+          : undefined,
+      horizonDays:
+        typeof query.horizonDays === 'string'
+          ? Number(query.horizonDays)
+          : typeof query.horizonDays === 'number'
+            ? query.horizonDays
+            : 14,
+    });
+    if (!parsed.success) {
+      return service.getTemporalSignals();
+    }
+    return service.getTemporalSignals(parsed.data);
+  });
+
   app.post('/recommend', async (request, reply) => {
     const payload = parseRequestBody(
       intelligenceSchemas.recommend,

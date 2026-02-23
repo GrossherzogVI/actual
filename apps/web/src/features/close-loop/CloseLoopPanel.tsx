@@ -3,6 +3,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type { CloseRun, MoneyPulse } from '../../core/types';
 import { apiClient } from '../../core/api/client';
+import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 type CloseLoopPanelProps = {
   onStatus: (status: string) => void;
@@ -243,30 +251,26 @@ export function CloseLoopPanel({ onStatus }: CloseLoopPanelProps) {
       </article>
 
       <div className="fo-row">
-        <button
-          className="fo-btn"
+        <Button
           onClick={() => runClose.mutate('weekly')}
           disabled={runClose.isPending || runFullCycle.isPending}
-          type="button"
         >
           Run weekly close
-        </button>
-        <button
-          className="fo-btn-secondary"
+        </Button>
+        <Button
+          variant="secondary"
           onClick={() => runClose.mutate('monthly')}
           disabled={runClose.isPending || runFullCycle.isPending}
-          type="button"
         >
           Run monthly close
-        </button>
-        <button
-          className="fo-btn-secondary"
+        </Button>
+        <Button
+          variant="secondary"
           onClick={() => runFullCycle.mutate()}
           disabled={runClose.isPending || runFullCycle.isPending}
-          type="button"
         >
           Full cycle
-        </button>
+        </Button>
       </div>
 
       <div className="fo-space-between">
@@ -276,23 +280,31 @@ export function CloseLoopPanel({ onStatus }: CloseLoopPanelProps) {
       </div>
 
       <div className="fo-row">
-        <select
-          className="fo-input"
+        <Select
           value={periodFilter}
-          onChange={event => setPeriodFilter(event.target.value as ClosePeriodFilter)}
+          onValueChange={value => setPeriodFilter(value as ClosePeriodFilter)}
         >
-          <option value="all">all periods</option>
-          <option value="weekly">weekly</option>
-          <option value="monthly">monthly</option>
-        </select>
-        <select
-          className="fo-input"
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="Period" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">all periods</SelectItem>
+            <SelectItem value="weekly">weekly</SelectItem>
+            <SelectItem value="monthly">monthly</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select
           value={exceptionFilter}
-          onChange={event => setExceptionFilter(event.target.value as CloseExceptionFilter)}
+          onValueChange={value => setExceptionFilter(value as CloseExceptionFilter)}
         >
-          <option value="all">all runs</option>
-          <option value="with">exceptions only</option>
-        </select>
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="Exceptions" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">all runs</SelectItem>
+            <SelectItem value="with">exceptions only</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="fo-close-stage-list">
@@ -334,14 +346,14 @@ export function CloseLoopPanel({ onStatus }: CloseLoopPanelProps) {
                   pending {run.summary.pendingReviews} | urgent {run.summary.urgentReviews} |
                   expiring {run.summary.expiringContracts}
                 </small>
-                <div className="fo-row">
-                  <button
-                    className="fo-btn-secondary"
-                    type="button"
+                <div className="fo-row mt-2">
+                  <Button
+                    size="sm"
+                    variant="secondary"
                     onClick={() => markResolved(run.id)}
                   >
                     Mark resolved
-                  </button>
+                  </Button>
                 </div>
               </article>
             ))}
@@ -355,13 +367,12 @@ export function CloseLoopPanel({ onStatus }: CloseLoopPanelProps) {
           return (
             <article
               key={run.id}
-              className={`fo-log ${
-                run.exceptionCount > 0
+              className={`fo-log ${run.exceptionCount > 0
                   ? resolved
                     ? 'fo-close-run-resolved'
                     : 'fo-close-run-unresolved'
                   : 'fo-log-live'
-              }`}
+                }`}
             >
               <div className="fo-space-between">
                 <strong>{run.period}</strong>
@@ -373,23 +384,23 @@ export function CloseLoopPanel({ onStatus }: CloseLoopPanelProps) {
                 expiring {run.summary.expiringContracts}
               </small>
               {run.exceptionCount > 0 ? (
-                <div className="fo-row">
+                <div className="fo-row mt-2">
                   {resolved ? (
-                    <button
-                      className="fo-btn-secondary"
-                      type="button"
+                    <Button
+                      size="sm"
+                      variant="secondary"
                       onClick={() => unresolveRun(run.id)}
                     >
                       Move to unresolved
-                    </button>
+                    </Button>
                   ) : (
-                    <button
-                      className="fo-btn-secondary"
-                      type="button"
+                    <Button
+                      size="sm"
+                      variant="secondary"
                       onClick={() => markResolved(run.id)}
                     >
                       Mark resolved
-                    </button>
+                    </Button>
                   )}
                 </div>
               ) : null}

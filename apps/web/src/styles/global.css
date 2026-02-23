@@ -1086,6 +1086,80 @@ pre {
   fill: #184338;
 }
 
+.fo-temporal-summary {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.fo-temporal-stat {
+  border: 1px solid var(--fo-border);
+  border-radius: 8px;
+  background: rgba(18, 25, 38, 0.45);
+  padding: 8px;
+  display: grid;
+  gap: 3px;
+}
+
+.fo-temporal-calendar {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.fo-temporal-day {
+  border: 1px solid var(--fo-border);
+  border-radius: 8px;
+  padding: 6px;
+  display: grid;
+  gap: 2px;
+  text-align: center;
+}
+
+.fo-temporal-day-business {
+  border-color: rgba(16, 185, 129, 0.4);
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.fo-temporal-day-weekend {
+  border-color: rgba(148, 163, 184, 0.35);
+  background: rgba(51, 65, 85, 0.2);
+}
+
+.fo-temporal-day-holiday {
+  border-color: rgba(251, 191, 36, 0.45);
+  background: rgba(251, 191, 36, 0.12);
+}
+
+.fo-temporal-lanes {
+  display: grid;
+  gap: 8px;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.fo-temporal-lane {
+  border: 1px solid var(--fo-border);
+  border-left-width: 4px;
+  border-radius: 8px;
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+  background: rgba(18, 25, 38, 0.38);
+}
+
+.fo-temporal-lane-critical {
+  border-left-color: var(--fo-danger);
+}
+
+.fo-temporal-lane-warn {
+  border-left-color: var(--fo-accent);
+}
+
+.fo-temporal-lane-info {
+  border-left-color: var(--fo-info);
+}
+
 @media (max-width: 1200px) {
   .fo-main-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -1110,6 +1184,10 @@ pre {
 
   .fo-focus-workbench {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fo-temporal-calendar {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 

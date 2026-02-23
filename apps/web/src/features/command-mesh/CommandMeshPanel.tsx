@@ -17,6 +17,16 @@ import {
   type RunDetailsSelector,
   RUN_DETAILS_COMMAND_EVENT,
 } from '../runtime/run-details-commands';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 
 type CommandMeshPanelProps = {
   onRoute: (route: string) => void;
@@ -237,56 +247,57 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
 
       <div className="fo-stack">
         <div className="fo-row">
-          <input
+          <Input
             value={command}
             onChange={event => setCommand(event.target.value)}
             placeholder="triage -> close-weekly"
-            className="fo-input"
+            className="flex-1"
           />
-          <button
-            className="fo-btn"
-            type="button"
+          <Button
             disabled={execute.isPending}
             onClick={() => execute.mutate(command)}
           >
             {execute.isPending ? 'Running' : 'Execute'}
-          </button>
-          <button
-            className="fo-btn-secondary"
-            type="button"
+          </Button>
+          <Button
+            variant="secondary"
             disabled={!latestRollbackCandidate || rollbackRun.isPending}
             onClick={rollbackLatestLiveRun}
           >
             {rollbackRun.isPending
               ? 'Rolling back...'
-              : 'Rollback latest live chain run'}
-          </button>
+              : 'Rollback latest live chain'}
+          </Button>
         </div>
 
         <div className="fo-row">
-          <select
-            className="fo-input"
-            aria-label="command execution mode"
+          <Select
             value={executionMode}
-            onChange={event => setExecutionMode(event.target.value as ExecutionMode)}
+            onValueChange={value => setExecutionMode(value as ExecutionMode)}
           >
-            <option value="dry-run">dry-run</option>
-            <option value="live">live</option>
-          </select>
-          <select
-            className="fo-input"
-            aria-label="command guardrail profile"
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Mode" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="dry-run">dry-run</SelectItem>
+              <SelectItem value="live">live</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
             value={guardrailProfile}
-            onChange={event =>
-              setGuardrailProfile(event.target.value as GuardrailProfile)
-            }
+            onValueChange={value => setGuardrailProfile(value as GuardrailProfile)}
           >
-            <option value="strict">strict</option>
-            <option value="balanced">balanced</option>
-            <option value="off">off</option>
-          </select>
-          <input
-            className="fo-input"
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Guardrail" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="strict">strict</SelectItem>
+              <SelectItem value="balanced">balanced</SelectItem>
+              <SelectItem value="off">off</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input
+            className="w-[120px]"
             aria-label="command rollback window minutes"
             type="number"
             min={1}
@@ -310,9 +321,7 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
           </label>
         </div>
 
-        <input
-          className="fo-input"
-          aria-label="command idempotency key"
+        <Input
           placeholder="idempotency key (optional, 8-128 chars)"
           value={idempotencyKey}
           onChange={event => setIdempotencyKey(event.target.value)}
@@ -353,30 +362,30 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
       <div className="fo-log-list">
         <small>Recent command runs</small>
         <div className="fo-row">
-          <button
-            className="fo-btn-secondary"
-            type="button"
+          <Button
+            size="sm"
+            variant={historyErrorFilter === 'all' ? 'default' : 'secondary'}
             onClick={() => setHistoryErrorFilter('all')}
           >
             All
-          </button>
-          <button
-            className="fo-btn-secondary"
-            type="button"
+          </Button>
+          <Button
+            size="sm"
+            variant={historyErrorFilter === 'errors' ? 'default' : 'secondary'}
             onClick={() => setHistoryErrorFilter('errors')}
           >
             Errors
-          </button>
-          <button
-            className="fo-btn-secondary"
-            type="button"
+          </Button>
+          <Button
+            size="sm"
+            variant={historyErrorFilter === 'clean' ? 'default' : 'secondary'}
             onClick={() => setHistoryErrorFilter('clean')}
           >
             Clean
-          </button>
-          <button
-            className="fo-btn-secondary"
-            type="button"
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
             onClick={() =>
               setHistoryModeFilter(current =>
                 current === 'all'
@@ -388,27 +397,26 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
             }
           >
             {historyModeFilter}
-          </button>
-          <select
-            className="fo-input"
-            aria-label="command history status filter"
+          </Button>
+          <Select
             value={historyStatusFilter}
-            onChange={event =>
-              setHistoryStatusFilter(event.target.value as 'all' | RunStatus)
-            }
+            onValueChange={value => setHistoryStatusFilter(value as 'all' | RunStatus)}
           >
-            <option value="all">status:all</option>
-            <option value="planned">planned</option>
-            <option value="running">running</option>
-            <option value="completed">completed</option>
-            <option value="failed">failed</option>
-            <option value="blocked">blocked</option>
-            <option value="rolled_back">rolled_back</option>
-          </select>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">status:all</SelectItem>
+              <SelectItem value="planned">planned</SelectItem>
+              <SelectItem value="running">running</SelectItem>
+              <SelectItem value="completed">completed</SelectItem>
+              <SelectItem value="failed">failed</SelectItem>
+              <SelectItem value="blocked">blocked</SelectItem>
+              <SelectItem value="rolled_back">rolled_back</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <input
-          className="fo-input"
-          aria-label="command history actor filter"
+        <Input
           placeholder="Filter by actor (owner, delegate)"
           value={historyActorFilter}
           onChange={event => setHistoryActorFilter(event.target.value)}
@@ -451,27 +459,25 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
                   .join(', ')}
               </small>
             ) : null}
-            <div className="fo-row">
-              <button
-                className="fo-btn-secondary"
-                type="button"
+            <div className="fo-row mt-2">
+              <Button
+                size="sm"
+                variant="secondary"
                 onClick={() => setSelectedRunId(run.id)}
               >
                 Details
-              </button>
-              <button
-                className="fo-btn-secondary"
-                type="button"
-                onClick={() =>
-                  execute.mutate(run.chain)
-                }
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => execute.mutate(run.chain)}
                 disabled={execute.isPending}
               >
                 Replay
-              </button>
-              <button
-                className="fo-btn-secondary"
-                type="button"
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
                 onClick={() =>
                   apiClient
                     .executeCommandChain(run.chain, 'delegate', {
@@ -487,7 +493,7 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
                 disabled={execute.isPending}
               >
                 Replay Live
-              </button>
+              </Button>
             </div>
           </article>
         ))}
