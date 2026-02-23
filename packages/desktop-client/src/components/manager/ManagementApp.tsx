@@ -57,7 +57,7 @@ function Version() {
       }}
     >
       <Trans>
-        App: v{{ appVersion: window.Actual.ACTUAL_VERSION }} | Server:{' '}
+        App: v{{ appVersion: window.Actual?.ACTUAL_VERSION ?? 'dev' }} | Server:{' '}
         {{ serverVersion: version }}
       </Trans>
     </Text>
