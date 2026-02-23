@@ -1,32 +1,133 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import type { AppRecommendation } from '../../core/types';
+import type {
+  AppRecommendation,
+  ExecutionMode,
+  GuardrailProfile,
+} from '../../core/types';
 import { apiClient } from '../../core/api/client';
 
 type DecisionGraphPanelProps = {
   recommendations: AppRecommendation[];
   onStatus: (status: string) => void;
+  onRoute: (route: string) => void;
 };
 
-function short(text: string, max = 24) {
+type RecommendationBlueprint = {
+  route: string;
+  chain: string;
+  playbookName: string;
+  playbookCommands: Array<Record<string, unknown>>;
+  triggerLabel: string;
+  consequenceLabel: string;
+  decisionLabel: string;
+  impactLabel: string;
+};
+
+function short(text: string, max = 28) {
   if (text.length <= max) return text;
   return `${text.slice(0, max - 1)}…`;
 }
 
-function causeFromRationale(rationale: string, fallback: string): string {
-  const [firstClause] = rationale.split('.');
-  const compact = firstClause?.trim();
-  if (!compact) return fallback;
-  return short(compact, 22);
+function compactClause(text: string, fallback: string, max = 26) {
+  const [firstClause] = text.split('.');
+  const candidate = firstClause?.trim() || fallback;
+  return short(candidate, max);
+}
+
+function recommendationBlueprint(
+  recommendation: AppRecommendation,
+): RecommendationBlueprint {
+  if (recommendation.id === 'rec-review-urgent') {
+    return {
+      route: '/review?priority=urgent',
+      chain: 'triage -> open-review',
+      playbookName: 'Recommendation: urgent review stabilizer',
+      playbookCommands: [
+        { verb: 'resolve-next-action', lane: 'triage' },
+        { verb: 'open-urgent-review' },
+        { verb: 'refresh-command-center' },
+      ],
+      triggerLabel: 'urgent queue pressure',
+      consequenceLabel: 'risk of misclassified cashflow',
+      decisionLabel: 'prioritize urgent review now',
+      impactLabel: 'risk-reduction',
+    };
+  }
+
+  if (recommendation.id === 'rec-contract-expiring') {
+    return {
+      route: '/contracts?filter=expiring',
+      chain: 'triage -> expiring<30d -> batch-renegotiate',
+      playbookName: 'Recommendation: expiring contracts sweep',
+      playbookCommands: [
+        { verb: 'resolve-next-action', lane: 'triage' },
+        { verb: 'open-expiring-contracts', windowDays: 30 },
+        { verb: 'assign-expiring-contracts-lane' },
+      ],
+      triggerLabel: 'expiring contract window',
+      consequenceLabel: 'avoidable recurring spend',
+      decisionLabel: 'renegotiate before deadline',
+      impactLabel: 'cost-avoidance',
+    };
+  }
+
+  if (recommendation.id === 'rec-close-loop') {
+    return {
+      route: '/ops#close-loop',
+      chain: 'triage -> close-weekly -> refresh',
+      playbookName: 'Recommendation: weekly close compression',
+      playbookCommands: [
+        { verb: 'resolve-next-action', lane: 'triage' },
+        { verb: 'run-close', period: 'weekly' },
+        { verb: 'refresh-command-center' },
+      ],
+      triggerLabel: 'pending operations accumulation',
+      consequenceLabel: 'manual throughput drag',
+      decisionLabel: 'run close automation loop',
+      impactLabel: 'operational-compression',
+    };
+  }
+
+  const route = recommendation.expectedImpact.includes('risk')
+    ? '/review?priority=urgent'
+    : recommendation.expectedImpact.includes('cost')
+      ? '/contracts?filter=expiring'
+      : '/ops';
+  return {
+    route,
+    chain: 'triage -> refresh',
+    playbookName: `Recommendation: ${recommendation.title}`,
+    playbookCommands: [
+      { verb: 'resolve-next-action', lane: 'triage' },
+      { verb: 'refresh-command-center' },
+    ],
+    triggerLabel: compactClause(recommendation.rationale, 'signal pressure'),
+    consequenceLabel: short(recommendation.expectedImpact, 26),
+    decisionLabel: short(recommendation.title.toLowerCase(), 26),
+    impactLabel: short(recommendation.expectedImpact, 22),
+  };
+}
+
+function asError(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message.trim()) {
+    return `${fallback}: ${error.message}`;
+  }
+  return fallback;
 }
 
 export function DecisionGraphPanel({
   recommendations,
   onStatus,
+  onRoute,
 }: DecisionGraphPanelProps) {
   const queryClient = useQueryClient();
   const [selectedRecommendationId, setSelectedRecommendationId] = useState('');
+  const [executionMode, setExecutionMode] = useState<ExecutionMode>('dry-run');
+  const [guardrailProfile, setGuardrailProfile] =
+    useState<GuardrailProfile>('balanced');
+  const [rollbackWindowMinutes, setRollbackWindowMinutes] = useState(60);
 
   useEffect(() => {
     if (!selectedRecommendationId && recommendations[0]) {
@@ -49,10 +150,77 @@ export function DecisionGraphPanel({
     [recommendations, selectedRecommendationId],
   );
 
+  const blueprint = useMemo(
+    () => (selected ? recommendationBlueprint(selected) : null),
+    [selected],
+  );
+
   const explanation = useQuery({
     queryKey: ['recommendation-explain', selected?.id],
     queryFn: () => apiClient.explainRecommendation(selected as AppRecommendation),
     enabled: !!selected,
+  });
+
+  const executeRecommendation = useMutation({
+    mutationFn: async () => {
+      if (!selected || !blueprint) {
+        throw new Error('No selected recommendation');
+      }
+      return apiClient.executeCommandChain(blueprint.chain, 'delegate', {
+        executionMode,
+        guardrailProfile,
+        rollbackWindowMinutes,
+        rollbackOnFailure: executionMode === 'live',
+      });
+    },
+    onSuccess: async run => {
+      if (!selected || !blueprint) {
+        return;
+      }
+
+      const nextRoute =
+        run.steps.find(step => typeof step.route === 'string')?.route || blueprint.route;
+      onRoute(nextRoute);
+      onStatus(
+        `Decision executed: ${selected.title} -> ${run.status} (${run.errorCount} errors).`,
+      );
+
+      void apiClient
+        .recordActionOutcome(
+          selected.id,
+          'executed',
+          `Decision graph execution (${run.executionMode}) run=${run.id}`,
+        )
+        .catch(() => {});
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['command-runs'] }),
+        queryClient.invalidateQueries({ queryKey: ['money-pulse'] }),
+        queryClient.invalidateQueries({ queryKey: ['focus-panel'] }),
+      ]);
+    },
+    onError: error => {
+      onStatus(asError(error, 'Decision execution failed'));
+    },
+  });
+
+  const createPlaybook = useMutation({
+    mutationFn: async () => {
+      if (!selected || !blueprint) {
+        throw new Error('No selected recommendation');
+      }
+      return apiClient.createPlaybook(
+        blueprint.playbookName,
+        blueprint.playbookCommands,
+      );
+    },
+    onSuccess: async playbook => {
+      onStatus(`Playbook created from decision graph: ${playbook.name}`);
+      await queryClient.invalidateQueries({ queryKey: ['playbooks'] });
+    },
+    onError: error => {
+      onStatus(asError(error, 'Create playbook failed'));
+    },
   });
 
   const captureOutcome = useMutation({
@@ -67,29 +235,38 @@ export function DecisionGraphPanel({
       onStatus(`Recorded outcome for ${selected.title}: ${input.outcome}`);
       await queryClient.invalidateQueries({ queryKey: ['focus-panel'] });
     },
+    onError: error => {
+      onStatus(asError(error, 'Record outcome failed'));
+    },
   });
 
-  const causeA = selected
-    ? causeFromRationale(selected.rationale, 'Temporal pressure')
-    : 'Temporal pressure';
-  const causeB = selected ? short(selected.provenance, 22) : 'Signal engine';
-  const action = selected
-    ? `${Math.round(selected.confidence * 100)}% conf`
-    : 'Action';
-  const impact = selected ? short(selected.expectedImpact, 22) : 'Impact';
+  if (!selected || !blueprint) {
+    return (
+      <section className="fo-panel">
+        <header className="fo-panel-header">
+          <h2>Decision Graph</h2>
+          <small>Causal explainability, confidence, and reversible outcomes.</small>
+        </header>
+        <small>No recommendations available yet.</small>
+      </section>
+    );
+  }
 
   return (
     <section className="fo-panel">
       <header className="fo-panel-header">
         <h2>Decision Graph</h2>
-        <small>Causal explainability, confidence, and reversible outcomes.</small>
+        <small>
+          Explainable intelligence with direct execution, simulation, and outcome capture.
+        </small>
       </header>
 
       <div className="fo-row">
         <select
           className="fo-input"
-          value={selected?.id || ''}
+          value={selected.id}
           onChange={event => setSelectedRecommendationId(event.target.value)}
+          aria-label="decision recommendation"
         >
           {(recommendations || []).map(recommendation => (
             <option key={recommendation.id} value={recommendation.id}>
@@ -97,10 +274,61 @@ export function DecisionGraphPanel({
             </option>
           ))}
         </select>
+        <select
+          className="fo-input"
+          aria-label="decision execution mode"
+          value={executionMode}
+          onChange={event => setExecutionMode(event.target.value as ExecutionMode)}
+        >
+          <option value="dry-run">dry-run</option>
+          <option value="live">live</option>
+        </select>
+        <select
+          className="fo-input"
+          aria-label="decision guardrail profile"
+          value={guardrailProfile}
+          onChange={event =>
+            setGuardrailProfile(event.target.value as GuardrailProfile)
+          }
+        >
+          <option value="strict">strict</option>
+          <option value="balanced">balanced</option>
+          <option value="off">off</option>
+        </select>
+      </div>
+
+      <div className="fo-row">
+        <input
+          className="fo-input"
+          aria-label="decision rollback window minutes"
+          type="number"
+          min={1}
+          max={1440}
+          value={rollbackWindowMinutes}
+          onChange={event =>
+            setRollbackWindowMinutes(
+              Math.max(1, Math.min(1440, Number(event.target.value) || 60)),
+            )
+          }
+        />
+        <button
+          className="fo-btn-secondary"
+          type="button"
+          onClick={() => onRoute(blueprint.route)}
+        >
+          Open impacted surface
+        </button>
+        <button
+          className="fo-btn-secondary"
+          type="button"
+          onClick={() => onRoute('/ops#spatial-twin')}
+        >
+          Simulate in spatial twin
+        </button>
       </div>
 
       <div className="fo-decision-graph">
-        <svg width="100%" height="290" viewBox="0 0 620 290" preserveAspectRatio="xMidYMid meet">
+        <svg width="100%" height="280" viewBox="0 0 620 280" preserveAspectRatio="xMidYMid meet">
           <defs>
             <marker
               id="decision-arrow"
@@ -115,118 +343,158 @@ export function DecisionGraphPanel({
           </defs>
 
           <line
-            x1="130"
+            x1="80"
             y1="140"
-            x2="280"
+            x2="210"
             y2="70"
             stroke="#4a6f99"
             strokeWidth="2"
             markerEnd="url(#decision-arrow)"
           />
           <line
-            x1="130"
+            x1="80"
             y1="140"
-            x2="280"
+            x2="210"
             y2="210"
             stroke="#4a6f99"
             strokeWidth="2"
             markerEnd="url(#decision-arrow)"
           />
           <line
-            x1="360"
+            x1="350"
             y1="70"
-            x2="520"
+            x2="500"
             y2="140"
             stroke="#4a6f99"
             strokeWidth="2"
             markerEnd="url(#decision-arrow)"
           />
           <line
-            x1="360"
+            x1="350"
             y1="210"
-            x2="520"
+            x2="500"
             y2="140"
             stroke="#4a6f99"
             strokeWidth="2"
             markerEnd="url(#decision-arrow)"
           />
 
-          <g className="fo-graph-node" transform="translate(70 115)">
+          <g className="fo-graph-node" transform="translate(20 115)">
             <rect width="120" height="50" rx="10" />
             <text x="60" y="30" textAnchor="middle">
-              {selected ? short(selected.title, 18) : 'No signal'}
+              {short(selected.title, 18)}
             </text>
           </g>
 
-          <g className="fo-graph-node fo-graph-node-info" transform="translate(280 45)">
-            <rect width="140" height="50" rx="10" />
-            <text x="70" y="30" textAnchor="middle">
-              {causeA}
+          <g className="fo-graph-node fo-graph-node-info" transform="translate(210 45)">
+            <rect width="145" height="50" rx="10" />
+            <text x="72" y="30" textAnchor="middle">
+              {short(blueprint.triggerLabel, 21)}
             </text>
           </g>
 
-          <g className="fo-graph-node fo-graph-node-warn" transform="translate(280 185)">
-            <rect width="140" height="50" rx="10" />
-            <text x="70" y="30" textAnchor="middle">
-              {causeB}
+          <g className="fo-graph-node fo-graph-node-warn" transform="translate(210 185)">
+            <rect width="145" height="50" rx="10" />
+            <text x="72" y="30" textAnchor="middle">
+              {short(blueprint.consequenceLabel, 21)}
             </text>
           </g>
 
-          <g className="fo-graph-node fo-graph-node-ok" transform="translate(520 115)">
-            <rect width="95" height="50" rx="10" />
-            <text x="47" y="30" textAnchor="middle">
-              {action}
+          <g className="fo-graph-node fo-graph-node-ok" transform="translate(500 115)">
+            <rect width="105" height="50" rx="10" />
+            <text x="52" y="30" textAnchor="middle">
+              {Math.round(selected.confidence * 100)}% conf
             </text>
           </g>
         </svg>
       </div>
 
-      {selected ? (
-        <article className="fo-card">
-          <div className="fo-space-between">
-            <strong>{selected.title}</strong>
-            <small>{impact}</small>
-          </div>
-          <small>{selected.rationale}</small>
-          <small>reversible: {selected.reversible ? 'yes' : 'no'}</small>
-          <small>
-            {explanation.isLoading
-              ? 'Loading explanation...'
-              : explanation.data?.explanation || 'No explanation available.'}
-          </small>
-          <div className="fo-row">
-            <button
-              className="fo-btn-secondary"
-              type="button"
-              disabled={captureOutcome.isPending}
-              onClick={() =>
-                captureOutcome.mutate({
-                  outcome: 'accepted',
-                  notes: 'Executed from decision graph',
-                })
-              }
-            >
-              Mark accepted
-            </button>
-            <button
-              className="fo-btn-secondary"
-              type="button"
-              disabled={captureOutcome.isPending}
-              onClick={() =>
-                captureOutcome.mutate({
-                  outcome: 'deferred',
-                  notes: 'Deferred from decision graph',
-                })
-              }
-            >
-              Mark deferred
-            </button>
-          </div>
+      <div className="fo-playbook-chain-grid">
+        <article className="fo-playbook-chain-block">
+          <small className="fo-muted-line">trigger</small>
+          <strong>{blueprint.triggerLabel}</strong>
         </article>
-      ) : (
-        <small>No recommendations available yet.</small>
-      )}
+        <article className="fo-playbook-chain-block">
+          <small className="fo-muted-line">consequence</small>
+          <strong>{blueprint.consequenceLabel}</strong>
+        </article>
+        <article className="fo-playbook-chain-block">
+          <small className="fo-muted-line">decision</small>
+          <strong>{blueprint.decisionLabel}</strong>
+        </article>
+        <article className="fo-playbook-chain-block">
+          <small className="fo-muted-line">impact</small>
+          <strong>{blueprint.impactLabel}</strong>
+        </article>
+      </div>
+
+      <article className="fo-card">
+        <div className="fo-space-between">
+          <strong>{selected.title}</strong>
+          <small>
+            provenance: {selected.provenance} | reversible:{' '}
+            {selected.reversible ? 'yes' : 'no'}
+          </small>
+        </div>
+        <small>{selected.rationale}</small>
+        <small>
+          {explanation.isLoading
+            ? 'Loading explanation...'
+            : explanation.data?.explanation || 'No explanation available.'}
+        </small>
+        <small>
+          recommended chain: <code>{blueprint.chain}</code>
+        </small>
+      </article>
+
+      <div className="fo-row">
+        <button
+          className="fo-btn"
+          type="button"
+          disabled={executeRecommendation.isPending}
+          onClick={() => executeRecommendation.mutate()}
+        >
+          {executeRecommendation.isPending
+            ? 'Executing...'
+            : executionMode === 'live'
+              ? 'Execute live recommendation'
+              : 'Dry-run recommendation'}
+        </button>
+        <button
+          className="fo-btn-secondary"
+          type="button"
+          disabled={createPlaybook.isPending}
+          onClick={() => createPlaybook.mutate()}
+        >
+          {createPlaybook.isPending ? 'Creating...' : 'Generate playbook'}
+        </button>
+        <button
+          className="fo-btn-secondary"
+          type="button"
+          disabled={captureOutcome.isPending}
+          onClick={() =>
+            captureOutcome.mutate({
+              outcome: 'accepted',
+              notes: 'Accepted from decision graph',
+            })
+          }
+        >
+          Mark accepted
+        </button>
+        <button
+          className="fo-btn-secondary"
+          type="button"
+          disabled={captureOutcome.isPending}
+          onClick={() =>
+            captureOutcome.mutate({
+              outcome: 'deferred',
+              notes: 'Deferred from decision graph',
+            })
+          }
+        >
+          Mark deferred
+        </button>
+      </div>
     </section>
   );
 }
-

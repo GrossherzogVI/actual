@@ -54,4 +54,40 @@ describe('gateway queue reliability semantics', () => {
     expect(claimedTwice[0]?.id).toBe('job-2');
     expect(claimedTwice[0]?.attempt).toBe(2);
   });
+
+  it('supports nack with immediate requeue semantics', async () => {
+    const queue = new InMemoryGatewayQueue();
+    await queue.init();
+
+    await queue.enqueue(buildJob('job-3'));
+
+    const claimed = await queue.dequeue(1, { visibilityTimeoutMs: 5000 });
+    expect(claimed).toHaveLength(1);
+    expect(claimed[0]?.attempt).toBe(1);
+
+    const requeued = await queue.nack(claimed[0]!.receipt, true);
+    expect(requeued).toBe(true);
+    expect(await queue.size()).toBe(1);
+    expect(await queue.inFlightSize()).toBe(0);
+
+    const claimedAgain = await queue.dequeue(1, { visibilityTimeoutMs: 5000 });
+    expect(claimedAgain).toHaveLength(1);
+    expect(claimedAgain[0]?.id).toBe('job-3');
+    expect(claimedAgain[0]?.attempt).toBe(2);
+  });
+
+  it('supports nack drop semantics', async () => {
+    const queue = new InMemoryGatewayQueue();
+    await queue.init();
+
+    await queue.enqueue(buildJob('job-4'));
+
+    const claimed = await queue.dequeue(1, { visibilityTimeoutMs: 5000 });
+    expect(claimed).toHaveLength(1);
+
+    const dropped = await queue.nack(claimed[0]!.receipt, false);
+    expect(dropped).toBe(true);
+    expect(await queue.size()).toBe(0);
+    expect(await queue.inFlightSize()).toBe(0);
+  });
 });

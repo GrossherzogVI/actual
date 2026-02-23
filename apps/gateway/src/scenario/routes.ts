@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { commandEnvelopeSchema } from '@finance-os/domain-kernel';
 
@@ -176,10 +176,10 @@ export async function registerScenarioRoutes(
       actorId: payload.envelope.actorId,
       againstBranchId: payload.againstBranchId,
     });
-    if (!result.ok && result.error === 'branch-not-found') {
-      return sendNotFound(reply, 'branch-not-found');
-    }
-    if (!result.ok && result.error === 'adoption-blocked') {
+    if (!result.ok) {
+      if (result.error === 'branch-not-found') {
+        return sendNotFound(reply, 'branch-not-found');
+      }
       reply.code(409).send({
         error: 'adoption-blocked',
         check: result.check,

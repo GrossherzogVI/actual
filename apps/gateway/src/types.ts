@@ -16,11 +16,62 @@ export type WorkflowAction = {
   confidence: number;
 };
 
+export type ExecutionMode = 'dry-run' | 'live';
+
+export type GuardrailProfile = 'strict' | 'balanced' | 'off';
+
+export type RunStatus =
+  | 'planned'
+  | 'running'
+  | 'completed'
+  | 'failed'
+  | 'blocked'
+  | 'rolled_back';
+
+export type RunStatusTransition = {
+  status: RunStatus;
+  atMs: number;
+  note?: string;
+};
+
+export type GuardrailSeverity = 'info' | 'warn' | 'critical';
+
+export type GuardrailResult = {
+  ruleId: string;
+  severity: GuardrailSeverity;
+  passed: boolean;
+  message: string;
+  blocking: boolean;
+};
+
+export type EffectSummaryStatus = 'planned' | 'applied' | 'rolled-back' | 'skipped';
+
+export type EffectSummary = {
+  effectId: string;
+  kind: string;
+  description: string;
+  reversible: boolean;
+  status: EffectSummaryStatus;
+  metadata?: Record<string, unknown>;
+};
+
 export type PlaybookRun = {
   id: string;
   playbookId: string;
   chain: string;
-  dryRun: boolean;
+  executionMode: ExecutionMode;
+  guardrailProfile: GuardrailProfile;
+  status: RunStatus;
+  startedAtMs: number;
+  finishedAtMs?: number;
+  rollbackWindowUntilMs?: number;
+  rollbackEligible: boolean;
+  rollbackOfRunId?: string;
+  statusTimeline: RunStatusTransition[];
+  guardrailResults: GuardrailResult[];
+  effectSummaries: EffectSummary[];
+  idempotencyKey?: string;
+  rollbackOnFailure: boolean;
   executedSteps: number;
   errorCount: number;
   actorId: string;
@@ -47,10 +98,22 @@ export type WorkflowCommandExecution = {
   id: string;
   chain: string;
   steps: WorkflowCommandExecutionStep[];
+  executionMode: ExecutionMode;
+  guardrailProfile: GuardrailProfile;
+  status: RunStatus;
+  startedAtMs: number;
+  finishedAtMs?: number;
+  rollbackWindowUntilMs?: number;
+  rollbackEligible: boolean;
+  rollbackOfRunId?: string;
+  statusTimeline: RunStatusTransition[];
+  guardrailResults: GuardrailResult[];
+  effectSummaries: EffectSummary[];
+  idempotencyKey?: string;
+  rollbackOnFailure: boolean;
   errorCount: number;
   actorId: string;
   sourceSurface: string;
-  dryRun: boolean;
   executedAtMs: number;
 };
 
@@ -203,6 +266,165 @@ export type OpsActivityEvent = {
   severity: 'info' | 'warn' | 'critical';
   createdAtMs: number;
   meta?: Record<string, unknown>;
+};
+
+export type OpsActivityCursor = {
+  createdAtMs: number;
+  id: string;
+};
+
+export type OpsActivityListResult = {
+  events: OpsActivityEvent[];
+  nextCursor?: string;
+};
+
+export type OpsActivityTaskStatus = {
+  running: boolean;
+  lastStartedAtMs?: number;
+  lastFinishedAtMs?: number;
+  lastDurationMs?: number;
+  lastError?: string;
+  runCount: number;
+  lastResult?: Record<string, number>;
+};
+
+export type OpsActivityPipelineStatus = {
+  orchestrator: OpsActivityTaskStatus;
+  backfill: OpsActivityTaskStatus;
+  maintenance: OpsActivityTaskStatus;
+};
+
+export type OpsActivityPipelineStartResult = {
+  started: boolean;
+  status: OpsActivityPipelineStatus;
+};
+
+export type ClaimedQueueJobView = {
+  id: string;
+  name: string;
+  payload: Record<string, unknown>;
+  createdAtMs: number;
+  receipt: string;
+  attempt: number;
+  claimedAtMs: number;
+  visibleAtMs: number;
+};
+
+export type QueueClaimResult = {
+  jobs: ClaimedQueueJobView[];
+  queueSize: number;
+  queueInFlight: number;
+};
+
+export type QueueAckResult = {
+  acknowledged: boolean;
+  action: 'acked' | 'requeued' | 'dropped';
+  queueSize: number;
+  queueInFlight: number;
+};
+
+export type QueueRequeueExpiredResult = {
+  moved: number;
+  queueSize: number;
+  queueInFlight: number;
+};
+
+export type WorkerJobFingerprintClaimResult = {
+  status: 'acquired' | 'already-processed' | 'already-claimed';
+  fingerprint: string;
+  leaseKey: string;
+  ownerId: string;
+  ttlMs: number;
+  expiresAtMs?: number;
+};
+
+export type WorkerFingerprintClaimStatus =
+  | 'acquired'
+  | 'already-processed'
+  | 'already-claimed'
+  | 'released'
+  | 'release-miss';
+
+export type WorkerFingerprintClaimEvent = {
+  id: string;
+  workerId: string;
+  fingerprint: string;
+  leaseKey: string;
+  status: WorkerFingerprintClaimStatus;
+  ttlMs: number;
+  expiresAtMs?: number;
+  staleRecovered: boolean;
+  createdAtMs: number;
+};
+
+export type WorkerJobAttempt = {
+  id: string;
+  workerId: string;
+  jobId: string;
+  jobName: string;
+  jobFingerprint?: string;
+  receipt: string;
+  attempt: number;
+  outcome: 'acked' | 'requeued' | 'dropped' | 'ack-miss';
+  processingMs?: number;
+  errorMessage?: string;
+  payload?: Record<string, unknown>;
+  createdAtMs: number;
+};
+
+export type WorkerDeadLetter = {
+  id: string;
+  attemptId: string;
+  workerId: string;
+  jobId: string;
+  jobName: string;
+  receipt: string;
+  attempt: number;
+  status: 'open' | 'replayed' | 'resolved';
+  replayCount: number;
+  lastReplayedAtMs?: number;
+  resolvedAtMs?: number;
+  resolutionNote?: string;
+  errorMessage?: string;
+  payload?: Record<string, unknown>;
+  createdAtMs: number;
+};
+
+export type ReplayWorkerDeadLettersResult = {
+  replayed: number;
+  skipped: number;
+  notFound: string[];
+  queueSize: number;
+  queueInFlight: number;
+};
+
+export type WorkerQueueHealth = {
+  windowMs: number;
+  sampleSize: number;
+  generatedAtMs: number;
+  counts: {
+    acked: number;
+    requeued: number;
+    dropped: number;
+    ackMiss: number;
+  };
+  processingMs: {
+    p50: number;
+    p95: number;
+    max: number;
+  };
+  throughputPerMinute: number;
+  failureRate: number;
+  retryRate: number;
+  deadLetterRate: number;
+};
+
+export type WorkerQueueLeaseResult = {
+  acquired: boolean;
+  leaseKey: string;
+  ownerId: string;
+  ttlMs: number;
+  expiresAtMs: number;
 };
 
 export type EgressPolicy = {

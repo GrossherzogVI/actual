@@ -2,10 +2,13 @@ export type CommandStepId =
   | 'resolve-next-action'
   | 'run-close-weekly'
   | 'run-close-monthly'
+  | 'run-close-safe'
   | 'create-default-playbook'
   | 'run-first-playbook'
   | 'open-expiring-contracts'
   | 'assign-expiring-contracts-lane'
+  | 'delegate-triage-batch'
+  | 'apply-batch-policy'
   | 'open-urgent-review'
   | 'refresh-command-center';
 
@@ -36,10 +39,13 @@ const COMMAND_CANONICAL: Record<CommandStepId, string> = {
   'resolve-next-action': 'resolve-next',
   'run-close-weekly': 'close-weekly',
   'run-close-monthly': 'close-monthly',
+  'run-close-safe': 'close-safe',
   'create-default-playbook': 'playbook-create-default',
   'run-first-playbook': 'playbook-run-first',
   'open-expiring-contracts': 'expiring<30d',
   'assign-expiring-contracts-lane': 'batch-renegotiate',
+  'delegate-triage-batch': 'delegate-triage-batch',
+  'apply-batch-policy': 'apply-batch-policy',
   'open-urgent-review': 'open-review',
   'refresh-command-center': 'refresh',
 };
@@ -52,6 +58,9 @@ const SINGLE_ALIASES: Record<string, CommandStepId> = {
   weekly: 'run-close-weekly',
   'close-monthly': 'run-close-monthly',
   monthly: 'run-close-monthly',
+  'close-safe': 'run-close-safe',
+  'safe-close': 'run-close-safe',
+  'run-close-safe': 'run-close-safe',
   'playbook-create-default': 'create-default-playbook',
   playbook: 'create-default-playbook',
   'run-first': 'run-first-playbook',
@@ -59,6 +68,10 @@ const SINGLE_ALIASES: Record<string, CommandStepId> = {
   'expiring<30d': 'open-expiring-contracts',
   'batch-renegotiate': 'assign-expiring-contracts-lane',
   'delegate-expiring': 'assign-expiring-contracts-lane',
+  'delegate-triage-batch': 'delegate-triage-batch',
+  'delegate-batch': 'delegate-triage-batch',
+  'apply-batch-policy': 'apply-batch-policy',
+  'batch-policy': 'apply-batch-policy',
   'open-review': 'open-urgent-review',
   refresh: 'refresh-command-center',
 };
@@ -67,6 +80,7 @@ const PAIR_ALIASES: Record<string, CommandStepId> = {
   'triage->resolve-next': 'resolve-next-action',
   'close->weekly': 'run-close-weekly',
   'close->monthly': 'run-close-monthly',
+  'close->safe': 'run-close-safe',
   'playbook->create-default': 'create-default-playbook',
   'playbook->run-first': 'run-first-playbook',
 };
@@ -87,6 +101,10 @@ export const COMMAND_MESH_HINTS: CommandMeshHint[] = [
   {
     command: 'expiring<30d -> batch-renegotiate',
     description: 'Open expiring contracts and assign renegotiation lane.',
+  },
+  {
+    command: 'triage -> delegate-triage-batch -> apply-batch-policy',
+    description: 'Delegate triage batch and apply policy in one chain.',
   },
 ];
 

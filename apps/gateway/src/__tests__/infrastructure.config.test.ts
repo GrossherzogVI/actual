@@ -10,6 +10,20 @@ describe('gateway infrastructure defaults', () => {
 
     expect(config.FINANCE_GATEWAY_STORE).toBe('postgres');
     expect(config.FINANCE_GATEWAY_QUEUE).toBe('redis');
+    expect(config.FINANCE_GATEWAY_INTERNAL_TOKEN).toBe('');
+    expect(config.FINANCE_GATEWAY_ACTIVITY_STARTUP_MODE).toBe('non-blocking');
+    expect(config.FINANCE_GATEWAY_ACTIVITY_BACKFILL_LIMIT_PER_PLANE).toBe(500);
+    expect(config.FINANCE_GATEWAY_ACTIVITY_MAINTENANCE_INTERVAL_MINUTES).toBe(0);
+  });
+
+  it('parses activity maintenance booleans from env strings safely', () => {
+    const config = loadGatewayConfig({
+      FINANCE_GATEWAY_ACTIVITY_BACKFILL_ON_START: 'false',
+      FINANCE_GATEWAY_ACTIVITY_MAINTENANCE_ON_START: '0',
+    });
+
+    expect(config.FINANCE_GATEWAY_ACTIVITY_BACKFILL_ON_START).toBe(false);
+    expect(config.FINANCE_GATEWAY_ACTIVITY_MAINTENANCE_ON_START).toBe(false);
   });
 });
 

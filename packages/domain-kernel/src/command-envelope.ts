@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 
 export const commandEnvelopeSchema = z.object({
   commandId: z.string().min(6),

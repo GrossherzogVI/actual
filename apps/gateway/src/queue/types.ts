@@ -25,6 +25,7 @@ export interface GatewayQueue {
   enqueue(job: QueueJob): Promise<void>;
   dequeue(maxJobs: number, options?: DequeueOptions): Promise<ClaimedQueueJob[]>;
   ack(receipt: string): Promise<boolean>;
+  nack(receipt: string, requeue: boolean): Promise<boolean>;
   requeueExpired(limit: number): Promise<number>;
   size(): Promise<number>;
   inFlightSize(): Promise<number>;

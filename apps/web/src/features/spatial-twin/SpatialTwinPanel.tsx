@@ -3,12 +3,55 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { apiClient } from '../../core/api/client';
 
+type SpatialTwinPanelProps = {
+  onStatus?: (status: string) => void;
+};
+
+type CheckpointLevel = 'pass' | 'warn' | 'fail';
+
+type Checkpoint = {
+  id: string;
+  label: string;
+  level: CheckpointLevel;
+  detail: string;
+};
+
 const BRANCH_COLORS = ['var(--fo-info)', 'var(--fo-ok)', 'var(--fo-accent)', '#f97316'];
 
-export function SpatialTwinPanel() {
+function asNumber(input: string, fallback: number): number {
+  const parsed = Number(input);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+  return parsed;
+}
+
+function clampAbs(value: number, max = 1000): number {
+  return Math.min(max, Math.abs(value));
+}
+
+function errorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return `${fallback}: ${error.message}`;
+  }
+  return fallback;
+}
+
+function checkpointClass(level: CheckpointLevel): string {
+  return `fo-spatial-checkpoint fo-spatial-checkpoint-${level}`;
+}
+
+function metricClass(value: number): string {
+  if (value > 0) return 'fo-spatial-metric-positive';
+  if (value < 0) return 'fo-spatial-metric-negative';
+  return 'fo-spatial-metric-neutral';
+}
+
+export function SpatialTwinPanel({ onStatus }: SpatialTwinPanelProps) {
   const queryClient = useQueryClient();
   const [branchName, setBranchName] = useState('');
   const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
+  const [compareTargetId, setCompareTargetId] = useState<string | null>(null);
   const [amountDelta, setAmountDelta] = useState('150');
   const [riskDelta, setRiskDelta] = useState('-1');
   const [forceAdopt, setForceAdopt] = useState(false);
@@ -19,9 +62,10 @@ export function SpatialTwinPanel() {
   });
 
   const branches = branchesQuery.data || [];
-  const selectedBranch = branches.find(branch => branch.id === selectedBranchId) || null;
+  const selectedBranch =
+    branches.find(branch => branch.id === selectedBranchId) || null;
   const comparisonTarget =
-    branches.find(branch => branch.id !== selectedBranchId) || null;
+    branches.find(branch => branch.id === compareTargetId) || null;
 
   useEffect(() => {
     if (!selectedBranchId && branches[0]) {
@@ -29,11 +73,26 @@ export function SpatialTwinPanel() {
     }
   }, [branches, selectedBranchId]);
 
+  useEffect(() => {
+    if (!selectedBranch) {
+      setCompareTargetId(null);
+      return;
+    }
+    const targetStillValid = branches.some(branch => branch.id === compareTargetId);
+    if (
+      !targetStillValid ||
+      compareTargetId === selectedBranch.id
+    ) {
+      const fallback = branches.find(branch => branch.id !== selectedBranch.id);
+      setCompareTargetId(fallback ? fallback.id : null);
+    }
+  }, [branches, compareTargetId, selectedBranch]);
+
   const compareQuery = useQuery({
     queryKey: ['scenario-compare', selectedBranch?.id, comparisonTarget?.id],
     enabled: !!selectedBranch,
     queryFn: () =>
-      apiClient.compareScenario(selectedBranch!.id, comparisonTarget?.id),
+      apiClient.compareScenario(selectedBranch!.id, comparisonTarget?.id || undefined),
   });
 
   const mutationsQuery = useQuery({
@@ -46,7 +105,10 @@ export function SpatialTwinPanel() {
     queryKey: ['scenario-adoption-check', selectedBranch?.id, comparisonTarget?.id],
     enabled: !!selectedBranch,
     queryFn: () =>
-      apiClient.getScenarioAdoptionCheck(selectedBranch!.id, comparisonTarget?.id),
+      apiClient.getScenarioAdoptionCheck(
+        selectedBranch!.id,
+        comparisonTarget?.id || undefined,
+      ),
   });
 
   const lineageQuery = useQuery({
@@ -59,16 +121,25 @@ export function SpatialTwinPanel() {
     mutationFn: async () => {
       const trimmed = branchName.trim();
       const label = trimmed || `Branch ${branches.length + 1}`;
-      return apiClient.createScenarioBranch(label, selectedBranch?.id);
+      return apiClient.createScenarioBranch(label, selectedBranch?.id || undefined);
     },
     onSuccess: async created => {
       setBranchName('');
       setSelectedBranchId(created.id);
+      setForceAdopt(false);
+      if (onStatus) {
+        onStatus(`Created scenario branch ${created.name}.`);
+      }
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['scenario-branches'] }),
         queryClient.invalidateQueries({ queryKey: ['scenario-adoption-check'] }),
         queryClient.invalidateQueries({ queryKey: ['scenario-lineage'] }),
       ]);
+    },
+    onError: error => {
+      if (onStatus) {
+        onStatus(errorMessage(error, 'Create branch failed'));
+      }
     },
   });
 
@@ -76,21 +147,29 @@ export function SpatialTwinPanel() {
     mutationFn: async () => {
       if (!selectedBranch) return null;
 
-      const numericAmount = Number(amountDelta);
-      const numericRisk = Number(riskDelta);
+      const numericAmount = asNumber(amountDelta, 0);
+      const numericRisk = asNumber(riskDelta, 0);
 
       return apiClient.applyScenarioMutation(selectedBranch.id, 'manual-adjustment', {
-        amountDelta: Number.isFinite(numericAmount) ? numericAmount : 0,
-        riskDelta: Number.isFinite(numericRisk) ? numericRisk : 0,
+        amountDelta: numericAmount,
+        riskDelta: numericRisk,
       });
     },
     onSuccess: async () => {
+      if (onStatus) {
+        onStatus('Applied scenario mutation.');
+      }
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['scenario-branches'] }),
         queryClient.invalidateQueries({ queryKey: ['scenario-compare'] }),
         queryClient.invalidateQueries({ queryKey: ['scenario-mutations'] }),
         queryClient.invalidateQueries({ queryKey: ['scenario-adoption-check'] }),
       ]);
+    },
+    onError: error => {
+      if (onStatus) {
+        onStatus(errorMessage(error, 'Apply mutation failed'));
+      }
     },
   });
 
@@ -99,14 +178,24 @@ export function SpatialTwinPanel() {
       apiClient.adoptScenarioBranch(input.branchId, {
         force: input.force,
         againstBranchId:
-          selectedBranch?.id === input.branchId ? comparisonTarget?.id : undefined,
+          selectedBranch?.id === input.branchId ? comparisonTarget?.id || undefined : undefined,
       }),
-    onSuccess: async () => {
+    onSuccess: async adopted => {
+      setForceAdopt(false);
+      if (onStatus) {
+        onStatus(`Adopted scenario branch ${adopted.name}.`);
+      }
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['scenario-branches'] }),
         queryClient.invalidateQueries({ queryKey: ['scenario-adoption-check'] }),
         queryClient.invalidateQueries({ queryKey: ['scenario-lineage'] }),
+        queryClient.invalidateQueries({ queryKey: ['scenario-compare'] }),
       ]);
+    },
+    onError: error => {
+      if (onStatus) {
+        onStatus(errorMessage(error, 'Adopt branch failed'));
+      }
     },
   });
 
@@ -121,12 +210,197 @@ export function SpatialTwinPanel() {
     [branches],
   );
 
+  const diffAmount = Number(compareQuery.data?.diff.amountDelta || 0);
+  const diffRisk = Number(compareQuery.data?.diff.riskDelta || 0);
+  const riskScore = Number(adoptionCheckQuery.data?.riskScore || 0);
+  const blockers = adoptionCheckQuery.data?.blockers || [];
+  const warnings = adoptionCheckQuery.data?.warnings || [];
+  const mutationCount = Number(adoptionCheckQuery.data?.mutationCount || 0);
+  const canAdopt = !!adoptionCheckQuery.data?.canAdopt;
+  const hasCriticalBlockers = blockers.length > 0;
+
+  const checkpoints = useMemo<Checkpoint[]>(
+    () => [
+      {
+        id: 'branch-selected',
+        label: 'Branch selected',
+        level: selectedBranch ? 'pass' : 'fail',
+        detail: selectedBranch ? selectedBranch.name : 'Select a branch to continue.',
+      },
+      {
+        id: 'guardrails',
+        label: 'Guardrail blockers',
+        level:
+          !selectedBranch || !adoptionCheckQuery.data
+            ? 'warn'
+            : blockers.length === 0
+              ? 'pass'
+              : 'fail',
+        detail:
+          !selectedBranch || !adoptionCheckQuery.data
+            ? 'Waiting for adoption check.'
+            : blockers.length === 0
+              ? 'No blockers detected.'
+              : `${blockers.length} blocker(s) need resolution or force-adopt.`,
+      },
+      {
+        id: 'risk',
+        label: 'Risk checkpoint',
+        level:
+          !selectedBranch || !adoptionCheckQuery.data
+            ? 'warn'
+            : riskScore >= 85
+              ? 'fail'
+              : riskScore >= 60
+                ? 'warn'
+                : 'pass',
+        detail:
+          !selectedBranch || !adoptionCheckQuery.data
+            ? 'No risk score yet.'
+            : `Risk score ${riskScore}.`,
+      },
+      {
+        id: 'mutation-depth',
+        label: 'Mutation depth',
+        level: mutationCount === 0 ? 'warn' : mutationCount > 12 ? 'warn' : 'pass',
+        detail:
+          mutationCount === 0
+            ? 'No mutations yet.'
+            : `${mutationCount} mutation(s) in current branch.`,
+      },
+    ],
+    [adoptionCheckQuery.data, blockers.length, mutationCount, riskScore, selectedBranch],
+  );
+
+  const safeAdoptDisabled =
+    !selectedBranch ||
+    adoptBranch.isPending ||
+    (!canAdopt && adoptionCheckQuery.data !== null);
+  const forceAdoptDisabled =
+    !selectedBranch || adoptBranch.isPending || !forceAdopt;
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!event.altKey || !event.shiftKey) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+      if (key === 'b' && !createBranch.isPending) {
+        event.preventDefault();
+        createBranch.mutate();
+      }
+      if (key === 'm' && selectedBranch && !applyMutation.isPending) {
+        event.preventDefault();
+        applyMutation.mutate();
+      }
+      if (key === 'a' && !safeAdoptDisabled && selectedBranch) {
+        event.preventDefault();
+        adoptBranch.mutate({ branchId: selectedBranch.id, force: false });
+      }
+      if (key === 'f' && !forceAdoptDisabled && selectedBranch) {
+        event.preventDefault();
+        adoptBranch.mutate({ branchId: selectedBranch.id, force: true });
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [
+    adoptBranch,
+    applyMutation,
+    createBranch,
+    forceAdoptDisabled,
+    safeAdoptDisabled,
+    selectedBranch,
+  ]);
+
   return (
-    <section className="fo-panel fo-twin-panel">
+    <section className="fo-panel fo-twin-panel" id="spatial-twin">
       <header className="fo-panel-header">
         <h2>Spatial Finance Twin</h2>
-        <small>Branch, mutate, compare, adopt. No context switch required.</small>
+        <small>Branch, mutate, compare, and adopt through checkpointed decision flow.</small>
       </header>
+
+      <article className="fo-spatial-hud">
+        <div className="fo-space-between">
+          <strong>Diff HUD</strong>
+          <small>
+            {selectedBranch?.name || 'no branch'} vs {comparisonTarget?.name || 'baseline'}
+          </small>
+        </div>
+
+        <div className="fo-spatial-metric-grid">
+          <article className={`fo-card ${metricClass(diffAmount)}`}>
+            <small>Amount Delta</small>
+            <strong>{diffAmount >= 0 ? '+' : ''}{diffAmount.toFixed(2)}</strong>
+            <div className="fo-spatial-bar-track">
+              <span
+                className="fo-spatial-bar-fill"
+                style={{ width: `${Math.min(100, (clampAbs(diffAmount) / 1000) * 100)}%` }}
+              />
+            </div>
+          </article>
+
+          <article className={`fo-card ${metricClass(diffRisk)}`}>
+            <small>Risk Delta</small>
+            <strong>{diffRisk >= 0 ? '+' : ''}{diffRisk.toFixed(2)}</strong>
+            <div className="fo-spatial-bar-track">
+              <span
+                className="fo-spatial-bar-fill fo-spatial-bar-fill-risk"
+                style={{ width: `${Math.min(100, (clampAbs(diffRisk) / 20) * 100)}%` }}
+              />
+            </div>
+          </article>
+
+          <article className={`fo-card ${riskScore >= 85 ? 'fo-spatial-metric-negative' : riskScore >= 60 ? 'fo-spatial-metric-neutral' : 'fo-spatial-metric-positive'}`}>
+            <small>Adoption Risk Score</small>
+            <strong>{riskScore || '-'}</strong>
+            <small>{adoptionCheckQuery.data?.summary || 'Run adoption check.'}</small>
+          </article>
+        </div>
+
+        <div className="fo-spatial-checkpoint-list">
+          {checkpoints.map(checkpoint => (
+            <article key={checkpoint.id} className={checkpointClass(checkpoint.level)}>
+              <div className="fo-space-between">
+                <strong>{checkpoint.label}</strong>
+                <small>{checkpoint.level}</small>
+              </div>
+              <small>{checkpoint.detail}</small>
+            </article>
+          ))}
+        </div>
+
+        <div className="fo-row">
+          <button
+            className="fo-btn-secondary"
+            type="button"
+            disabled={safeAdoptDisabled}
+            onClick={() => {
+              if (!selectedBranch) {
+                return;
+              }
+              adoptBranch.mutate({ branchId: selectedBranch.id, force: false });
+            }}
+          >
+            Adopt Selected
+          </button>
+          <button
+            className="fo-btn-secondary"
+            type="button"
+            disabled={forceAdoptDisabled}
+            onClick={() => {
+              if (!selectedBranch) {
+                return;
+              }
+              adoptBranch.mutate({ branchId: selectedBranch.id, force: true });
+            }}
+          >
+            Force Adopt
+          </button>
+        </div>
+      </article>
 
       <div className="fo-row">
         <input
@@ -143,6 +417,26 @@ export function SpatialTwinPanel() {
         >
           {createBranch.isPending ? 'Creating' : 'Branch'}
         </button>
+      </div>
+
+      <div className="fo-row">
+        <label className="fo-space-between fo-spatial-compare-select">
+          <small>Compare target</small>
+          <select
+            className="fo-input"
+            value={compareTargetId || ''}
+            onChange={event => setCompareTargetId(event.target.value || null)}
+          >
+            <option value="">baseline</option>
+            {branches
+              .filter(branch => branch.id !== selectedBranchId)
+              .map(branch => (
+                <option key={branch.id} value={branch.id}>
+                  {branch.name}
+                </option>
+              ))}
+          </select>
+        </label>
       </div>
 
       <div className="fo-twin-canvas">
@@ -249,17 +543,6 @@ export function SpatialTwinPanel() {
       </div>
 
       <article className="fo-card">
-        <strong>Branch Comparison</strong>
-        <small>
-          {selectedBranch?.name || 'No selected branch'} vs {comparisonTarget?.name || 'baseline'}
-        </small>
-        <small>
-          Amount delta: {compareQuery.data?.diff.amountDelta ?? 0} · Risk delta:{' '}
-          {compareQuery.data?.diff.riskDelta ?? 0}
-        </small>
-      </article>
-
-      <article className="fo-card">
         <strong>Adoption Guardrail</strong>
         <small>{adoptionCheckQuery.data?.summary || 'Select a branch to evaluate adoption risk.'}</small>
         <small>
@@ -279,7 +562,9 @@ export function SpatialTwinPanel() {
             checked={forceAdopt}
             onChange={event => setForceAdopt(event.target.checked)}
           />
-          <small>Allow force adopt if blocked</small>
+          <small>
+            Arm force-adopt override {hasCriticalBlockers ? '(blockers detected)' : '(optional)'}
+          </small>
         </label>
       </article>
 
@@ -314,6 +599,13 @@ export function SpatialTwinPanel() {
           <small>No mutations recorded yet.</small>
         ) : null}
       </article>
+
+      <div className="fo-hints">
+        <code>alt+shift+b branch</code>
+        <code>alt+shift+m mutate</code>
+        <code>alt+shift+a adopt safe</code>
+        <code>alt+shift+f force adopt</code>
+      </div>
     </section>
   );
 }

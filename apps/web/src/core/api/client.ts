@@ -8,23 +8,35 @@ import type {
   DelegateLaneEvent,
   EgressAuditEntry,
   EgressPolicy,
+  ExecutionMode,
   FocusPanel,
+  GuardrailProfile,
   MoneyPulse,
   NarrativePulse,
-  OpsActivityEvent,
   OpsActivityKind,
+  OpsActivityListResult,
+  OpsActivityPipelineStartResult,
+  OpsActivityPipelineStatus,
   OpsActivitySeverity,
+  OpsBackfillResult,
+  OpsMaintenanceResult,
+  QueueRequeueExpiredResult,
   Playbook,
   PlaybookRun,
+  RuntimeMetrics,
   ScenarioAdoptionCheck,
   ScenarioBranch,
   ScenarioComparison,
   ScenarioLineage,
   ScenarioMutation,
+  ReplayWorkerDeadLettersResult,
+  WorkerDeadLetter,
+  WorkerQueueHealth,
   WorkflowCommandExecution,
 } from '../types';
 
 const gatewayBaseUrl = import.meta.env.VITE_GATEWAY_URL || 'http://localhost:7070';
+const gatewayInternalToken = import.meta.env.VITE_GATEWAY_INTERNAL_TOKEN || '';
 
 async function request<T>(
   path: string,
@@ -62,6 +74,36 @@ function commandEnvelope(intent: string) {
   });
 }
 
+type RunExecutionOptions = {
+  executionMode: ExecutionMode;
+  guardrailProfile: GuardrailProfile;
+  rollbackWindowMinutes: number;
+  idempotencyKey?: string;
+  rollbackOnFailure: boolean;
+};
+
+function normalizeRunOptions(
+  input: Partial<RunExecutionOptions> | undefined,
+  defaults: { executionMode: ExecutionMode },
+): RunExecutionOptions {
+  return {
+    executionMode: input?.executionMode || defaults.executionMode,
+    guardrailProfile: input?.guardrailProfile || 'strict',
+    rollbackWindowMinutes: Math.max(
+      1,
+      Math.min(1440, Math.trunc(input?.rollbackWindowMinutes ?? 60)),
+    ),
+    idempotencyKey:
+      typeof input?.idempotencyKey === 'string' && input.idempotencyKey.length >= 8
+        ? input.idempotencyKey
+        : undefined,
+    rollbackOnFailure:
+      typeof input?.rollbackOnFailure === 'boolean'
+        ? input.rollbackOnFailure
+        : false,
+  };
+}
+
 export const apiClient = {
   getMoneyPulse() {
     return request<MoneyPulse>('/workflow/v1/money-pulse');
@@ -69,6 +111,16 @@ export const apiClient = {
 
   getNarrativePulse() {
     return request<NarrativePulse>('/workflow/v1/narrative-pulse');
+  },
+
+  getRuntimeMetrics() {
+    return request<RuntimeMetrics>('/workflow/v1/runtime-metrics');
+  },
+
+  getOpsActivityPipelineStatus() {
+    return request<OpsActivityPipelineStatus>(
+      '/workflow/v1/ops-activity-pipeline-status',
+    );
   },
 
   resolveNextAction() {
@@ -100,7 +152,10 @@ export const apiClient = {
     });
   },
 
-  runPlaybook(playbookId: string, dryRun = true) {
+  runPlaybook(playbookId: string, options?: Partial<RunExecutionOptions>) {
+    const normalized = normalizeRunOptions(options, {
+      executionMode: 'dry-run',
+    });
     return request<PlaybookRun>(
       '/workflow/v1/run-playbook',
       {
@@ -108,7 +163,7 @@ export const apiClient = {
         body: JSON.stringify({
           envelope: commandEnvelope('run-playbook'),
           playbookId,
-          dryRun,
+          ...normalized,
         }),
       },
     );
@@ -119,7 +174,9 @@ export const apiClient = {
     playbookId?: string;
     actorId?: string;
     sourceSurface?: string;
-    dryRun?: boolean;
+    executionMode?: ExecutionMode;
+    status?: PlaybookRun['status'];
+    idempotencyKey?: string;
     hasErrors?: boolean;
   }) {
     const params = new URLSearchParams();
@@ -133,8 +190,14 @@ export const apiClient = {
     if (input?.sourceSurface) {
       params.set('sourceSurface', input.sourceSurface);
     }
-    if (typeof input?.dryRun === 'boolean') {
-      params.set('dryRun', String(input.dryRun));
+    if (typeof input?.executionMode === 'string') {
+      params.set('executionMode', input.executionMode);
+    }
+    if (typeof input?.status === 'string') {
+      params.set('status', input.status);
+    }
+    if (input?.idempotencyKey) {
+      params.set('idempotencyKey', input.idempotencyKey);
     }
     if (typeof input?.hasErrors === 'boolean') {
       params.set('hasErrors', String(input.hasErrors));
@@ -142,13 +205,16 @@ export const apiClient = {
     return request<PlaybookRun[]>(`/workflow/v1/playbook-runs?${params.toString()}`);
   },
 
-  replayPlaybookRun(runId: string, dryRun?: boolean) {
+  replayPlaybookRun(runId: string, options?: Partial<RunExecutionOptions>) {
+    const normalized = normalizeRunOptions(options, {
+      executionMode: 'dry-run',
+    });
     return request<PlaybookRun>('/workflow/v1/replay-playbook-run', {
       method: 'POST',
       body: JSON.stringify({
         envelope: commandEnvelope('replay-playbook-run'),
         runId,
-        dryRun,
+        ...normalized,
       }),
     });
   },
@@ -182,14 +248,21 @@ export const apiClient = {
     return request<CloseRun[]>(`/workflow/v1/close-runs?${params.toString()}`);
   },
 
-  executeCommandChain(chain: string, assignee = 'delegate', dryRun = false) {
+  executeCommandChain(
+    chain: string,
+    assignee = 'delegate',
+    options?: Partial<RunExecutionOptions>,
+  ) {
+    const normalized = normalizeRunOptions(options, {
+      executionMode: 'live',
+    });
     return request<WorkflowCommandExecution>('/workflow/v1/execute-chain', {
       method: 'POST',
       body: JSON.stringify({
         envelope: commandEnvelope('execute-chain'),
         chain,
         assignee,
-        dryRun,
+        ...normalized,
       }),
     });
   },
@@ -198,7 +271,9 @@ export const apiClient = {
     limit?: number;
     actorId?: string;
     sourceSurface?: string;
-    dryRun?: boolean;
+    executionMode?: ExecutionMode;
+    status?: WorkflowCommandExecution['status'];
+    idempotencyKey?: string;
     hasErrors?: boolean;
   }) {
     const limit = input?.limit ?? 20;
@@ -211,8 +286,14 @@ export const apiClient = {
     if (input?.sourceSurface) {
       params.set('sourceSurface', input.sourceSurface);
     }
-    if (typeof input?.dryRun === 'boolean') {
-      params.set('dryRun', String(input.dryRun));
+    if (typeof input?.executionMode === 'string') {
+      params.set('executionMode', input.executionMode);
+    }
+    if (typeof input?.status === 'string') {
+      params.set('status', input.status);
+    }
+    if (input?.idempotencyKey) {
+      params.set('idempotencyKey', input.idempotencyKey);
     }
     if (typeof input?.hasErrors === 'boolean') {
       params.set('hasErrors', String(input.hasErrors));
@@ -222,10 +303,33 @@ export const apiClient = {
     );
   },
 
+  rollbackPlaybookRun(runId: string, reason?: string) {
+    return request<PlaybookRun>('/workflow/v1/rollback-playbook-run', {
+      method: 'POST',
+      body: JSON.stringify({
+        envelope: commandEnvelope('rollback-playbook-run'),
+        runId,
+        reason,
+      }),
+    });
+  },
+
+  rollbackCommandRun(runId: string, reason?: string) {
+    return request<WorkflowCommandExecution>('/workflow/v1/rollback-command-run', {
+      method: 'POST',
+      body: JSON.stringify({
+        envelope: commandEnvelope('rollback-command-run'),
+        runId,
+        reason,
+      }),
+    });
+  },
+
   listOpsActivity(input?: {
     limit?: number;
     kinds?: OpsActivityKind[];
     severities?: OpsActivitySeverity[];
+    cursor?: string;
   }) {
     const params = new URLSearchParams();
     params.set('limit', String(Math.max(1, Math.min(input?.limit ?? 60, 250))));
@@ -235,7 +339,216 @@ export const apiClient = {
     if (input?.severities && input.severities.length > 0) {
       params.set('severities', input.severities.join(','));
     }
-    return request<OpsActivityEvent[]>(`/workflow/v1/ops-activity?${params.toString()}`);
+    if (input?.cursor) {
+      params.set('cursor', input.cursor);
+    }
+    return request<OpsActivityListResult>(
+      `/workflow/v1/ops-activity?${params.toString()}`,
+    );
+  },
+
+  backfillOpsActivity(limitPerPlane = 500) {
+    return request<OpsBackfillResult>('/workflow/v1/backfill-ops-activity', {
+      method: 'POST',
+      body: JSON.stringify({
+        limitPerPlane: Math.max(1, Math.min(limitPerPlane, 5000)),
+      }),
+    });
+  },
+
+  runOpsActivityMaintenance(input?: {
+    retentionDays?: number;
+    maxRows?: number;
+  }) {
+    return request<OpsMaintenanceResult>(
+      '/workflow/v1/run-ops-activity-maintenance',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          retentionDays:
+            typeof input?.retentionDays === 'number'
+              ? Math.max(0, input.retentionDays)
+              : 90,
+          maxRows:
+            typeof input?.maxRows === 'number'
+              ? Math.max(0, Math.trunc(input.maxRows))
+              : 50000,
+        }),
+      },
+    );
+  },
+
+  requeueExpiredQueueJobs(limit = 100) {
+    return request<QueueRequeueExpiredResult>(
+      '/workflow/v1/requeue-expired-queue-jobs',
+      {
+        method: 'POST',
+        headers: gatewayInternalToken
+          ? {
+              'x-finance-internal-token': gatewayInternalToken,
+            }
+          : undefined,
+        body: JSON.stringify({
+          limit: Math.max(1, Math.min(1000, Math.trunc(limit))),
+        }),
+      },
+    );
+  },
+
+  listWorkerDeadLetters(input?: {
+    limit?: number;
+    status?: WorkerDeadLetter['status'];
+    workerId?: string;
+    jobName?: string;
+  }) {
+    return request<WorkerDeadLetter[]>('/workflow/v1/list-worker-dead-letters', {
+      method: 'POST',
+      headers: gatewayInternalToken
+        ? {
+            'x-finance-internal-token': gatewayInternalToken,
+          }
+        : undefined,
+      body: JSON.stringify({
+        limit: Math.max(1, Math.min(200, Math.trunc(input?.limit ?? 20))),
+        status: input?.status,
+        workerId: input?.workerId,
+        jobName: input?.jobName,
+      }),
+    });
+  },
+
+  replayWorkerDeadLetters(input?: {
+    deadLetterIds?: string[];
+    limit?: number;
+    maxAttempt?: number;
+    jobName?: string;
+    operatorId?: string;
+  }) {
+    return request<ReplayWorkerDeadLettersResult>(
+      '/workflow/v1/replay-worker-dead-letters',
+      {
+        method: 'POST',
+        headers: gatewayInternalToken
+          ? {
+              'x-finance-internal-token': gatewayInternalToken,
+            }
+          : undefined,
+        body: JSON.stringify({
+          deadLetterIds: input?.deadLetterIds,
+          limit:
+            typeof input?.limit === 'number'
+              ? Math.max(1, Math.min(100, Math.trunc(input.limit)))
+              : 20,
+          maxAttempt:
+            typeof input?.maxAttempt === 'number'
+              ? Math.max(1, Math.min(20, Math.trunc(input.maxAttempt)))
+              : 6,
+          jobName: input?.jobName,
+          operatorId: input?.operatorId || 'operator-replay',
+        }),
+      },
+    );
+  },
+
+  resolveWorkerDeadLetter(input: {
+    deadLetterId: string;
+    operatorId?: string;
+    resolutionNote?: string;
+  }) {
+    return request<WorkerDeadLetter>('/workflow/v1/resolve-worker-dead-letter', {
+      method: 'POST',
+      headers: gatewayInternalToken
+        ? {
+            'x-finance-internal-token': gatewayInternalToken,
+          }
+        : undefined,
+      body: JSON.stringify({
+        deadLetterId: input.deadLetterId,
+        operatorId: input.operatorId || 'operator',
+        resolutionNote: input.resolutionNote,
+      }),
+    });
+  },
+
+  reopenWorkerDeadLetter(input: {
+    deadLetterId: string;
+    operatorId?: string;
+    note?: string;
+  }) {
+    return request<WorkerDeadLetter>('/workflow/v1/reopen-worker-dead-letter', {
+      method: 'POST',
+      headers: gatewayInternalToken
+        ? {
+            'x-finance-internal-token': gatewayInternalToken,
+          }
+        : undefined,
+      body: JSON.stringify({
+        deadLetterId: input.deadLetterId,
+        operatorId: input.operatorId || 'operator',
+        note: input.note,
+      }),
+    });
+  },
+
+  getWorkerQueueHealth(input?: {
+    windowMs?: number;
+    sampleLimit?: number;
+    workerId?: string;
+    jobName?: string;
+  }) {
+    return request<WorkerQueueHealth>('/workflow/v1/worker-queue-health', {
+      method: 'POST',
+      headers: gatewayInternalToken
+        ? {
+            'x-finance-internal-token': gatewayInternalToken,
+          }
+        : undefined,
+      body: JSON.stringify({
+        windowMs:
+          typeof input?.windowMs === 'number'
+            ? Math.max(60_000, Math.min(604_800_000, Math.trunc(input.windowMs)))
+            : 3_600_000,
+        sampleLimit:
+          typeof input?.sampleLimit === 'number'
+            ? Math.max(1, Math.min(20_000, Math.trunc(input.sampleLimit)))
+            : 5_000,
+        workerId: input?.workerId,
+        jobName: input?.jobName,
+      }),
+    });
+  },
+
+  startOpsActivityPipeline(input?: {
+    runBackfill?: boolean;
+    runMaintenance?: boolean;
+    limitPerPlane?: number;
+    retentionDays?: number;
+    maxRows?: number;
+    waitForCompletion?: boolean;
+  }) {
+    return request<OpsActivityPipelineStartResult>(
+      '/workflow/v1/start-ops-activity-pipeline',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          runBackfill: input?.runBackfill ?? true,
+          runMaintenance: input?.runMaintenance ?? true,
+          limitPerPlane:
+            typeof input?.limitPerPlane === 'number'
+              ? Math.max(1, Math.min(5000, Math.trunc(input.limitPerPlane)))
+              : 500,
+          retentionDays:
+            typeof input?.retentionDays === 'number'
+              ? Math.max(0, input.retentionDays)
+              : 90,
+          maxRows:
+            typeof input?.maxRows === 'number'
+              ? Math.max(0, Math.trunc(input.maxRows))
+              : 50000,
+          waitForCompletion: input?.waitForCompletion ?? false,
+        }),
+      },
+    );
   },
 
   listDelegateLanes(input?: {

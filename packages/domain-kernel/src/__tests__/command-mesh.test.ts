@@ -40,6 +40,28 @@ describe('parseCommandChain', () => {
     ]);
   });
 
+  it('parses close -> safe pair alias into run-close-safe', () => {
+    const parsed = parseCommandChain('close -> safe');
+
+    expect(parsed.errors).toHaveLength(0);
+    expect(parsed.steps).toHaveLength(1);
+    expect(parsed.steps[0]?.id).toBe('run-close-safe');
+    expect(parsed.steps[0]?.canonical).toBe('close-safe');
+  });
+
+  it('parses batch policy and delegate triage aliases', () => {
+    const parsed = parseCommandChain(
+      'triage -> delegate-batch -> batch-policy',
+    );
+
+    expect(parsed.errors).toHaveLength(0);
+    expect(parsed.steps.map(step => step.id)).toEqual([
+      'resolve-next-action',
+      'delegate-triage-batch',
+      'apply-batch-policy',
+    ]);
+  });
+
   it('returns unknown token errors with positional index', () => {
     const parsed = parseCommandChain('triage -> unknown-step');
 
@@ -64,5 +86,13 @@ describe('parseCommandChain', () => {
         raw: '',
       },
     ]);
+  });
+
+  it('is deterministic for mixed alias chains', () => {
+    const chain = 'triage -> close-safe -> delegate-triage-batch -> refresh';
+    const first = parseCommandChain(chain);
+    const second = parseCommandChain(chain);
+
+    expect(second).toEqual(first);
   });
 });

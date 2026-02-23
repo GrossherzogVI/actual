@@ -37,7 +37,9 @@ export async function buildGatewayApp(context: GatewayContext) {
   }, { prefix: '/ledger/v1' });
 
   await app.register(async scoped => {
-    await registerWorkflowRoutes(scoped, context.service);
+    await registerWorkflowRoutes(scoped, context.service, {
+      internalToken: context.config.FINANCE_GATEWAY_INTERNAL_TOKEN,
+    });
   }, { prefix: '/workflow/v1' });
 
   await app.register(async scoped => {

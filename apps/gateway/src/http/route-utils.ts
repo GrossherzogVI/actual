@@ -1,6 +1,6 @@
 import type { FastifyReply } from 'fastify';
 import type { ZodTypeAny } from 'zod';
-import { z } from 'zod';
+import * as z from 'zod';
 
 function issuePath(issuePath: PropertyKey[]): string {
   if (!issuePath.length) return '(root)';
@@ -46,6 +46,17 @@ export function sendConflict(
   error: string,
 ): null {
   reply.code(409).send({
+    error,
+  });
+
+  return null;
+}
+
+export function sendUnauthorized(
+  reply: FastifyReply,
+  error: string,
+): null {
+  reply.code(401).send({
     error,
   });
 

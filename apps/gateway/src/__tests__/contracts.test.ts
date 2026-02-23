@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { createCommandEnvelope } from '@finance-os/domain-kernel';
@@ -7,7 +7,13 @@ import { describe, expect, it } from 'vitest';
 import { findRpcRegistryEntry, rpcRegistry } from '../contracts/rpc-registry';
 import { hasCommandEnvelope } from '../validation/envelope';
 
-const protoRoot = join(process.cwd(), 'packages/contracts/proto');
+const protoRootCandidates = [
+  join(process.cwd(), 'packages/contracts/proto'),
+  join(process.cwd(), '../../packages/contracts/proto'),
+];
+const protoRoot =
+  protoRootCandidates.find(candidate => existsSync(candidate)) ||
+  protoRootCandidates[0];
 
 function listProtoFiles() {
   return [
@@ -117,10 +123,14 @@ describe('command envelope enforcement', () => {
         commands: [],
         playbookId: 'playbook-1',
         runId: 'run-1',
-        dryRun: true,
+        executionMode: 'dry-run',
+        guardrailProfile: 'strict',
+        rollbackWindowMinutes: 60,
+        rollbackOnFailure: true,
+        idempotencyKey: 'contract-idempotency',
         period: 'weekly',
         ids: ['id-1'],
-        status: 'accepted',
+        status: 'completed',
         resolvedAction: 'batch-policy',
         chain: 'triage -> close-weekly',
         actionId: 'action-1',
@@ -203,13 +213,17 @@ describe('command envelope enforcement', () => {
           payload: {},
           name: 'x',
           description: '',
-          commands: [],
-          playbookId: 'playbook-1',
-          runId: 'run-1',
-          dryRun: true,
-          period: 'weekly',
+        commands: [],
+        playbookId: 'playbook-1',
+        runId: 'run-1',
+        executionMode: 'dry-run',
+        guardrailProfile: 'strict',
+        rollbackWindowMinutes: 60,
+        rollbackOnFailure: true,
+        idempotencyKey: 'contract-idempotency',
+        period: 'weekly',
           ids: ['id-1'],
-          status: 'accepted',
+          status: 'completed',
           resolvedAction: 'batch-policy',
           chain: 'triage -> close-weekly',
           actionId: 'action-1',

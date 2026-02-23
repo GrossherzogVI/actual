@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
+import { useInfiniteQuery } from '@tanstack/react-query';
 
 import type { OpsActivityKind, OpsActivitySeverity } from '../../core/types';
 import { apiClient } from '../../core/api/client';
@@ -30,16 +30,24 @@ export function OpsActivityFeedPanel({ onRoute }: OpsActivityFeedPanelProps) {
   const [kindFilter, setKindFilter] = useState<'all' | OpsActivityKind>('all');
   const [severityFilter, setSeverityFilter] = useState<'all' | OpsActivitySeverity>('all');
 
-  const activity = useQuery({
+  const activity = useInfiniteQuery({
     queryKey: ['ops-activity', kindFilter, severityFilter],
-    queryFn: () =>
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) =>
       apiClient.listOpsActivity({
-        limit: 80,
+        limit: 24,
         kinds: kindFilter === 'all' ? undefined : [kindFilter],
         severities: severityFilter === 'all' ? undefined : [severityFilter],
+        cursor: pageParam,
       }),
+    getNextPageParam: lastPage => lastPage.nextCursor,
     refetchInterval: 8_000,
   });
+
+  const events = useMemo(
+    () => (activity.data?.pages || []).flatMap(page => page.events),
+    [activity.data],
+  );
 
   return (
     <section className="fo-panel">
@@ -79,12 +87,12 @@ export function OpsActivityFeedPanel({ onRoute }: OpsActivityFeedPanelProps) {
 
         {activity.isLoading ? <small>Loading activity timeline...</small> : null}
         {activity.isError ? <small>Activity feed unavailable.</small> : null}
-        {!activity.isLoading && (activity.data || []).length === 0 ? (
+        {!activity.isLoading && events.length === 0 ? (
           <small>No activity matching current filters.</small>
         ) : null}
 
         <div className="fo-activity-list">
-          {(activity.data || []).map(event => (
+          {events.map(event => (
             <article
               key={event.id}
               className={`fo-activity-item fo-activity-${event.severity}`}
@@ -115,6 +123,19 @@ export function OpsActivityFeedPanel({ onRoute }: OpsActivityFeedPanelProps) {
             </article>
           ))}
         </div>
+
+        {activity.hasNextPage ? (
+          <button
+            className="fo-btn-secondary"
+            type="button"
+            disabled={activity.isFetchingNextPage}
+            onClick={() => {
+              void activity.fetchNextPage();
+            }}
+          >
+            {activity.isFetchingNextPage ? 'Loading more...' : 'Load More'}
+          </button>
+        ) : null}
       </div>
     </section>
   );

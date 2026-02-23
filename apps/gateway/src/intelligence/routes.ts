@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { commandEnvelopeSchema } from '@finance-os/domain-kernel';
 

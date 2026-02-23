@@ -117,6 +117,21 @@ export class RedisGatewayQueue implements GatewayQueue {
     return true;
   }
 
+  async nack(receipt: string, requeue: boolean): Promise<boolean> {
+    const removed = await this.client.zRem(this.processingKey, receipt);
+    if (removed < 1) {
+      return false;
+    }
+
+    if (requeue) {
+      await this.client.lPush(this.readyKey, receipt);
+    } else {
+      await this.client.hDel(this.payloadKey, receipt);
+    }
+
+    return true;
+  }
+
   async requeueExpired(limit: number): Promise<number> {
     if (limit <= 0) return 0;
 

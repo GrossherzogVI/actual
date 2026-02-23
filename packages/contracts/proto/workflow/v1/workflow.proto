@@ -10,13 +10,32 @@ service WorkflowService {
   rpc ReplayPlaybookRun(ReplayPlaybookRunRequest) returns (ReplayPlaybookRunResponse);
   rpc ListPlaybookRuns(ListPlaybookRunsRequest) returns (ListPlaybookRunsResponse);
   rpc GetMoneyPulse(GetMoneyPulseRequest) returns (GetMoneyPulseResponse);
+  rpc GetRuntimeMetrics(GetRuntimeMetricsRequest) returns (GetRuntimeMetricsResponse);
+  rpc GetOpsActivityPipelineStatus(GetOpsActivityPipelineStatusRequest) returns (GetOpsActivityPipelineStatusResponse);
   rpc GetNarrativePulse(GetNarrativePulseRequest) returns (GetNarrativePulseResponse);
   rpc ListCloseRuns(ListCloseRunsRequest) returns (ListCloseRunsResponse);
   rpc RunCloseRoutine(RunCloseRoutineRequest) returns (RunCloseRoutineResponse);
   rpc ApplyBatchPolicy(ApplyBatchPolicyRequest) returns (ApplyBatchPolicyResponse);
   rpc ExecuteChain(ExecuteChainRequest) returns (ExecuteChainResponse);
+  rpc RollbackPlaybookRun(RollbackPlaybookRunRequest) returns (RollbackPlaybookRunResponse);
+  rpc RollbackCommandRun(RollbackCommandRunRequest) returns (RollbackCommandRunResponse);
   rpc ListCommandRuns(ListCommandRunsRequest) returns (ListCommandRunsResponse);
   rpc ListOpsActivity(ListOpsActivityRequest) returns (ListOpsActivityResponse);
+  rpc BackfillOpsActivity(BackfillOpsActivityRequest) returns (BackfillOpsActivityResponse);
+  rpc RunOpsActivityMaintenance(RunOpsActivityMaintenanceRequest) returns (RunOpsActivityMaintenanceResponse);
+  rpc StartOpsActivityPipeline(StartOpsActivityPipelineRequest) returns (StartOpsActivityPipelineResponse);
+  rpc ClaimQueueJobs(ClaimQueueJobsRequest) returns (ClaimQueueJobsResponse);
+  rpc ClaimWorkerJobFingerprint(ClaimWorkerJobFingerprintRequest) returns (ClaimWorkerJobFingerprintResponse);
+  rpc AckQueueJob(AckQueueJobRequest) returns (AckQueueJobResponse);
+  rpc CheckWorkerJobFingerprint(CheckWorkerJobFingerprintRequest) returns (CheckWorkerJobFingerprintResponse);
+  rpc RequeueExpiredQueueJobs(RequeueExpiredQueueJobsRequest) returns (RequeueExpiredQueueJobsResponse);
+  rpc ListWorkerDeadLetters(ListWorkerDeadLettersRequest) returns (ListWorkerDeadLettersResponse);
+  rpc ReplayWorkerDeadLetters(ReplayWorkerDeadLettersRequest) returns (ReplayWorkerDeadLettersResponse);
+  rpc ResolveWorkerDeadLetter(ResolveWorkerDeadLetterRequest) returns (ResolveWorkerDeadLetterResponse);
+  rpc ReopenWorkerDeadLetter(ReopenWorkerDeadLetterRequest) returns (ReopenWorkerDeadLetterResponse);
+  rpc GetWorkerQueueHealth(GetWorkerQueueHealthRequest) returns (GetWorkerQueueHealthResponse);
+  rpc AcquireWorkerQueueLease(AcquireWorkerQueueLeaseRequest) returns (AcquireWorkerQueueLeaseResponse);
+  rpc ReleaseWorkerQueueLease(ReleaseWorkerQueueLeaseRequest) returns (ReleaseWorkerQueueLeaseResponse);
 }
 
 message ResolveNextActionRequest {
@@ -30,28 +49,84 @@ message ResolveNextActionResponse {
   double confidence = 4;
 }
 
+enum ExecutionMode {
+  EXECUTION_MODE_UNSPECIFIED = 0;
+  EXECUTION_MODE_DRY_RUN = 1;
+  EXECUTION_MODE_LIVE = 2;
+}
+
+enum GuardrailProfile {
+  GUARDRAIL_PROFILE_UNSPECIFIED = 0;
+  GUARDRAIL_PROFILE_STRICT = 1;
+  GUARDRAIL_PROFILE_BALANCED = 2;
+  GUARDRAIL_PROFILE_OFF = 3;
+}
+
+enum RunStatus {
+  RUN_STATUS_UNSPECIFIED = 0;
+  RUN_STATUS_PLANNED = 1;
+  RUN_STATUS_RUNNING = 2;
+  RUN_STATUS_COMPLETED = 3;
+  RUN_STATUS_FAILED = 4;
+  RUN_STATUS_BLOCKED = 5;
+  RUN_STATUS_ROLLED_BACK = 6;
+}
+
+message GuardrailResult {
+  string rule_id = 1;
+  string severity = 2;
+  bool passed = 3;
+  string message = 4;
+  bool blocking = 5;
+}
+
+message EffectSummary {
+  string effect_id = 1;
+  string kind = 2;
+  string description = 3;
+  bool reversible = 4;
+  string status = 5;
+  map<string, string> metadata = 6;
+}
+
+message RunStatusTransition {
+  RunStatus status = 1;
+  int64 at_ms = 2;
+  string note = 3;
+}
+
 message RunPlaybookRequest {
   financeos.common.v1.CommandEnvelope envelope = 1;
   string playbook_id = 2;
-  bool dry_run = 3;
+  ExecutionMode execution_mode = 3;
+  GuardrailProfile guardrail_profile = 4;
+  int32 rollback_window_minutes = 5;
+  string idempotency_key = 6;
+  bool rollback_on_failure = 7;
 }
 
 message RunPlaybookResponse {
   string run_id = 1;
   int32 steps = 2;
-  bool dry_run = 3;
+  ExecutionMode execution_mode = 3;
+  RunStatus status = 4;
 }
 
 message ReplayPlaybookRunRequest {
   financeos.common.v1.CommandEnvelope envelope = 1;
   string run_id = 2;
-  bool dry_run = 3;
+  ExecutionMode execution_mode = 3;
+  GuardrailProfile guardrail_profile = 4;
+  int32 rollback_window_minutes = 5;
+  string idempotency_key = 6;
+  bool rollback_on_failure = 7;
 }
 
 message ReplayPlaybookRunResponse {
   string run_id = 1;
   int32 steps = 2;
-  bool dry_run = 3;
+  ExecutionMode execution_mode = 3;
+  RunStatus status = 4;
 }
 
 message ListPlaybookRunsRequest {
@@ -59,7 +134,7 @@ message ListPlaybookRunsRequest {
   string playbook_id = 2;
   string actor_id = 3;
   string source_surface = 4;
-  bool dry_run = 5;
+  ExecutionMode execution_mode = 5;
   bool has_errors = 6;
 }
 
@@ -76,6 +151,48 @@ message GetMoneyPulseResponse {
   int32 urgent_reviews = 2;
   int32 expiring_contracts = 3;
   int64 generated_at_ms = 4;
+}
+
+message GetRuntimeMetricsRequest {}
+
+message GetRuntimeMetricsResponse {
+  string repository_kind = 1;
+  string queue_kind = 2;
+  int32 queue_size = 3;
+  int32 queue_in_flight = 4;
+  int32 playbooks = 5;
+  int32 delegate_lanes = 6;
+  int32 corrections = 7;
+  int32 scenario_branches = 8;
+  int32 ops_activity_events = 9;
+  int32 worker_job_attempts = 10;
+  int32 worker_dead_letters = 11;
+  int32 worker_fingerprint_claim_events = 12;
+  int32 worker_fingerprint_claim_acquired = 13;
+  int32 worker_fingerprint_claim_already_processed = 14;
+  int32 worker_fingerprint_claim_already_claimed = 15;
+  int32 worker_fingerprint_stale_recoveries = 16;
+  double worker_fingerprint_duplicate_skip_rate = 17;
+  double worker_fingerprint_contention_rate = 18;
+  double worker_fingerprint_stale_recovery_rate = 19;
+}
+
+message GetOpsActivityPipelineStatusRequest {}
+
+message OpsActivityTaskStatus {
+  bool running = 1;
+  int64 last_started_at_ms = 2;
+  int64 last_finished_at_ms = 3;
+  int64 last_duration_ms = 4;
+  string last_error = 5;
+  int32 run_count = 6;
+  map<string, int64> last_result = 7;
+}
+
+message GetOpsActivityPipelineStatusResponse {
+  OpsActivityTaskStatus orchestrator = 1;
+  OpsActivityTaskStatus backfill = 2;
+  OpsActivityTaskStatus maintenance = 3;
 }
 
 message GetNarrativePulseRequest {
@@ -124,7 +241,11 @@ message ExecuteChainRequest {
   financeos.common.v1.CommandEnvelope envelope = 1;
   string chain = 2;
   string assignee = 3;
-  bool dry_run = 4;
+  ExecutionMode execution_mode = 4;
+  GuardrailProfile guardrail_profile = 5;
+  int32 rollback_window_minutes = 6;
+  string idempotency_key = 7;
+  bool rollback_on_failure = 8;
 }
 
 message ExecuteChainResponse {
@@ -134,15 +255,47 @@ message ExecuteChainResponse {
   int32 error_count = 4;
   string actor_id = 5;
   string source_surface = 6;
-  bool dry_run = 7;
-  int64 executed_at_ms = 8;
+  ExecutionMode execution_mode = 7;
+  RunStatus status = 8;
+  int64 started_at_ms = 9;
+  int64 finished_at_ms = 10;
+  int64 rollback_window_until_ms = 11;
+  bool rollback_eligible = 12;
+  string rollback_of_run_id = 13;
+  repeated GuardrailResult guardrail_results = 14;
+  repeated EffectSummary effect_summaries = 15;
+  string idempotency_key = 16;
+}
+
+message RollbackPlaybookRunRequest {
+  financeos.common.v1.CommandEnvelope envelope = 1;
+  string run_id = 2;
+  string reason = 3;
+}
+
+message RollbackPlaybookRunResponse {
+  string run_id = 1;
+  string rollback_run_id = 2;
+  RunStatus status = 3;
+}
+
+message RollbackCommandRunRequest {
+  financeos.common.v1.CommandEnvelope envelope = 1;
+  string run_id = 2;
+  string reason = 3;
+}
+
+message RollbackCommandRunResponse {
+  string run_id = 1;
+  string rollback_run_id = 2;
+  RunStatus status = 3;
 }
 
 message ListCommandRunsRequest {
   int32 limit = 1;
   string actor_id = 2;
   string source_surface = 3;
-  bool dry_run = 4;
+  ExecutionMode execution_mode = 4;
   bool has_errors = 5;
 }
 
@@ -154,10 +307,244 @@ message ListOpsActivityRequest {
   int32 limit = 1;
   repeated string kinds = 2;
   repeated string severities = 3;
+  string cursor = 4;
 }
 
 message ListOpsActivityResponse {
   repeated OpsActivityEvent events = 1;
+  string next_cursor = 2;
+}
+
+message BackfillOpsActivityRequest {
+  int32 limit_per_plane = 1;
+}
+
+message BackfillOpsActivityResponse {
+  int32 attempted = 1;
+  int32 total = 2;
+}
+
+message RunOpsActivityMaintenanceRequest {
+  double retention_days = 1;
+  int32 max_rows = 2;
+}
+
+message RunOpsActivityMaintenanceResponse {
+  int32 removed = 1;
+  int32 total = 2;
+}
+
+message StartOpsActivityPipelineRequest {
+  bool run_backfill = 1;
+  bool run_maintenance = 2;
+  int32 limit_per_plane = 3;
+  double retention_days = 4;
+  int32 max_rows = 5;
+  bool wait_for_completion = 6;
+}
+
+message StartOpsActivityPipelineResponse {
+  bool started = 1;
+  GetOpsActivityPipelineStatusResponse status = 2;
+}
+
+message ClaimQueueJobsRequest {
+  string worker_id = 1;
+  int32 max_jobs = 2;
+  int32 visibility_timeout_ms = 3;
+}
+
+message ClaimedQueueJob {
+  string id = 1;
+  string name = 2;
+  string payload_json = 3;
+  int64 created_at_ms = 4;
+  string receipt = 5;
+  int32 attempt = 6;
+  int64 claimed_at_ms = 7;
+  int64 visible_at_ms = 8;
+}
+
+message ClaimQueueJobsResponse {
+  repeated ClaimedQueueJob jobs = 1;
+  int32 queue_size = 2;
+  int32 queue_in_flight = 3;
+}
+
+message ClaimWorkerJobFingerprintRequest {
+  string worker_id = 1;
+  string fingerprint = 2;
+  int32 ttl_ms = 3;
+}
+
+message ClaimWorkerJobFingerprintResponse {
+  string status = 1;
+  string fingerprint = 2;
+  string lease_key = 3;
+  string owner_id = 4;
+  int32 ttl_ms = 5;
+  int64 expires_at_ms = 6;
+}
+
+message AckQueueJobRequest {
+  string worker_id = 1;
+  string receipt = 2;
+  bool success = 3;
+  bool requeue = 4;
+  string job_id = 5;
+  string job_name = 6;
+  int32 attempt = 7;
+  int32 processing_ms = 8;
+  string error_message = 9;
+  string payload_json = 10;
+  string job_fingerprint = 11;
+}
+
+message AckQueueJobResponse {
+  bool acknowledged = 1;
+  string action = 2;
+  int32 queue_size = 3;
+  int32 queue_in_flight = 4;
+}
+
+message CheckWorkerJobFingerprintRequest {
+  string fingerprint = 1;
+}
+
+message CheckWorkerJobFingerprintResponse {
+  bool already_processed = 1;
+}
+
+message RequeueExpiredQueueJobsRequest {
+  int32 limit = 1;
+}
+
+message RequeueExpiredQueueJobsResponse {
+  int32 moved = 1;
+  int32 queue_size = 2;
+  int32 queue_in_flight = 3;
+}
+
+message WorkerDeadLetter {
+  string id = 1;
+  string attempt_id = 2;
+  string worker_id = 3;
+  string job_id = 4;
+  string job_name = 5;
+  string receipt = 6;
+  int32 attempt = 7;
+  string status = 8;
+  int32 replay_count = 9;
+  int64 last_replayed_at_ms = 10;
+  int64 resolved_at_ms = 11;
+  string resolution_note = 12;
+  string error_message = 13;
+  string payload_json = 14;
+  int64 created_at_ms = 15;
+}
+
+message ListWorkerDeadLettersRequest {
+  int32 limit = 1;
+  string status = 2;
+  string worker_id = 3;
+  string job_name = 4;
+}
+
+message ListWorkerDeadLettersResponse {
+  repeated WorkerDeadLetter entries = 1;
+}
+
+message ReplayWorkerDeadLettersRequest {
+  repeated string dead_letter_ids = 1;
+  int32 limit = 2;
+  int32 max_attempt = 3;
+  string job_name = 4;
+  string operator_id = 5;
+}
+
+message ReplayWorkerDeadLettersResponse {
+  int32 replayed = 1;
+  int32 skipped = 2;
+  repeated string not_found = 3;
+  int32 queue_size = 4;
+  int32 queue_in_flight = 5;
+}
+
+message ResolveWorkerDeadLetterRequest {
+  string dead_letter_id = 1;
+  string operator_id = 2;
+  string resolution_note = 3;
+}
+
+message ResolveWorkerDeadLetterResponse {
+  WorkerDeadLetter entry = 1;
+}
+
+message ReopenWorkerDeadLetterRequest {
+  string dead_letter_id = 1;
+  string operator_id = 2;
+  string note = 3;
+}
+
+message ReopenWorkerDeadLetterResponse {
+  WorkerDeadLetter entry = 1;
+}
+
+message GetWorkerQueueHealthRequest {
+  int32 window_ms = 1;
+  int32 sample_limit = 2;
+  string worker_id = 3;
+  string job_name = 4;
+}
+
+message WorkerQueueOutcomeCounts {
+  int32 acked = 1;
+  int32 requeued = 2;
+  int32 dropped = 3;
+  int32 ack_miss = 4;
+}
+
+message WorkerQueueProcessingMetrics {
+  int32 p50_ms = 1;
+  int32 p95_ms = 2;
+  int32 max_ms = 3;
+}
+
+message GetWorkerQueueHealthResponse {
+  int32 window_ms = 1;
+  int32 sample_size = 2;
+  int64 generated_at_ms = 3;
+  WorkerQueueOutcomeCounts counts = 4;
+  WorkerQueueProcessingMetrics processing = 5;
+  double throughput_per_minute = 6;
+  double failure_rate = 7;
+  double retry_rate = 8;
+  double dead_letter_rate = 9;
+}
+
+message AcquireWorkerQueueLeaseRequest {
+  string worker_id = 1;
+  int32 ttl_ms = 2;
+  string lease_key = 3;
+}
+
+message AcquireWorkerQueueLeaseResponse {
+  bool acquired = 1;
+  string lease_key = 2;
+  string owner_id = 3;
+  int32 ttl_ms = 4;
+  int64 expires_at_ms = 5;
+}
+
+message ReleaseWorkerQueueLeaseRequest {
+  string worker_id = 1;
+  string lease_key = 2;
+}
+
+message ReleaseWorkerQueueLeaseResponse {
+  bool released = 1;
+  string lease_key = 2;
+  string owner_id = 3;
 }
 
 message OpsActivityEvent {
@@ -177,8 +564,17 @@ message CommandRun {
   int32 error_count = 4;
   string actor_id = 5;
   string source_surface = 6;
-  bool dry_run = 7;
-  int64 executed_at_ms = 8;
+  ExecutionMode execution_mode = 7;
+  RunStatus status = 8;
+  int64 started_at_ms = 9;
+  int64 finished_at_ms = 10;
+  int64 rollback_window_until_ms = 11;
+  bool rollback_eligible = 12;
+  string rollback_of_run_id = 13;
+  repeated GuardrailResult guardrail_results = 14;
+  repeated EffectSummary effect_summaries = 15;
+  string idempotency_key = 16;
+  repeated RunStatusTransition status_timeline = 17;
 }
 
 message CommandExecutionStep {
@@ -194,13 +590,23 @@ message PlaybookRun {
   string run_id = 1;
   string playbook_id = 2;
   string chain = 3;
-  bool dry_run = 4;
+  ExecutionMode execution_mode = 4;
   int32 executed_steps = 5;
   int32 error_count = 6;
   string actor_id = 7;
   string source_surface = 8;
   repeated PlaybookRunStep steps = 9;
   int64 created_at_ms = 10;
+  RunStatus status = 11;
+  int64 started_at_ms = 12;
+  int64 finished_at_ms = 13;
+  int64 rollback_window_until_ms = 14;
+  bool rollback_eligible = 15;
+  string rollback_of_run_id = 16;
+  repeated GuardrailResult guardrail_results = 17;
+  repeated EffectSummary effect_summaries = 18;
+  string idempotency_key = 19;
+  repeated RunStatusTransition status_timeline = 20;
 }
 
 message PlaybookRunStep {

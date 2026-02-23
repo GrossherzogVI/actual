@@ -9,10 +9,14 @@ import type {
   EgressAuditEntry,
   EgressPolicy,
   LedgerEvent,
+  OpsActivityEvent,
   OpsState,
   PlaybookRun,
   ScenarioBranch,
   ScenarioMutation,
+  WorkerDeadLetter,
+  WorkerFingerprintClaimEvent,
+  WorkerJobAttempt,
   WorkflowCommandExecution,
   WorkflowPlaybook,
 } from '../types';
@@ -25,7 +29,12 @@ import type {
   CloseRunFilters,
   DelegateLaneFilters,
   GatewayRepository,
+  OpsActivityFilters,
+  OpsActivityTrimInput,
   PlaybookRunFilters,
+  WorkerDeadLetterFilters,
+  WorkerFingerprintClaimFilters,
+  WorkerJobAttemptFilters,
   WorkflowCommandRunFilters,
 } from './types';
 
@@ -34,6 +43,11 @@ const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 16);
 type StoredLedgerEvent = {
   event: LedgerEvent;
   streamPosition: number;
+};
+
+type StoredSystemLease = {
+  ownerId: string;
+  expiresAtMs: number;
 };
 
 export class InMemoryGatewayRepository implements GatewayRepository {
@@ -50,6 +64,11 @@ export class InMemoryGatewayRepository implements GatewayRepository {
   private readonly delegateLanes = new Map<string, DelegateLane>();
   private readonly delegateLaneEvents = new Map<string, DelegateLaneEvent[]>();
   private readonly actionOutcomes = new Map<string, ActionOutcome>();
+  private readonly opsActivityEvents = new Map<string, OpsActivityEvent>();
+  private readonly workerJobAttempts = new Map<string, WorkerJobAttempt>();
+  private readonly workerDeadLetters = new Map<string, WorkerDeadLetter>();
+  private readonly workerFingerprintClaimEvents = new Map<string, WorkerFingerprintClaimEvent>();
+  private readonly systemLeases = new Map<string, StoredSystemLease>();
 
   private readonly egressAudit: EgressAuditEntry[] = [];
   private readonly corrections = new Map<string, Correction>();
@@ -164,8 +183,44 @@ export class InMemoryGatewayRepository implements GatewayRepository {
     return run;
   }
 
+  async updatePlaybookRun(run: PlaybookRun): Promise<PlaybookRun | null> {
+    if (!this.playbookRuns.has(run.id)) {
+      return null;
+    }
+    this.playbookRuns.set(run.id, run);
+    return run;
+  }
+
   async getPlaybookRunById(runId: string): Promise<PlaybookRun | null> {
     return this.playbookRuns.get(runId) || null;
+  }
+
+  async markPlaybookRunRolledBack(
+    runId: string,
+    rolledBackAtMs: number,
+    rollbackRunId?: string,
+  ): Promise<PlaybookRun | null> {
+    const existing = this.playbookRuns.get(runId);
+    if (!existing) {
+      return null;
+    }
+    const updated: PlaybookRun = {
+      ...existing,
+      status: 'rolled_back',
+      finishedAtMs: rolledBackAtMs,
+      rollbackEligible: false,
+      rollbackOfRunId: rollbackRunId || existing.rollbackOfRunId,
+      statusTimeline: [
+        ...(Array.isArray(existing.statusTimeline) ? existing.statusTimeline : []),
+        {
+          status: 'rolled_back',
+          atMs: rolledBackAtMs,
+          note: 'Run was rolled back.',
+        },
+      ],
+    };
+    this.playbookRuns.set(runId, updated);
+    return updated;
   }
 
   async listPlaybookRuns(
@@ -183,7 +238,19 @@ export class InMemoryGatewayRepository implements GatewayRepository {
         if (filters?.sourceSurface && run.sourceSurface !== filters.sourceSurface) {
           return false;
         }
-        if (typeof filters?.dryRun === 'boolean' && run.dryRun !== filters.dryRun) {
+        if (
+          typeof filters?.executionMode === 'string' &&
+          run.executionMode !== filters.executionMode
+        ) {
+          return false;
+        }
+        if (typeof filters?.status === 'string' && run.status !== filters.status) {
+          return false;
+        }
+        if (
+          filters?.idempotencyKey &&
+          run.idempotencyKey !== filters.idempotencyKey
+        ) {
           return false;
         }
         if (
@@ -228,6 +295,69 @@ export class InMemoryGatewayRepository implements GatewayRepository {
     return run;
   }
 
+  async updateWorkflowCommandRun(
+    run: WorkflowCommandExecution,
+  ): Promise<WorkflowCommandExecution | null> {
+    if (!this.commandRuns.has(run.id)) {
+      return null;
+    }
+    this.commandRuns.set(run.id, run);
+    return run;
+  }
+
+  async getWorkflowCommandRunById(
+    runId: string,
+  ): Promise<WorkflowCommandExecution | null> {
+    return this.commandRuns.get(runId) || null;
+  }
+
+  async markWorkflowCommandRunRolledBack(
+    runId: string,
+    rolledBackAtMs: number,
+    rollbackRunId?: string,
+  ): Promise<WorkflowCommandExecution | null> {
+    const existing = this.commandRuns.get(runId);
+    if (!existing) {
+      return null;
+    }
+    const updated: WorkflowCommandExecution = {
+      ...existing,
+      status: 'rolled_back',
+      finishedAtMs: rolledBackAtMs,
+      rollbackEligible: false,
+      rollbackOfRunId: rollbackRunId || existing.rollbackOfRunId,
+      statusTimeline: [
+        ...(Array.isArray(existing.statusTimeline) ? existing.statusTimeline : []),
+        {
+          status: 'rolled_back',
+          atMs: rolledBackAtMs,
+          note: 'Run was rolled back.',
+        },
+      ],
+    };
+    this.commandRuns.set(runId, updated);
+    return updated;
+  }
+
+  async findRunByIdempotencyKey(
+    scope: 'playbook' | 'command',
+    idempotencyKey: string,
+  ): Promise<PlaybookRun | WorkflowCommandExecution | null> {
+    if (scope === 'playbook') {
+      return (
+        [...this.playbookRuns.values()]
+          .filter(run => run.idempotencyKey === idempotencyKey)
+          .sort((a, b) => b.createdAtMs - a.createdAtMs)[0] || null
+      );
+    }
+
+    return (
+      [...this.commandRuns.values()]
+        .filter(run => run.idempotencyKey === idempotencyKey)
+        .sort((a, b) => b.executedAtMs - a.executedAtMs)[0] || null
+    );
+  }
+
   async listWorkflowCommandRuns(
     limit: number,
     filters?: WorkflowCommandRunFilters,
@@ -244,8 +374,17 @@ export class InMemoryGatewayRepository implements GatewayRepository {
           return false;
         }
         if (
-          typeof filters?.dryRun === 'boolean' &&
-          run.dryRun !== filters.dryRun
+          typeof filters?.executionMode === 'string' &&
+          run.executionMode !== filters.executionMode
+        ) {
+          return false;
+        }
+        if (typeof filters?.status === 'string' && run.status !== filters.status) {
+          return false;
+        }
+        if (
+          filters?.idempotencyKey &&
+          run.idempotencyKey !== filters.idempotencyKey
         ) {
           return false;
         }
@@ -407,6 +546,397 @@ export class InMemoryGatewayRepository implements GatewayRepository {
       })
       .sort((a, b) => b.recordedAtMs - a.recordedAtMs)
       .slice(0, input.limit);
+  }
+
+  async appendOpsActivityEvent(event: OpsActivityEvent): Promise<OpsActivityEvent> {
+    this.opsActivityEvents.set(event.id, event);
+    return event;
+  }
+
+  async listOpsActivityEvents(
+    limit: number,
+    filters?: OpsActivityFilters,
+  ): Promise<OpsActivityEvent[]> {
+    const kinds = filters?.kinds && filters.kinds.length > 0
+      ? new Set(filters.kinds)
+      : null;
+    const severities = filters?.severities && filters.severities.length > 0
+      ? new Set(filters.severities)
+      : null;
+    const cursor = filters?.cursor;
+
+    return [...this.opsActivityEvents.values()]
+      .filter(event => {
+        if (kinds && !kinds.has(event.kind)) {
+          return false;
+        }
+        if (severities && !severities.has(event.severity)) {
+          return false;
+        }
+        if (
+          cursor &&
+          !(
+            event.createdAtMs < cursor.createdAtMs ||
+            (event.createdAtMs === cursor.createdAtMs && event.id < cursor.id)
+          )
+        ) {
+          return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        if (a.createdAtMs !== b.createdAtMs) {
+          return b.createdAtMs - a.createdAtMs;
+        }
+        if (a.id === b.id) {
+          return 0;
+        }
+        return a.id < b.id ? 1 : -1;
+      })
+      .slice(0, limit);
+  }
+
+  async countOpsActivityEvents(): Promise<number> {
+    return this.opsActivityEvents.size;
+  }
+
+  async trimOpsActivityEvents(input: OpsActivityTrimInput): Promise<number> {
+    let removed = 0;
+    const olderThanMs = input.olderThanMs;
+    if (typeof olderThanMs === 'number' && Number.isFinite(olderThanMs)) {
+      for (const [id, event] of this.opsActivityEvents.entries()) {
+        if (event.createdAtMs < olderThanMs) {
+          this.opsActivityEvents.delete(id);
+          removed += 1;
+        }
+      }
+    }
+
+    const maxRows = input.maxRows;
+    if (
+      typeof maxRows === 'number' &&
+      Number.isFinite(maxRows) &&
+      maxRows >= 0 &&
+      this.opsActivityEvents.size > maxRows
+    ) {
+      const sorted = [...this.opsActivityEvents.values()].sort((a, b) => {
+        if (a.createdAtMs !== b.createdAtMs) {
+          return b.createdAtMs - a.createdAtMs;
+        }
+        if (a.id === b.id) {
+          return 0;
+        }
+        return a.id < b.id ? 1 : -1;
+      });
+      const keep = new Set(sorted.slice(0, maxRows).map(event => event.id));
+      for (const id of this.opsActivityEvents.keys()) {
+        if (!keep.has(id)) {
+          this.opsActivityEvents.delete(id);
+          removed += 1;
+        }
+      }
+    }
+
+    return removed;
+  }
+
+  async trimWorkerJobAttempts(input: OpsActivityTrimInput): Promise<number> {
+    let removed = 0;
+    const olderThanMs = input.olderThanMs;
+    if (typeof olderThanMs === 'number' && Number.isFinite(olderThanMs)) {
+      for (const [id, entry] of this.workerJobAttempts.entries()) {
+        if (entry.createdAtMs < olderThanMs) {
+          this.workerJobAttempts.delete(id);
+          removed += 1;
+        }
+      }
+    }
+
+    const maxRows = input.maxRows;
+    if (
+      typeof maxRows === 'number' &&
+      Number.isFinite(maxRows) &&
+      maxRows >= 0 &&
+      this.workerJobAttempts.size > maxRows
+    ) {
+      const sorted = [...this.workerJobAttempts.values()].sort(
+        (a, b) => b.createdAtMs - a.createdAtMs,
+      );
+      const keep = new Set(sorted.slice(0, maxRows).map(entry => entry.id));
+      for (const id of this.workerJobAttempts.keys()) {
+        if (!keep.has(id)) {
+          this.workerJobAttempts.delete(id);
+          removed += 1;
+        }
+      }
+    }
+
+    return removed;
+  }
+
+  async trimWorkerDeadLetters(input: OpsActivityTrimInput): Promise<number> {
+    let removed = 0;
+    const olderThanMs = input.olderThanMs;
+    if (typeof olderThanMs === 'number' && Number.isFinite(olderThanMs)) {
+      for (const [id, entry] of this.workerDeadLetters.entries()) {
+        if (entry.createdAtMs < olderThanMs) {
+          this.workerDeadLetters.delete(id);
+          removed += 1;
+        }
+      }
+    }
+
+    const maxRows = input.maxRows;
+    if (
+      typeof maxRows === 'number' &&
+      Number.isFinite(maxRows) &&
+      maxRows >= 0 &&
+      this.workerDeadLetters.size > maxRows
+    ) {
+      const sorted = [...this.workerDeadLetters.values()].sort(
+        (a, b) => b.createdAtMs - a.createdAtMs,
+      );
+      const keep = new Set(sorted.slice(0, maxRows).map(entry => entry.id));
+      for (const id of this.workerDeadLetters.keys()) {
+        if (!keep.has(id)) {
+          this.workerDeadLetters.delete(id);
+          removed += 1;
+        }
+      }
+    }
+
+    return removed;
+  }
+
+  async trimWorkerFingerprintClaimEvents(input: OpsActivityTrimInput): Promise<number> {
+    let removed = 0;
+    const olderThanMs = input.olderThanMs;
+    if (typeof olderThanMs === 'number' && Number.isFinite(olderThanMs)) {
+      for (const [id, entry] of this.workerFingerprintClaimEvents.entries()) {
+        if (entry.createdAtMs < olderThanMs) {
+          this.workerFingerprintClaimEvents.delete(id);
+          removed += 1;
+        }
+      }
+    }
+
+    const maxRows = input.maxRows;
+    if (
+      typeof maxRows === 'number' &&
+      Number.isFinite(maxRows) &&
+      maxRows >= 0 &&
+      this.workerFingerprintClaimEvents.size > maxRows
+    ) {
+      const sorted = [...this.workerFingerprintClaimEvents.values()].sort(
+        (a, b) => b.createdAtMs - a.createdAtMs,
+      );
+      const keep = new Set(sorted.slice(0, maxRows).map(entry => entry.id));
+      for (const id of this.workerFingerprintClaimEvents.keys()) {
+        if (!keep.has(id)) {
+          this.workerFingerprintClaimEvents.delete(id);
+          removed += 1;
+        }
+      }
+    }
+
+    return removed;
+  }
+
+  async createWorkerJobAttempt(attempt: WorkerJobAttempt): Promise<WorkerJobAttempt> {
+    this.workerJobAttempts.set(attempt.id, attempt);
+    return attempt;
+  }
+
+  async listWorkerJobAttempts(
+    limit: number,
+    filters?: WorkerJobAttemptFilters,
+  ): Promise<WorkerJobAttempt[]> {
+    const outcomes = filters?.outcomes && filters.outcomes.length > 0
+      ? new Set(filters.outcomes)
+      : null;
+
+    return [...this.workerJobAttempts.values()]
+      .filter(attempt => {
+        if (
+          typeof filters?.sinceMs === 'number' &&
+          Number.isFinite(filters.sinceMs) &&
+          attempt.createdAtMs < filters.sinceMs
+        ) {
+          return false;
+        }
+        if (filters?.workerId && attempt.workerId !== filters.workerId) {
+          return false;
+        }
+        if (filters?.jobName && attempt.jobName !== filters.jobName) {
+          return false;
+        }
+        if (outcomes && !outcomes.has(attempt.outcome)) {
+          return false;
+        }
+        return true;
+      })
+      .sort((a, b) => b.createdAtMs - a.createdAtMs)
+      .slice(0, limit);
+  }
+
+  async countWorkerJobAttempts(): Promise<number> {
+    return this.workerJobAttempts.size;
+  }
+
+  async hasSuccessfulWorkerJobFingerprint(fingerprint: string): Promise<boolean> {
+    if (fingerprint.length === 0) {
+      return false;
+    }
+
+    for (const attempt of this.workerJobAttempts.values()) {
+      if (
+        attempt.outcome === 'acked' &&
+        attempt.jobFingerprint === fingerprint
+      ) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  async createWorkerFingerprintClaimEvent(
+    event: WorkerFingerprintClaimEvent,
+  ): Promise<WorkerFingerprintClaimEvent> {
+    this.workerFingerprintClaimEvents.set(event.id, event);
+    return event;
+  }
+
+  async listWorkerFingerprintClaimEvents(
+    limit: number,
+    filters?: WorkerFingerprintClaimFilters,
+  ): Promise<WorkerFingerprintClaimEvent[]> {
+    const statuses = filters?.statuses && filters.statuses.length > 0
+      ? new Set(filters.statuses)
+      : null;
+
+    return [...this.workerFingerprintClaimEvents.values()]
+      .filter(event => {
+        if (
+          typeof filters?.sinceMs === 'number' &&
+          Number.isFinite(filters.sinceMs) &&
+          event.createdAtMs < filters.sinceMs
+        ) {
+          return false;
+        }
+        if (filters?.workerId && event.workerId !== filters.workerId) {
+          return false;
+        }
+        if (statuses && !statuses.has(event.status)) {
+          return false;
+        }
+        if (
+          typeof filters?.staleRecovered === 'boolean' &&
+          event.staleRecovered !== filters.staleRecovered
+        ) {
+          return false;
+        }
+        return true;
+      })
+      .sort((a, b) => b.createdAtMs - a.createdAtMs)
+      .slice(0, limit);
+  }
+
+  async countWorkerFingerprintClaimEvents(
+    filters?: WorkerFingerprintClaimFilters,
+  ): Promise<number> {
+    const events = await this.listWorkerFingerprintClaimEvents(
+      Number.MAX_SAFE_INTEGER,
+      filters,
+    );
+    return events.length;
+  }
+
+  async createWorkerDeadLetter(entry: WorkerDeadLetter): Promise<WorkerDeadLetter> {
+    this.workerDeadLetters.set(entry.id, entry);
+    return entry;
+  }
+
+  async getWorkerDeadLetterById(deadLetterId: string): Promise<WorkerDeadLetter | null> {
+    return this.workerDeadLetters.get(deadLetterId) || null;
+  }
+
+  async listWorkerDeadLetters(
+    limit: number,
+    filters?: WorkerDeadLetterFilters,
+  ): Promise<WorkerDeadLetter[]> {
+    return [...this.workerDeadLetters.values()]
+      .filter(entry => {
+        if (filters?.status && entry.status !== filters.status) {
+          return false;
+        }
+        if (filters?.workerId && entry.workerId !== filters.workerId) {
+          return false;
+        }
+        if (filters?.jobName && entry.jobName !== filters.jobName) {
+          return false;
+        }
+        return true;
+      })
+      .sort((a, b) => b.createdAtMs - a.createdAtMs)
+      .slice(0, limit);
+  }
+
+  async updateWorkerDeadLetter(entry: WorkerDeadLetter): Promise<WorkerDeadLetter> {
+    this.workerDeadLetters.set(entry.id, entry);
+    return entry;
+  }
+
+  async countWorkerDeadLetters(): Promise<number> {
+    return this.workerDeadLetters.size;
+  }
+
+  async acquireSystemLease(input: {
+    leaseKey: string;
+    ownerId: string;
+    ttlMs: number;
+  }): Promise<boolean> {
+    const now = Date.now();
+    const current = this.systemLeases.get(input.leaseKey);
+    if (
+      current &&
+      current.ownerId !== input.ownerId &&
+      current.expiresAtMs > now
+    ) {
+      return false;
+    }
+
+    this.systemLeases.set(input.leaseKey, {
+      ownerId: input.ownerId,
+      expiresAtMs: now + Math.max(1, Math.trunc(input.ttlMs)),
+    });
+    return true;
+  }
+
+  async getSystemLease(input: {
+    leaseKey: string;
+  }): Promise<{ leaseKey: string; ownerId: string; expiresAtMs: number } | null> {
+    const current = this.systemLeases.get(input.leaseKey);
+    if (!current) {
+      return null;
+    }
+    return {
+      leaseKey: input.leaseKey,
+      ownerId: current.ownerId,
+      expiresAtMs: current.expiresAtMs,
+    };
+  }
+
+  async releaseSystemLease(input: {
+    leaseKey: string;
+    ownerId: string;
+  }): Promise<boolean> {
+    const current = this.systemLeases.get(input.leaseKey);
+    if (!current || current.ownerId !== input.ownerId) {
+      return false;
+    }
+    this.systemLeases.delete(input.leaseKey);
+    return true;
   }
 
   async getEgressPolicy(): Promise<EgressPolicy> {

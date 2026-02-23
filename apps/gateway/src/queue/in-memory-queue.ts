@@ -95,6 +95,19 @@ export class InMemoryGatewayQueue implements GatewayQueue {
     return true;
   }
 
+  async nack(receipt: string, requeue: boolean): Promise<boolean> {
+    const wasInFlight = this.inFlight.delete(receipt);
+    if (!wasInFlight) return false;
+
+    if (requeue) {
+      this.readyReceipts.push(receipt);
+    } else {
+      this.jobs.delete(receipt);
+    }
+
+    return true;
+  }
+
   async requeueExpired(limit: number): Promise<number> {
     const now = Date.now();
     let moved = 0;

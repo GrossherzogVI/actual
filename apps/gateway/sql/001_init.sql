@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS workflow_playbook_runs (
   error_count INTEGER NOT NULL DEFAULT 0,
   actor_id TEXT NOT NULL DEFAULT 'owner',
   source_surface TEXT NOT NULL DEFAULT 'unknown',
+  status_timeline_json JSONB NOT NULL DEFAULT '[]'::jsonb,
   steps_json JSONB NOT NULL,
   created_at_ms BIGINT NOT NULL
 );
@@ -56,6 +57,7 @@ CREATE TABLE IF NOT EXISTS workflow_command_runs (
   actor_id TEXT NOT NULL DEFAULT 'owner',
   source_surface TEXT NOT NULL DEFAULT 'unknown',
   dry_run BOOLEAN NOT NULL DEFAULT false,
+  status_timeline_json JSONB NOT NULL DEFAULT '[]'::jsonb,
   executed_at_ms BIGINT NOT NULL
 );
 
@@ -136,6 +138,111 @@ CREATE TABLE IF NOT EXISTS action_outcomes (
 
 CREATE INDEX IF NOT EXISTS idx_action_outcomes_action_time
   ON action_outcomes(action_id, recorded_at_ms DESC);
+
+CREATE TABLE IF NOT EXISTS ops_activity_events (
+  id TEXT PRIMARY KEY,
+  kind TEXT NOT NULL,
+  title TEXT NOT NULL,
+  detail TEXT NOT NULL,
+  route TEXT,
+  severity TEXT NOT NULL,
+  created_at_ms BIGINT NOT NULL,
+  meta_json JSONB
+);
+
+CREATE INDEX IF NOT EXISTS idx_ops_activity_created
+  ON ops_activity_events(created_at_ms DESC, id DESC);
+
+CREATE INDEX IF NOT EXISTS idx_ops_activity_kind_created
+  ON ops_activity_events(kind, created_at_ms DESC, id DESC);
+
+CREATE INDEX IF NOT EXISTS idx_ops_activity_severity_created
+  ON ops_activity_events(severity, created_at_ms DESC, id DESC);
+
+CREATE TABLE IF NOT EXISTS worker_job_attempts (
+  id TEXT PRIMARY KEY,
+  worker_id TEXT NOT NULL,
+  job_id TEXT NOT NULL,
+  job_name TEXT NOT NULL,
+  job_fingerprint TEXT,
+  receipt TEXT NOT NULL,
+  attempt INTEGER NOT NULL,
+  outcome TEXT NOT NULL,
+  processing_ms INTEGER,
+  error_message TEXT,
+  payload_json JSONB,
+  created_at_ms BIGINT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_worker_job_attempts_created
+  ON worker_job_attempts(created_at_ms DESC);
+
+CREATE INDEX IF NOT EXISTS idx_worker_job_attempts_job
+  ON worker_job_attempts(job_id, created_at_ms DESC);
+
+CREATE INDEX IF NOT EXISTS idx_worker_job_attempts_outcome
+  ON worker_job_attempts(outcome, created_at_ms DESC);
+
+CREATE INDEX IF NOT EXISTS idx_worker_job_attempts_fingerprint_outcome
+  ON worker_job_attempts(job_fingerprint, outcome, created_at_ms DESC);
+
+CREATE TABLE IF NOT EXISTS worker_fingerprint_claim_events (
+  id TEXT PRIMARY KEY,
+  worker_id TEXT NOT NULL,
+  fingerprint TEXT NOT NULL,
+  lease_key TEXT NOT NULL,
+  status TEXT NOT NULL,
+  ttl_ms INTEGER NOT NULL,
+  expires_at_ms BIGINT,
+  stale_recovered BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at_ms BIGINT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_worker_fingerprint_claim_events_created
+  ON worker_fingerprint_claim_events(created_at_ms DESC);
+
+CREATE INDEX IF NOT EXISTS idx_worker_fingerprint_claim_events_status
+  ON worker_fingerprint_claim_events(status, created_at_ms DESC);
+
+CREATE INDEX IF NOT EXISTS idx_worker_fingerprint_claim_events_fingerprint
+  ON worker_fingerprint_claim_events(fingerprint, created_at_ms DESC);
+
+CREATE TABLE IF NOT EXISTS worker_dead_letters (
+  id TEXT PRIMARY KEY,
+  attempt_id TEXT NOT NULL,
+  worker_id TEXT NOT NULL,
+  job_id TEXT NOT NULL,
+  job_name TEXT NOT NULL,
+  receipt TEXT NOT NULL,
+  attempt INTEGER NOT NULL,
+  status TEXT NOT NULL DEFAULT 'open',
+  replay_count INTEGER NOT NULL DEFAULT 0,
+  last_replayed_at_ms BIGINT,
+  resolved_at_ms BIGINT,
+  resolution_note TEXT,
+  error_message TEXT,
+  payload_json JSONB,
+  created_at_ms BIGINT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_worker_dead_letters_created
+  ON worker_dead_letters(created_at_ms DESC);
+
+CREATE INDEX IF NOT EXISTS idx_worker_dead_letters_job
+  ON worker_dead_letters(job_id, created_at_ms DESC);
+
+CREATE INDEX IF NOT EXISTS idx_worker_dead_letters_status
+  ON worker_dead_letters(status, created_at_ms DESC);
+
+CREATE TABLE IF NOT EXISTS system_leases (
+  lease_key TEXT PRIMARY KEY,
+  owner_id TEXT NOT NULL,
+  expires_at_ms BIGINT NOT NULL,
+  updated_at_ms BIGINT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_system_leases_expiration
+  ON system_leases(expires_at_ms);
 
 CREATE TABLE IF NOT EXISTS policy_egress (
   id TEXT PRIMARY KEY,

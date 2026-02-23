@@ -11,12 +11,22 @@
       ],
       "@finance-os/domain-kernel": [
         "../../packages/domain-kernel/src/index.ts"
+      ],
+      "@/*": [
+        "./src/*"
       ]
     },
     "jsx": "react-jsx",
     "strict": true,
     "noEmit": true,
-    "types": ["vite/client"]
+    "types": [
+      "vite/client",
+      "vitest/globals",
+      "@testing-library/jest-dom"
+    ]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx"
+  ]
 }
