@@ -1,0 +1,31 @@
+{
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"]
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    },
+    "shadcn-ui": {
+      "command": "npx",
+      "args": ["shadcn@latest", "mcp"]
+    },
+    "magic": {
+      "command": "npx",
+      "args": ["-y", "@21st-dev/magic@latest"],
+      "env": {
+        "API_KEY": "1de0b140cdce7921b242888d146983f1fc36dd3e6156d856478b8b6e4360a07c"
+      }
+    },
+    "morph-mcp": {
+      "command": "npx",
+      "args": ["-y", "@morphllm/morphmcp"],
+      "env": {
+        "MORPH_API_KEY": "sk-FQfCUYBz1EhrVTimWV-R_bJTgyYmYf7eobi8WLwHiSvN4UE1",
+        "ENABLED_TOOLS": "edit_file,warpgrep_codebase_search"
+      }
+    }
+  }
+}
