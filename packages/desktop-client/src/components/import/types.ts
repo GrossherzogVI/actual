@@ -2,7 +2,12 @@
 
 export type ImportFormat = 'finanzguru' | 'csv';
 
-export type ImportState = 'upload' | 'mapping' | 'preview' | 'importing' | 'complete';
+export type ImportState =
+  | 'upload'
+  | 'mapping'
+  | 'preview'
+  | 'importing'
+  | 'complete';
 
 export type ImportPreviewRow = {
   date: string;

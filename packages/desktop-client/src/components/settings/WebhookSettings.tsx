@@ -155,7 +155,10 @@ export function WebhookSettings() {
     setTesting(true);
     setTestResult(null);
     try {
-      const result = await send('webhook-test', { url, secret: secretTouched ? secret : undefined });
+      const result = await send('webhook-test', {
+        url,
+        secret: secretTouched ? secret : undefined,
+      });
       if (result && !('error' in result)) {
         setTestResult(result);
       } else if (result && 'error' in result) {
@@ -204,10 +207,7 @@ export function WebhookSettings() {
       {/* Enable toggle */}
       <View style={{ marginTop: 5 }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <Checkbox
-            checked={enabled}
-            onChange={() => setEnabled(!enabled)}
-          />
+          <Checkbox checked={enabled} onChange={() => setEnabled(!enabled)} />
           <Text style={{ fontWeight: 500 }}>
             <Trans>Enable webhooks</Trans>
           </Text>
@@ -343,9 +343,7 @@ export function WebhookSettings() {
           <Text
             style={{
               fontWeight: 600,
-              color: testResult.success
-                ? theme.noticeText
-                : theme.errorText,
+              color: testResult.success ? theme.noticeText : theme.errorText,
             }}
           >
             {testResult.success
@@ -375,7 +373,8 @@ export function WebhookSettings() {
             >
               <Text style={{ fontSize: 12, fontWeight: 500 }}>
                 <Trans>
-                  Last 24h: {{ total: stats.total24h }} deliveries ({{
+                  Last 24h: {{ total: stats.total24h }} deliveries (
+                  {{
                     success: stats.successful24h,
                   }}{' '}
                   successful, {{ failed: stats.failed24h }} failed)
@@ -455,9 +454,7 @@ export function WebhookSettings() {
                         <td style={tdStyle}>
                           {d.statusCode || d.error || '—'}
                         </td>
-                        <td style={tdStyle}>
-                          {formatTime(d.createdAt)}
-                        </td>
+                        <td style={tdStyle}>{formatTime(d.createdAt)}</td>
                         <td style={tdStyle}>
                           {d.durationMs != null ? `${d.durationMs}ms` : '—'}
                         </td>

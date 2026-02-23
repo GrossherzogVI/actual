@@ -3,7 +3,10 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { send } from 'loot-core/platform/client/connection';
 
-import type { CategoryMapping, CategoryTemplate } from '../types';
+import type {
+  CategoryMapping,
+  CategoryTemplate,
+} from '@/components/import/types';
 
 type UseCategoryMappingOptions = {
   externalCategories: string[];
@@ -87,15 +90,18 @@ export function useCategoryMapping({
     );
   }, [templates]);
 
-  const updateMapping = useCallback((external: string, internalId: string | null) => {
-    setMappings(prev =>
-      prev.map(m =>
-        m.external === external
-          ? { ...m, internal_id: internalId, auto_matched: false }
-          : m,
-      ),
-    );
-  }, []);
+  const updateMapping = useCallback(
+    (external: string, internalId: string | null) => {
+      setMappings(prev =>
+        prev.map(m =>
+          m.external === external
+            ? { ...m, internal_id: internalId, auto_matched: false }
+            : m,
+        ),
+      );
+    },
+    [],
+  );
 
   const getMappingRecord = useCallback((): Record<string, string> => {
     const record: Record<string, string> = {};

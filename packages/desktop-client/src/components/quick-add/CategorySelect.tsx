@@ -3,8 +3,8 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Input } from '@actual-app/components/input';
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
 import type { Category, FrecencyEntry } from './types';
@@ -19,18 +19,24 @@ type CategorySelectProps = {
 // 6.9: Color map for German L1 category groups (by group name keyword)
 // Maps a lowercase keyword found in the group name to a color dot
 const GROUP_COLORS: Array<{ keywords: string[]; color: string }> = [
-  { keywords: ['wohnen', 'miete', 'haus'], color: '#6366f1' },       // indigo — Housing
-  { keywords: ['essen', 'lebensmittel', 'restaurant', 'food'], color: '#f59e0b' }, // amber — Food
+  { keywords: ['wohnen', 'miete', 'haus'], color: '#6366f1' }, // indigo — Housing
+  {
+    keywords: ['essen', 'lebensmittel', 'restaurant', 'food'],
+    color: '#f59e0b',
+  }, // amber — Food
   { keywords: ['transport', 'auto', 'fahrt', 'verkehr'], color: '#3b82f6' }, // blue — Transport
-  { keywords: ['gesundheit', 'arzt', 'medizin'], color: '#10b981' },  // emerald — Health
-  { keywords: ['freizeit', 'hobby', 'sport', 'unterhaltung'], color: '#ec4899' }, // pink — Leisure
+  { keywords: ['gesundheit', 'arzt', 'medizin'], color: '#10b981' }, // emerald — Health
+  {
+    keywords: ['freizeit', 'hobby', 'sport', 'unterhaltung'],
+    color: '#ec4899',
+  }, // pink — Leisure
   { keywords: ['kleidung', 'mode', 'bekleidung'], color: '#8b5cf6' }, // violet — Clothing
-  { keywords: ['bildung', 'schule', 'kurs'], color: '#0ea5e9' },      // sky — Education
-  { keywords: ['versicherung', 'vorsorge'], color: '#f97316' },       // orange — Insurance
+  { keywords: ['bildung', 'schule', 'kurs'], color: '#0ea5e9' }, // sky — Education
+  { keywords: ['versicherung', 'vorsorge'], color: '#f97316' }, // orange — Insurance
   { keywords: ['einkommen', 'gehalt', 'lohn', 'einnahmen'], color: '#22c55e' }, // green — Income
   { keywords: ['sparen', 'investition', 'anlage'], color: '#14b8a6' }, // teal — Savings
-  { keywords: ['haustier', 'tier'], color: '#a78bfa' },               // light violet — Pets
-  { keywords: ['kind', 'kinder', 'familie'], color: '#fb7185' },      // rose — Family
+  { keywords: ['haustier', 'tier'], color: '#a78bfa' }, // light violet — Pets
+  { keywords: ['kind', 'kinder', 'familie'], color: '#fb7185' }, // rose — Family
 ];
 
 const DEFAULT_COLOR = '#94a3b8'; // slate — fallback
@@ -79,7 +85,12 @@ function fuzzyMatch(text: string, query: string): boolean {
   return true;
 }
 
-export function CategorySelect({ value, onChange, categories, frecency = [] }: CategorySelectProps) {
+export function CategorySelect({
+  value,
+  onChange,
+  categories,
+  frecency = [],
+}: CategorySelectProps) {
   const { t } = useTranslation();
   const [query, setQuery] = useState(value);
   const [open, setOpen] = useState(false);
@@ -101,10 +112,13 @@ export function CategorySelect({ value, onChange, categories, frecency = [] }: C
     [onChange],
   );
 
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setQuery(e.target.value);
-    setOpen(true);
-  }, []);
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setQuery(e.target.value);
+      setOpen(true);
+    },
+    [],
+  );
 
   const handleFocus = useCallback(() => setOpen(true), []);
 
@@ -119,7 +133,9 @@ export function CategorySelect({ value, onChange, categories, frecency = [] }: C
 
   return (
     <View ref={containerRef} style={{ position: 'relative', flex: 1 }}>
-      <View style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+      <View
+        style={{ position: 'relative', display: 'flex', alignItems: 'center' }}
+      >
         {/* Color dot for selected category */}
         {currentCat && (
           <View
@@ -186,11 +202,19 @@ export function CategorySelect({ value, onChange, categories, frecency = [] }: C
                 <ColorDot color={color} />
                 <View style={{ flexDirection: 'column', flex: 1 }}>
                   {cat.group_name && (
-                    <Text style={{ fontSize: 10, color: theme.pageTextSubdued, marginBottom: 1 }}>
+                    <Text
+                      style={{
+                        fontSize: 10,
+                        color: theme.pageTextSubdued,
+                        marginBottom: 1,
+                      }}
+                    >
                       {cat.group_name}
                     </Text>
                   )}
-                  <Text style={{ fontSize: 13, color: theme.menuItemText }}>{cat.name}</Text>
+                  <Text style={{ fontSize: 13, color: theme.menuItemText }}>
+                    {cat.name}
+                  </Text>
                 </View>
               </View>
             );

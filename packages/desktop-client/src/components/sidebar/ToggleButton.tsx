@@ -4,7 +4,10 @@ import { useTranslation } from 'react-i18next';
 
 import { Button } from '@actual-app/components/button';
 import { SvgPin } from '@actual-app/components/icons/v1';
-import { SvgArrowButtonLeft1, SvgArrowButtonRight1 } from '@actual-app/components/icons/v2';
+import {
+  SvgArrowButtonLeft1,
+  SvgArrowButtonRight1,
+} from '@actual-app/components/icons/v2';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
@@ -14,9 +17,7 @@ type ToggleButtonProps = {
   style?: CSSProperties;
 };
 
-export function ToggleButton({
-  style,
-}: ToggleButtonProps) {
+export function ToggleButton({ style }: ToggleButtonProps) {
   const { t } = useTranslation();
   const { state, toggleSidebar } = useSidebar();
   const isExpanded = state === 'expanded';

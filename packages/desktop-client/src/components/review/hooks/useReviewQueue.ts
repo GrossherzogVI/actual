@@ -4,11 +4,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { send } from 'loot-core/platform/client/connection';
 
 import type {
+  PriorityFilter,
   ReviewCount,
   ReviewItem,
   TypeFilter,
-  PriorityFilter,
-} from '../types';
+} from '@/components/review/types';
 
 const PAGE_SIZE = 50;
 

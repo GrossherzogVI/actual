@@ -2,9 +2,11 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
+
+import { WidgetCard } from './WidgetCard';
 
 import { useFormat } from '@desktop-client/hooks/useFormat';
 import { useOffBudgetAccounts } from '@desktop-client/hooks/useOffBudgetAccounts';
@@ -12,11 +14,11 @@ import { useOnBudgetAccounts } from '@desktop-client/hooks/useOnBudgetAccounts';
 import { useSheetValue } from '@desktop-client/hooks/useSheetValue';
 import { accountBalance } from '@desktop-client/spreadsheet/bindings';
 
-import { WidgetCard } from './WidgetCard';
-
 function AccountRow({ account }: { account: { id: string; name: string } }) {
   const format = useFormat();
-  const balance = useSheetValue<'account', 'balance'>(accountBalance(account.id));
+  const balance = useSheetValue<'account', 'balance'>(
+    accountBalance(account.id),
+  );
 
   return (
     <View
@@ -45,7 +47,10 @@ function AccountRow({ account }: { account: { id: string; name: string } }) {
           fontSize: 13,
           fontWeight: 500,
           whiteSpace: 'nowrap',
-          color: balance != null && balance < 0 ? (theme.errorText ?? '#ef4444') : theme.pageText,
+          color:
+            balance != null && balance < 0
+              ? (theme.errorText ?? '#ef4444')
+              : theme.pageText,
         }}
       >
         {balance != null ? format(balance, 'financial') : '--'}

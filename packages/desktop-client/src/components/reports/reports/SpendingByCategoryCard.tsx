@@ -1,9 +1,9 @@
 // @ts-strict-ignore
 import React from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
 import { useAnalyticsData } from '@desktop-client/components/analytics/hooks/useAnalyticsData';
@@ -38,7 +38,7 @@ export function SpendingByCategoryCard() {
     return (
       <CardShell title={t('Top Spending')}>
         <Text style={{ color: theme.pageTextSubdued, fontSize: 12 }}>
-          {t('No data yet')}
+          <Trans>No data yet</Trans>
         </Text>
       </CardShell>
     );
@@ -70,7 +70,9 @@ export function SpendingByCategoryCard() {
               >
                 {cat.name}
               </Text>
-              <Text style={{ fontSize: 11, fontWeight: 600, color: theme.pageText }}>
+              <Text
+                style={{ fontSize: 11, fontWeight: 600, color: theme.pageText }}
+              >
                 {formatCents(cat.amount)}
               </Text>
             </View>
@@ -105,7 +107,7 @@ export function SpendingByCategoryCard() {
         }}
       >
         <Text style={{ fontSize: 11, color: theme.pageTextSubdued }}>
-          {t('Total')}
+          {<Trans>Total</Trans>}
         </Text>
         <Text
           style={{

@@ -1,7 +1,7 @@
 import * as path from 'path';
 
-import tailwindcss from '@tailwindcss/vite';
 import inject from '@rollup/plugin-inject';
+import tailwindcss from '@tailwindcss/vite';
 import basicSsl from '@vitejs/plugin-basic-ssl';
 import react from '@vitejs/plugin-react';
 import type { PreRenderedAsset } from 'rollup';
@@ -141,7 +141,7 @@ export default defineConfig(async ({ mode }) => {
           chunkFileNames: 'static/js/[name].[hash].chunk.js',
           entryFileNames: 'static/js/[name].[hash].js',
           manualChunks: {
-            'recharts': ['recharts'],
+            recharts: ['recharts'],
             'react-vendor': ['react', 'react-dom', 'react-router'],
             'date-fns': ['date-fns'],
           },

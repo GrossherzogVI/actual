@@ -1,8 +1,8 @@
 import React from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
 import { formatAmountEur } from './types';
@@ -33,7 +33,13 @@ function PriceChange({ isIncrease }: { isIncrease: boolean }) {
   );
 }
 
-function TimelineItem({ item, isLast }: { item: PriceHistoryItem; isLast: boolean }) {
+function TimelineItem({
+  item,
+  isLast,
+}: {
+  item: PriceHistoryItem;
+  isLast: boolean;
+}) {
   const { t } = useTranslation();
   const isIncrease = item.new_amount > item.old_amount;
   const diffCents = item.new_amount - item.old_amount;
@@ -51,7 +57,9 @@ function TimelineItem({ item, isLast }: { item: PriceHistoryItem; isLast: boolea
             width: 10,
             height: 10,
             borderRadius: 5,
-            backgroundColor: isIncrease ? theme.errorText : theme.pageTextPositive,
+            backgroundColor: isIncrease
+              ? theme.errorText
+              : theme.pageTextPositive,
             marginTop: 4,
             flexShrink: 0,
           }}
@@ -71,12 +79,31 @@ function TimelineItem({ item, isLast }: { item: PriceHistoryItem; isLast: boolea
 
       {/* Content */}
       <View style={{ flex: 1, paddingBottom: isLast ? 0 : 20 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
-          <Text style={{ fontSize: 13, fontWeight: 600, color: theme.pageText }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+            marginBottom: 4,
+          }}
+        >
+          <Text
+            style={{ fontSize: 13, fontWeight: 600, color: theme.pageText }}
+          >
             {formatAmountEur(item.old_amount)}
           </Text>
-          <Text style={{ fontSize: 12, color: theme.pageTextSubdued, margin: '0 2px' }}>→</Text>
-          <Text style={{ fontSize: 13, fontWeight: 600, color: theme.pageText }}>
+          <Text
+            style={{
+              fontSize: 12,
+              color: theme.pageTextSubdued,
+              margin: '0 2px',
+            }}
+          >
+            →
+          </Text>
+          <Text
+            style={{ fontSize: 13, fontWeight: 600, color: theme.pageText }}
+          >
             {formatAmountEur(item.new_amount)}
           </Text>
           <PriceChange isIncrease={isIncrease} />
@@ -119,7 +146,7 @@ export function PriceHistoryTimeline({ items }: PriceHistoryTimelineProps) {
     return (
       <View style={{ padding: '20px 0' }}>
         <Text style={{ color: theme.pageTextSubdued, fontSize: 13 }}>
-          {t('No price history recorded.')}
+          <Trans>No price history recorded.</Trans>
         </Text>
       </View>
     );
@@ -127,13 +154,18 @@ export function PriceHistoryTimeline({ items }: PriceHistoryTimelineProps) {
 
   // Show most recent first
   const sorted = [...items].sort(
-    (a, b) => new Date(b.change_date).getTime() - new Date(a.change_date).getTime(),
+    (a, b) =>
+      new Date(b.change_date).getTime() - new Date(a.change_date).getTime(),
   );
 
   return (
     <View style={{ padding: '8px 0' }}>
       {sorted.map((item, index) => (
-        <TimelineItem key={item.id} item={item} isLast={index === sorted.length - 1} />
+        <TimelineItem
+          key={item.id}
+          item={item}
+          isLast={index === sorted.length - 1}
+        />
       ))}
     </View>
   );

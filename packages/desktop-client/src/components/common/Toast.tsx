@@ -11,8 +11,8 @@ import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Button } from '@actual-app/components/button';
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 import { css, keyframes } from '@emotion/css';
 
@@ -146,10 +146,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       const id = crypto.randomUUID();
       const duration = options?.duration ?? DEFAULT_DURATION;
 
-      setToasts(prev => [
-        ...prev,
-        { id, message, exiting: false, ...options },
-      ]);
+      setToasts(prev => [...prev, { id, message, exiting: false, ...options }]);
 
       const timer = setTimeout(() => dismiss(id), duration);
       timers.current.set(id, timer);

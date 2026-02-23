@@ -4,26 +4,27 @@ import { Trans, useTranslation } from 'react-i18next';
 
 import { Button } from '@actual-app/components/button';
 import { Input } from '@actual-app/components/input';
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
-
 import { useQuery } from '@tanstack/react-query';
-import { send } from 'loot-core/platform/client/connection';
 
-import { accountQueries } from '@desktop-client/accounts';
+import { send } from 'loot-core/platform/client/connection';
 
 import { AmountInput } from './AmountInput';
 import { CategorySelect } from './CategorySelect';
 import { ExpenseTrainMode } from './ExpenseTrainMode';
-import { PresetBar } from './PresetBar';
-import { RecentTemplates } from './RecentTemplates';
 import { useCalculator } from './hooks/useCalculator';
 import { useFrecency } from './hooks/useFrecency';
 import { usePresets } from './hooks/usePresets';
 import { useQuickAdd } from './hooks/useQuickAdd';
-import { useToast } from '../common/Toast';
+import { PresetBar } from './PresetBar';
+import { RecentTemplates } from './RecentTemplates';
 import type { Category, RecentTemplate } from './types';
+
+import { accountQueries } from '@desktop-client/accounts';
+
+import { useToast } from '@/components/common/Toast';
 
 type QuickAddOverlayProps = {
   isOpen: boolean;
@@ -31,9 +32,10 @@ type QuickAddOverlayProps = {
 };
 
 function formatEur(cents: number): string {
-  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(
-    Math.abs(cents) / 100,
-  );
+  return new Intl.NumberFormat('de-DE', {
+    style: 'currency',
+    currency: 'EUR',
+  }).format(Math.abs(cents) / 100);
 }
 
 export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
@@ -41,7 +43,9 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
   const toast = useToast();
 
   // Default account: first on-budget account
-  const { data: onBudgetAccounts = [] } = useQuery(accountQueries.listOnBudget());
+  const { data: onBudgetAccounts = [] } = useQuery(
+    accountQueries.listOnBudget(),
+  );
   const defaultAccountId = onBudgetAccounts[0]?.id;
 
   const {
@@ -74,16 +78,20 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
 
   // Load categories once on mount
   useEffect(() => {
-    void (send as Function)('get-categories', {}).then((result: unknown) => {
-      if (result && Array.isArray((result as { list?: unknown[] }).list)) {
-        const raw = (result as { list: { id: string; name: string; group_id: string }[] }).list;
-        setCategories(
-          raw.map(c => ({ id: c.id, name: c.name, group_id: c.group_id })),
-        );
-      }
-    }).catch(() => {
-      // Category loading failed — user can still submit without category
-    });
+    void (send as Function)('get-categories', {})
+      .then((result: unknown) => {
+        if (result && Array.isArray((result as { list?: unknown[] }).list)) {
+          const raw = (
+            result as { list: { id: string; name: string; group_id: string }[] }
+          ).list;
+          setCategories(
+            raw.map(c => ({ id: c.id, name: c.name, group_id: c.group_id })),
+          );
+        }
+      })
+      .catch(() => {
+        // Category loading failed — user can still submit without category
+      });
   }, []);
 
   // Load 5 most recent transactions for Recent Templates (6.6)
@@ -92,24 +100,26 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
     void (send as Function)('transactions-get', {
       accountId: null,
       options: { limit: 5, sort: [{ field: 'date', order: 'desc' }] },
-    }).then((result: unknown) => {
-      const list = Array.isArray(result)
-        ? result
-        : Array.isArray((result as any)?.transactions)
-          ? (result as any).transactions
-          : [];
-      const templates: RecentTemplate[] = list.slice(0, 5).map((tx: any) => ({
-        payee: tx.payee_name ?? tx.payee ?? '',
-        amount: Math.abs(tx.amount ?? 0),
-        categoryId: tx.category ?? '',
-        categoryName: tx.category_name ?? '',
-        accountId: tx.account ?? '',
-        date: tx.date ?? new Date().toISOString().slice(0, 10),
-      }));
-      setRecentTemplates(templates);
-    }).catch(() => {
-      // Recent templates unavailable — graceful degradation
-    });
+    })
+      .then((result: unknown) => {
+        const list = Array.isArray(result)
+          ? result
+          : Array.isArray((result as any)?.transactions)
+            ? (result as any).transactions
+            : [];
+        const templates: RecentTemplate[] = list.slice(0, 5).map((tx: any) => ({
+          payee: tx.payee_name ?? tx.payee ?? '',
+          amount: Math.abs(tx.amount ?? 0),
+          categoryId: tx.category ?? '',
+          categoryName: tx.category_name ?? '',
+          accountId: tx.account ?? '',
+          date: tx.date ?? new Date().toISOString().slice(0, 10),
+        }));
+        setRecentTemplates(templates);
+      })
+      .catch(() => {
+        // Recent templates unavailable — graceful degradation
+      });
   }, [isOpen]);
 
   // 8.6: When category changes (and amount is empty), fetch last 10 transactions
@@ -123,46 +133,49 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
     void (send as Function)('transactions-get', {
       categoryId: form.categoryId,
       limit: 10,
-    }).then((result: unknown) => {
-      const list = Array.isArray(result)
-        ? result
-        : Array.isArray((result as any)?.transactions)
-          ? (result as any).transactions
-          : [];
+    })
+      .then((result: unknown) => {
+        const list = Array.isArray(result)
+          ? result
+          : Array.isArray((result as any)?.transactions)
+            ? (result as any).transactions
+            : [];
 
-      if (list.length === 0) {
-        setAmountPlaceholder('');
-        return;
-      }
-
-      // Compute mode (most frequent absolute amount)
-      const freq = new Map<number, number>();
-      for (const tx of list) {
-        const abs = Math.abs(tx.amount ?? 0);
-        if (abs > 0) freq.set(abs, (freq.get(abs) ?? 0) + 1);
-      }
-
-      let modeAmount = 0;
-      let modeCount = 0;
-      for (const [amt, cnt] of freq) {
-        if (cnt > modeCount || (cnt === modeCount && amt > modeAmount)) {
-          modeAmount = amt;
-          modeCount = cnt;
+        if (list.length === 0) {
+          setAmountPlaceholder('');
+          return;
         }
-      }
 
-      if (modeAmount > 0) {
-        setAmountPlaceholder(
-          new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(
-            modeAmount / 100,
-          ),
-        );
-      } else {
+        // Compute mode (most frequent absolute amount)
+        const freq = new Map<number, number>();
+        for (const tx of list) {
+          const abs = Math.abs(tx.amount ?? 0);
+          if (abs > 0) freq.set(abs, (freq.get(abs) ?? 0) + 1);
+        }
+
+        let modeAmount = 0;
+        let modeCount = 0;
+        for (const [amt, cnt] of freq) {
+          if (cnt > modeCount || (cnt === modeCount && amt > modeAmount)) {
+            modeAmount = amt;
+            modeCount = cnt;
+          }
+        }
+
+        if (modeAmount > 0) {
+          setAmountPlaceholder(
+            new Intl.NumberFormat('de-DE', {
+              style: 'currency',
+              currency: 'EUR',
+            }).format(modeAmount / 100),
+          );
+        } else {
+          setAmountPlaceholder('');
+        }
+      })
+      .catch(() => {
         setAmountPlaceholder('');
-      }
-    }).catch(() => {
-      setAmountPlaceholder('');
-    });
+      });
   }, [form.categoryId, form.amount]);
 
   // Re-evaluate amount whenever raw input changes
@@ -184,7 +197,9 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
   const focusAmount = useCallback(() => {
     // Small timeout so React can flush state updates first
     setTimeout(() => {
-      const el = document.querySelector<HTMLInputElement>('[data-quick-add-amount]');
+      const el = document.querySelector<HTMLInputElement>(
+        '[data-quick-add-amount]',
+      );
       el?.focus();
       el?.select();
     }, 30);
@@ -225,7 +240,17 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
       }
     }
     setSubmitting(false);
-  }, [submitting, submitTransaction, form.evaluatedAmount, trainMode, resetForm, onClose, toast, t, focusAmount]);
+  }, [
+    submitting,
+    submitTransaction,
+    form.evaluatedAmount,
+    trainMode,
+    resetForm,
+    onClose,
+    toast,
+    t,
+    focusAmount,
+  ]);
 
   // 6.1: Save + New — reset form, keep overlay open, focus amount
   const handleSubmitAndNew = useCallback(async () => {
@@ -248,7 +273,15 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
       focusAmount();
     }
     setSubmitting(false);
-  }, [submitting, submitTransaction, form.evaluatedAmount, resetForm, toast, t, focusAmount]);
+  }, [
+    submitting,
+    submitTransaction,
+    form.evaluatedAmount,
+    resetForm,
+    toast,
+    t,
+    focusAmount,
+  ]);
 
   // 6.2: Save + Duplicate — reset amount only, keep category/payee/account
   const handleSubmitAndDuplicate = useCallback(async () => {
@@ -271,7 +304,15 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
       focusAmount();
     }
     setSubmitting(false);
-  }, [submitting, submitTransaction, form.evaluatedAmount, resetAmountOnly, toast, t, focusAmount]);
+  }, [
+    submitting,
+    submitTransaction,
+    form.evaluatedAmount,
+    resetAmountOnly,
+    toast,
+    t,
+    focusAmount,
+  ]);
 
   // 6.3: Park for Later — save as draft to review queue
   const handlePark = useCallback(async () => {
@@ -293,7 +334,13 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
       // Park failed silently
     }
     setSubmitting(false);
-  }, [submitting, form.evaluatedAmount, form.categoryId, resetForm, focusAmount]);
+  }, [
+    submitting,
+    form.evaluatedAmount,
+    form.categoryId,
+    resetForm,
+    focusAmount,
+  ]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -364,10 +411,16 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
             borderBottom: `1px solid ${theme.tableBorderSeparator}`,
           }}
         >
-          <Text style={{ fontSize: 13, fontWeight: 600, color: theme.pageText }}>
+          <Text
+            style={{ fontSize: 13, fontWeight: 600, color: theme.pageText }}
+          >
             <Trans>Quick Add</Trans>
           </Text>
-          <Button variant="bare" onPress={onClose} style={{ padding: '2px 6px', fontSize: 16 }}>
+          <Button
+            variant="bare"
+            onPress={onClose}
+            style={{ padding: '2px 6px', fontSize: 16 }}
+          >
             ×
           </Button>
         </View>
@@ -400,7 +453,9 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
               justifyContent: 'center',
               padding: 0,
             }}
-            aria-label={isIncome ? t('Switch to expense') : t('Switch to income')}
+            aria-label={
+              isIncome ? t('Switch to expense') : t('Switch to income')
+            }
           >
             {isIncome ? '+' : '−'}
           </Button>
@@ -479,13 +534,16 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
         </View>
 
         {/* Recent templates (6.6) */}
-        <RecentTemplates templates={recentTemplates} onSelect={tpl => {
-          setField('payee', tpl.payee);
-          setField('amount', String(tpl.amount / 100));
-          setField('categoryId', tpl.categoryId);
-          setField('categoryName', tpl.categoryName);
-          setField('accountId', tpl.accountId);
-        }} />
+        <RecentTemplates
+          templates={recentTemplates}
+          onSelect={tpl => {
+            setField('payee', tpl.payee);
+            setField('amount', String(tpl.amount / 100));
+            setField('categoryId', tpl.categoryId);
+            setField('categoryName', tpl.categoryName);
+            setField('accountId', tpl.accountId);
+          }}
+        />
 
         {/* Train mode bar */}
         <ExpenseTrainMode

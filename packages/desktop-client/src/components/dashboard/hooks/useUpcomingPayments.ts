@@ -9,7 +9,10 @@ import type { ScheduleEntity } from 'loot-core/types/models';
 import { usePayees } from '@desktop-client/hooks/usePayees';
 import { useSchedules } from '@desktop-client/hooks/useSchedules';
 
-import type { ContractEntity, UpcomingPayment } from '../types';
+import type {
+  ContractEntity,
+  UpcomingPayment,
+} from '@/components/dashboard/types';
 
 function getNextPaymentDate(contract: ContractEntity, from: Date): Date | null {
   if (!contract.start_date) return null;
@@ -29,7 +32,11 @@ function getPaymentDatesWithinDays(
   contract: ContractEntity,
   days: number,
 ): Date[] {
-  if (!contract.amount || contract.status === 'cancelled' || contract.status === 'paused') {
+  if (
+    !contract.amount ||
+    contract.status === 'cancelled' ||
+    contract.status === 'paused'
+  ) {
     return [];
   }
 
@@ -48,7 +55,7 @@ function getPaymentDatesWithinDays(
   } else if (contract.interval === 'weekly') {
     if (!contract.start_date) return [];
     const start = new Date(contract.start_date);
-    let current = new Date(start);
+    const current = new Date(start);
     while (current < from) {
       current.setDate(current.getDate() + 7);
     }
@@ -59,7 +66,11 @@ function getPaymentDatesWithinDays(
   } else if (contract.interval === 'annual') {
     if (!contract.start_date) return [];
     const start = new Date(contract.start_date);
-    const candidate = new Date(from.getFullYear(), start.getMonth(), start.getDate());
+    const candidate = new Date(
+      from.getFullYear(),
+      start.getMonth(),
+      start.getDate(),
+    );
     if (candidate >= from && candidate <= until) {
       dates.push(candidate);
     }
@@ -84,7 +95,9 @@ export function useUpcomingPayments(withinDays = 14): {
   loading: boolean;
   error: string | null;
 } {
-  const [contractPayments, setContractPayments] = useState<UpcomingPayment[]>([]);
+  const [contractPayments, setContractPayments] = useState<UpcomingPayment[]>(
+    [],
+  );
   const [contractsLoading, setContractsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -93,10 +106,9 @@ export function useUpcomingPayments(withinDays = 14): {
     () => q('schedules').select('*').filter({ '_account.closed': false }),
     [],
   );
-  const {
-    schedules,
-    isLoading: schedulesLoading,
-  } = useSchedules({ query: schedulesQuery });
+  const { schedules, isLoading: schedulesLoading } = useSchedules({
+    query: schedulesQuery,
+  });
 
   // Fetch payees for schedule name resolution
   const { data: payees } = usePayees();
@@ -183,8 +195,8 @@ export function useUpcomingPayments(withinDays = 14): {
     }
 
     // Merge and sort by date
-    return [...contractPayments, ...schedulePayments].sort(
-      (a, b) => a.date.localeCompare(b.date),
+    return [...contractPayments, ...schedulePayments].sort((a, b) =>
+      a.date.localeCompare(b.date),
     );
   }, [contractPayments, schedules, payeesById, withinDays]);
 

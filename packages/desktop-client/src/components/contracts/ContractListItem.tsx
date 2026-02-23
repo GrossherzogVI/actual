@@ -1,14 +1,14 @@
 // @ts-strict-ignore
 import React, { useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
-import { useNavigate } from '@desktop-client/hooks/useNavigate';
-
 import { ContractHealthBadge } from './ContractHealthBadge';
+import { displayAmount } from './ContractsPage';
+import type { CostView } from './ContractsPage';
 import {
   CONTRACT_INTERVAL_OPTIONS,
   CONTRACT_STATUS_COLORS,
@@ -17,10 +17,12 @@ import {
   isDeadlineSoon,
 } from './types';
 import type { ContractEntity } from './types';
-import { displayAmount } from './ContractsPage';
-import type { CostView } from './ContractsPage';
 
-const INTERVAL_LABELS: Record<string, string> = Object.fromEntries(CONTRACT_INTERVAL_OPTIONS);
+import { useNavigate } from '@desktop-client/hooks/useNavigate';
+
+const INTERVAL_LABELS: Record<string, string> = Object.fromEntries(
+  CONTRACT_INTERVAL_OPTIONS,
+);
 
 const DE_DATE_FORMATTER = new Intl.DateTimeFormat('de-DE', {
   day: '2-digit',
@@ -113,9 +115,10 @@ export function ContractListItem({
 
   const deadlineSoon = isDeadlineSoon(contract.cancellation_deadline);
   const amt = displayAmount(contract, costView);
-  const intervalLabel = costView === 'annual'
-    ? t('year')
-    : (INTERVAL_LABELS[contract.interval] ?? contract.interval);
+  const intervalLabel =
+    costView === 'annual'
+      ? t('year')
+      : (INTERVAL_LABELS[contract.interval] ?? contract.interval);
 
   return (
     <View
@@ -129,7 +132,9 @@ export function ContractListItem({
         cursor: 'pointer',
         fontSize: 13,
         gap: 4,
-        backgroundColor: isSelected ? `${theme.buttonPrimaryBackground}12` : undefined,
+        backgroundColor: isSelected
+          ? `${theme.buttonPrimaryBackground}12`
+          : undefined,
       }}
       data-contract-row
     >
@@ -149,9 +154,14 @@ export function ContractListItem({
         <input
           type="checkbox"
           checked={isSelected}
-          onChange={() => {/* controlled via click handler */}}
+          onChange={() => {
+            /* controlled via click handler */
+          }}
           onClick={e => e.stopPropagation()}
-          style={{ cursor: 'pointer', accentColor: theme.buttonPrimaryBackground }}
+          style={{
+            cursor: 'pointer',
+            accentColor: theme.buttonPrimaryBackground,
+          }}
         />
       </View>
 
@@ -184,7 +194,14 @@ export function ContractListItem({
         )}
         {/* Tags */}
         {Array.isArray(contract.tags) && contract.tags.length > 0 && (
-          <View style={{ flexDirection: 'row', gap: 4, marginTop: 3, flexWrap: 'wrap' }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              gap: 4,
+              marginTop: 3,
+              flexWrap: 'wrap',
+            }}
+          >
             {contract.tags.map(tag => (
               <Text
                 key={tag}
@@ -267,7 +284,7 @@ export function ContractListItem({
                   color: theme.warningText,
                 }}
               >
-                {t('Soon!')}
+                <Trans>Soon!</Trans>
               </Text>
             )}
           </Text>

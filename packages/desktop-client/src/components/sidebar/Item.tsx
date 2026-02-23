@@ -1,17 +1,14 @@
 import React from 'react';
-import type { ComponentType, SVGProps, ReactNode, CSSProperties } from 'react';
+import type { ComponentType, CSSProperties, ReactNode, SVGProps } from 'react';
 import { NavLink, useLocation } from 'react-router';
 
-import {
-  SidebarMenuItem,
-  SidebarMenuButton,
-} from '@/components/ui/sidebar';
+import { SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 
 type ItemProps = {
   title: string;
   Icon:
-  | ComponentType<SVGProps<SVGElement>>
-  | ComponentType<SVGProps<SVGSVGElement>>;
+    | ComponentType<SVGProps<SVGElement>>
+    | ComponentType<SVGProps<SVGSVGElement>>;
   to?: string;
   children?: ReactNode;
   style?: CSSProperties;
@@ -31,7 +28,8 @@ export function Item({
   forceActive = false,
 }: ItemProps) {
   const location = useLocation();
-  const isActive = forceActive || (to ? location.pathname.startsWith(to) : false);
+  const isActive =
+    forceActive || (to ? location.pathname.startsWith(to) : false);
 
   const content = (
     <>
@@ -47,17 +45,13 @@ export function Item({
         isActive={isActive}
         onClick={!to ? onClick : undefined}
         tooltip={title}
+        className={
+          isActive ? 'border-l-2 border-sidebar-primary rounded-l-none' : ''
+        }
       >
-        {to ? (
-          <NavLink to={to}>
-            {content}
-          </NavLink>
-        ) : (
-          content
-        )}
+        {to ? <NavLink to={to}>{content}</NavLink> : content}
       </SidebarMenuButton>
       {children && <div className="mt-1">{children}</div>}
     </SidebarMenuItem>
   );
 }
-

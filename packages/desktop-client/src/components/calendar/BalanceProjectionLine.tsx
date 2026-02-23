@@ -1,12 +1,12 @@
 // @ts-strict-ignore
 import React from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
-interface Props {
+type Props = {
   balance: number; // cents
   /** Monthly income estimate (cents) — used to determine "yellow zone" threshold */
   monthlyIncome?: number;
@@ -15,7 +15,11 @@ interface Props {
   threshold?: number | null;
 }
 
-function getBarColor(balance: number, redThreshold: number | null, yellowThreshold: number): string {
+function getBarColor(
+  balance: number,
+  redThreshold: number | null,
+  yellowThreshold: number,
+): string {
   if (balance < 0) return theme.errorText;
   if (redThreshold !== null && balance < redThreshold) return theme.errorText;
   if (balance < yellowThreshold) return theme.warningText;
@@ -78,7 +82,7 @@ export function BalanceProjectionLine({
           width: 80,
         }}
       >
-        {t('Balance')}
+        <Trans>Balance</Trans>
       </Text>
 
       {/* Bar track */}

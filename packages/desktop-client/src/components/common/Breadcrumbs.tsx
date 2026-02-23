@@ -4,8 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router';
 
 import { Button } from '@actual-app/components/button';
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
 import { useNavigate } from '@desktop-client/hooks/useNavigate';
@@ -19,21 +19,21 @@ type BreadcrumbSegment = {
 // Add entries here when new pages are introduced.
 const SEGMENT_LABELS: Record<string, string> = {
   '': 'Dashboard',
-  'dashboard': 'Dashboard',
-  'accounts': 'Accounts',
-  'budget': 'Budget',
-  'reports': 'Reports',
-  'schedules': 'Schedules',
-  'payees': 'Payees',
-  'rules': 'Rules',
-  'settings': 'Settings',
-  'contracts': 'Contracts',
-  'documents': 'Documents',
-  'forecast': 'Forecast',
+  dashboard: 'Dashboard',
+  accounts: 'Accounts',
+  budget: 'Budget',
+  reports: 'Reports',
+  schedules: 'Schedules',
+  payees: 'Payees',
+  rules: 'Rules',
+  settings: 'Settings',
+  contracts: 'Contracts',
+  documents: 'Documents',
+  forecast: 'Forecast',
   'ai-review': 'AI Review',
-  'import': 'Import',
-  'calendar': 'Calendar',
-  'tags': 'Tags',
+  import: 'Import',
+  calendar: 'Calendar',
+  tags: 'Tags',
 };
 
 function labelForSegment(segment: string): string {
@@ -91,14 +91,25 @@ export function Breadcrumbs({ overrides, style }: BreadcrumbsProps) {
       {segments.map((seg, idx) => {
         const isLast = idx === segments.length - 1;
         return (
-          <View key={seg.path} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <View
+            key={seg.path}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+          >
             {idx > 0 && (
-              <Text style={{ fontSize: 12, color: theme.pageTextSubdued, userSelect: 'none' }}>
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: theme.pageTextSubdued,
+                  userSelect: 'none',
+                }}
+              >
                 ›
               </Text>
             )}
             {isLast ? (
-              <Text style={{ fontSize: 12, color: theme.pageText, fontWeight: 500 }}>
+              <Text
+                style={{ fontSize: 12, color: theme.pageText, fontWeight: 500 }}
+              >
                 {seg.label}
               </Text>
             ) : (

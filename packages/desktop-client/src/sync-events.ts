@@ -1,4 +1,3 @@
-import type { QueryClient } from '@tanstack/react-query';
 import { t } from 'i18next';
 
 import { listen, send } from 'loot-core/platform/client/connection';
@@ -17,6 +16,7 @@ import { payeeQueries } from './payees';
 import { loadPrefs } from './prefs/prefsSlice';
 import type { AppStore } from './redux/store';
 import { signOut } from './users/usersSlice';
+import type { QueryClient } from '@tanstack/react-query';
 
 export function listenForSyncEvent(store: AppStore, queryClient: QueryClient) {
   // TODO: Should this run on mobile too?

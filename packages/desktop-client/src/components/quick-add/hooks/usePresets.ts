@@ -1,7 +1,7 @@
 // @ts-strict-ignore
 import { useMemo } from 'react';
 
-import type { Category, Preset } from '../types';
+import type { Category, Preset } from '@/components/quick-add/types';
 
 const DEFAULT_PRESETS: Preset[] = [
   {

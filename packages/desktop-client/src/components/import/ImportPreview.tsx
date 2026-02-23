@@ -2,8 +2,8 @@
 import React from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
 import type { ImportPreviewRow } from './types';
@@ -111,7 +111,8 @@ export function ImportPreview({ rows, total, categoryNames = {} }: Props) {
           displayed.map((row, i) => {
             const hasCat = Boolean(row.suggested_category_id);
             const catName = row.suggested_category_id
-              ? (categoryNames[row.suggested_category_id] ?? row.suggested_category_id)
+              ? (categoryNames[row.suggested_category_id] ??
+                row.suggested_category_id)
               : null;
             return (
               <View
@@ -131,9 +132,7 @@ export function ImportPreview({ rows, total, categoryNames = {} }: Props) {
                 }}
               >
                 {/* Date */}
-                <Text
-                  style={{ flex: 1, fontSize: 13, color: theme.pageText }}
-                >
+                <Text style={{ flex: 1, fontSize: 13, color: theme.pageText }}>
                   {row.date}
                 </Text>
                 {/* Payee */}

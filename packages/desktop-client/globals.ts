@@ -1,4 +1,4 @@
-import '@playwright/test';
+import './srcplaywright/test';
 
 // Allow images to be imported
 declare module '*.png';

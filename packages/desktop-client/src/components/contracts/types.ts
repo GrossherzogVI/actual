@@ -90,7 +90,10 @@ export const CONTRACT_STATUS_COLORS: Record<string, string> = {
   discovered: '#3b82f6',
 };
 
-export const CONTRACT_HEALTH_COLORS: Record<'green' | 'yellow' | 'red', string> = {
+export const CONTRACT_HEALTH_COLORS: Record<
+  'green' | 'yellow' | 'red',
+  string
+> = {
   green: '#10b981',
   yellow: '#f59e0b',
   red: '#ef4444',
@@ -159,7 +162,10 @@ export function daysUntil(dateStr: string | null): number | null {
   return Math.round(diffMs / (1000 * 60 * 60 * 24));
 }
 
-export function isDeadlineSoon(dateStr: string | null, thresholdDays = 30): boolean {
+export function isDeadlineSoon(
+  dateStr: string | null,
+  thresholdDays = 30,
+): boolean {
   const days = daysUntil(dateStr);
   return days !== null && days >= 0 && days <= thresholdDays;
 }

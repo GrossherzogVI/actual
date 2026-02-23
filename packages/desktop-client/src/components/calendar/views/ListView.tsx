@@ -2,21 +2,22 @@
 import React, { useMemo } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
 import { SkeletonList } from '@desktop-client/components/common/Skeleton';
-import { WeekGroup } from '../WeekGroup';
-import type { CalendarEntry, WeekData } from '../types';
 
-interface Props {
+import type { CalendarEntry, WeekData } from '@/components/calendar/types';
+import { WeekGroup } from '@/components/calendar/WeekGroup';
+
+type Props = {
   weeks: WeekData[];
   allEntries: CalendarEntry[];
   loading: boolean;
   error: string | null;
   balanceThreshold?: number | null;
-}
+};
 
 function formatCurrency(cents: number): string {
   const abs = Math.abs(cents);
@@ -24,12 +25,22 @@ function formatCurrency(cents: number): string {
   return cents < 0 ? `-€${formatted}` : `€${formatted}`;
 }
 
-export function ListView({ weeks, allEntries, loading, error, balanceThreshold }: Props) {
+export function ListView({
+  weeks,
+  allEntries,
+  loading,
+  error,
+  balanceThreshold,
+}: Props) {
   const { t } = useTranslation();
 
   const summary = useMemo(() => {
-    const totalDue = allEntries.filter(e => e.amount < 0).reduce((s, e) => s + e.amount, 0);
-    const totalIncome = allEntries.filter(e => e.amount > 0).reduce((s, e) => s + e.amount, 0);
+    const totalDue = allEntries
+      .filter(e => e.amount < 0)
+      .reduce((s, e) => s + e.amount, 0);
+    const totalIncome = allEntries
+      .filter(e => e.amount > 0)
+      .reduce((s, e) => s + e.amount, 0);
     return { totalDue, totalIncome };
   }, [allEntries]);
 
@@ -73,17 +84,31 @@ export function ListView({ weeks, allEntries, loading, error, balanceThreshold }
         }}
       >
         <View>
-          <Text style={{ fontSize: 11, color: theme.pageTextSubdued, marginBottom: 2 }}>
+          <Text
+            style={{
+              fontSize: 11,
+              color: theme.pageTextSubdued,
+              marginBottom: 2,
+            }}
+          >
             <Trans>Total due</Trans>
           </Text>
-          <Text style={{ fontSize: 15, fontWeight: 600, color: theme.errorText }}>
+          <Text
+            style={{ fontSize: 15, fontWeight: 600, color: theme.errorText }}
+          >
             {formatCurrency(summary.totalDue)}
           </Text>
         </View>
 
         {summary.totalIncome !== 0 && (
           <View>
-            <Text style={{ fontSize: 11, color: theme.pageTextSubdued, marginBottom: 2 }}>
+            <Text
+              style={{
+                fontSize: 11,
+                color: theme.pageTextSubdued,
+                marginBottom: 2,
+              }}
+            >
               <Trans>Income expected</Trans>
             </Text>
             <Text style={{ fontSize: 15, fontWeight: 600, color: '#10b981' }}>
@@ -93,10 +118,18 @@ export function ListView({ weeks, allEntries, loading, error, balanceThreshold }
         )}
 
         <View>
-          <Text style={{ fontSize: 11, color: theme.pageTextSubdued, marginBottom: 2 }}>
+          <Text
+            style={{
+              fontSize: 11,
+              color: theme.pageTextSubdued,
+              marginBottom: 2,
+            }}
+          >
             <Trans>Payments</Trans>
           </Text>
-          <Text style={{ fontSize: 15, fontWeight: 600, color: theme.pageText }}>
+          <Text
+            style={{ fontSize: 15, fontWeight: 600, color: theme.pageText }}
+          >
             {allEntries.length}
           </Text>
         </View>
@@ -125,7 +158,11 @@ export function ListView({ weeks, allEntries, loading, error, balanceThreshold }
         </View>
       ) : (
         weeks.map(week => (
-          <WeekGroup key={week.weekStart} week={week} balanceThreshold={balanceThreshold} />
+          <WeekGroup
+            key={week.weekStart}
+            week={week}
+            balanceThreshold={balanceThreshold}
+          />
         ))
       )}
     </View>

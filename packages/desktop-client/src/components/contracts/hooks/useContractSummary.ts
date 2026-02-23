@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { send } from 'loot-core/platform/client/connection';
 
-import type { ContractSummary } from '../types';
+import type { ContractSummary } from '@/components/contracts/types';
 
 type UseContractSummaryReturn = {
   summary: ContractSummary | null;

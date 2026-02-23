@@ -9,9 +9,6 @@ import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
 import type { NavigateFunction } from 'react-router';
 
-import { bindActionCreators } from '@reduxjs/toolkit';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-
 import { send } from 'loot-core/platform/client/connection';
 import { q } from 'loot-core/shared/query';
 
@@ -29,6 +26,8 @@ import { configureAppStore } from './redux/store';
 import * as transactionsSlice from './transactions/transactionsSlice';
 import { redo, undo } from './undo';
 import * as usersSlice from './users/usersSlice';
+import { bindActionCreators } from '@reduxjs/toolkit';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const queryClient = new QueryClient();
 window.__TANSTACK_QUERY_CLIENT__ = queryClient;

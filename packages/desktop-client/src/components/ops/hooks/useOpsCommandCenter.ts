@@ -61,8 +61,12 @@ export function useOpsCommandCenter() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [moneyPulse, setMoneyPulse] = useState<MoneyPulse | null>(null);
-  const [adaptiveFocus, setAdaptiveFocus] = useState<AdaptiveFocus | null>(null);
-  const [playbooks, setPlaybooks] = useState<Array<Record<string, unknown>>>([]);
+  const [adaptiveFocus, setAdaptiveFocus] = useState<AdaptiveFocus | null>(
+    null,
+  );
+  const [playbooks, setPlaybooks] = useState<Array<Record<string, unknown>>>(
+    [],
+  );
   const [lanes, setLanes] = useState<Array<Record<string, unknown>>>([]);
   const [commandRuns, setCommandRuns] = useState<CommandChainRun[]>([]);
 
@@ -71,13 +75,16 @@ export function useOpsCommandCenter() {
     setError(null);
 
     try {
-      const [pulse, focus, workflowPlaybooks, delegateLanes, runs] = await Promise.all([
-        callHandler<MoneyPulse>('workflow-money-pulse'),
-        callHandler<AdaptiveFocus>('focus-adaptive-panel'),
-        callHandler<Array<Record<string, unknown>>>('workflow-playbook-list'),
-        callHandler<Array<Record<string, unknown>>>('delegate-list-lanes'),
-        callHandler<CommandChainRun[]>('workflow-command-runs', { limit: 20 }),
-      ]);
+      const [pulse, focus, workflowPlaybooks, delegateLanes, runs] =
+        await Promise.all([
+          callHandler<MoneyPulse>('workflow-money-pulse'),
+          callHandler<AdaptiveFocus>('focus-adaptive-panel'),
+          callHandler<Array<Record<string, unknown>>>('workflow-playbook-list'),
+          callHandler<Array<Record<string, unknown>>>('delegate-list-lanes'),
+          callHandler<CommandChainRun[]>('workflow-command-runs', {
+            limit: 20,
+          }),
+        ]);
 
       if (
         hasError(pulse) ||
@@ -96,7 +103,7 @@ export function useOpsCommandCenter() {
                 ? delegateLanes.error
                 : hasError(runs)
                   ? runs.error
-                : 'unknown-error';
+                  : 'unknown-error';
         setError(String(firstError));
       } else {
         setMoneyPulse(pulse);
@@ -180,11 +187,14 @@ export function useOpsCommandCenter() {
 
   const executeCommandChain = useCallback(
     async (chain: string, assignee?: string, dryRun = false) => {
-      const result = await callHandler<CommandChainRun>('workflow-execute-chain', {
-        chain,
-        assignee,
-        dryRun,
-      });
+      const result = await callHandler<CommandChainRun>(
+        'workflow-execute-chain',
+        {
+          chain,
+          assignee,
+          dryRun,
+        },
+      );
       await refresh();
       return result;
     },

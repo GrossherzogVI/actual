@@ -1,17 +1,20 @@
 // @ts-strict-ignore
 import React, { useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 
 import { Button } from '@actual-app/components/button';
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
 import type { CalendarEntry } from './types';
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 
-const EUR_FORMATTER = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
+const EUR_FORMATTER = new Intl.NumberFormat('de-DE', {
+  style: 'currency',
+  currency: 'EUR',
+});
 
 function formatEurCents(cents: number): string {
   return EUR_FORMATTER.format(Math.abs(cents) / 100);
@@ -57,7 +60,14 @@ type DayCellProps = {
   onToggle: () => void;
 };
 
-function DayCell({ date, isCurrentMonth, isToday, entries, isExpanded, onToggle }: DayCellProps) {
+function DayCell({
+  date,
+  isCurrentMonth,
+  isToday,
+  entries,
+  isExpanded,
+  onToggle,
+}: DayCellProps) {
   const { t } = useTranslation();
   const day = parseInt(date.slice(8), 10);
 
@@ -91,7 +101,9 @@ function DayCell({ date, isCurrentMonth, isToday, entries, isExpanded, onToggle 
       onClick={hasEntries ? onToggle : undefined}
     >
       {/* Day number */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+      <View
+        style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}
+      >
         <Text
           style={{
             fontSize: 12,
@@ -106,7 +118,9 @@ function DayCell({ date, isCurrentMonth, isToday, entries, isExpanded, onToggle 
             lineHeight: '22px',
             textAlign: 'center',
             borderRadius: '50%',
-            backgroundColor: isToday ? `${theme.buttonPrimaryBackground}20` : undefined,
+            backgroundColor: isToday
+              ? `${theme.buttonPrimaryBackground}20`
+              : undefined,
           }}
         >
           {day}
@@ -131,7 +145,8 @@ function DayCell({ date, isCurrentMonth, isToday, entries, isExpanded, onToggle 
                   width: 6,
                   height: 6,
                   borderRadius: '50%',
-                  backgroundColor: entry.type === 'contract' ? '#3b82f6' : '#f59e0b',
+                  backgroundColor:
+                    entry.type === 'contract' ? '#3b82f6' : '#f59e0b',
                   flexShrink: 0,
                 }}
               />
@@ -156,7 +171,14 @@ function DayCell({ date, isCurrentMonth, isToday, entries, isExpanded, onToggle 
             </Text>
           )}
           {expenseTotal !== 0 && (
-            <Text style={{ fontSize: 10, color: '#ef4444', fontWeight: 600, marginTop: 2 }}>
+            <Text
+              style={{
+                fontSize: 10,
+                color: '#ef4444',
+                fontWeight: 600,
+                marginTop: 2,
+              }}
+            >
               {`-${formatEurCents(expenseTotal)}`}
             </Text>
           )}
@@ -180,7 +202,13 @@ function DayCell({ date, isCurrentMonth, isToday, entries, isExpanded, onToggle 
             minWidth: 180,
           }}
         >
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              marginBottom: 8,
+            }}
+          >
             <Text style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>
               {formatDateDE(date)}
             </Text>
@@ -213,7 +241,8 @@ function DayCell({ date, isCurrentMonth, isToday, entries, isExpanded, onToggle 
                   width: 8,
                   height: 8,
                   borderRadius: '50%',
-                  backgroundColor: entry.type === 'contract' ? '#3b82f6' : '#f59e0b',
+                  backgroundColor:
+                    entry.type === 'contract' ? '#3b82f6' : '#f59e0b',
                   flexShrink: 0,
                 }}
               />
@@ -228,18 +257,28 @@ function DayCell({ date, isCurrentMonth, isToday, entries, isExpanded, onToggle 
                   whiteSpace: 'nowrap',
                 }}
               >
-                {entry.amount < 0 ? '-' : '+'}{formatEurCents(entry.amount)}
+                {entry.amount < 0 ? '-' : '+'}
+                {formatEurCents(entry.amount)}
               </Text>
             </View>
           ))}
           {expenseTotal !== 0 && (
-            <Text style={{ fontSize: 11, color: '#ef4444', marginTop: 6, textAlign: 'right' }}>
-              {t('Total expenses')}: -{formatEurCents(expenseTotal)}
+            <Text
+              style={{
+                fontSize: 11,
+                color: '#ef4444',
+                marginTop: 6,
+                textAlign: 'right',
+              }}
+            >
+              <Trans>Total expenses</Trans>: -{formatEurCents(expenseTotal)}
             </Text>
           )}
           {incomeTotal > 0 && (
-            <Text style={{ fontSize: 11, color: '#10b981', textAlign: 'right' }}>
-              {t('Total income')}: +{formatEurCents(incomeTotal)}
+            <Text
+              style={{ fontSize: 11, color: '#10b981', textAlign: 'right' }}
+            >
+              {<Trans>Total income</Trans>}: +{formatEurCents(incomeTotal)}
             </Text>
           )}
         </View>
@@ -257,7 +296,10 @@ type MonthGridViewProps = {
 
 const DAY_HEADERS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
-export function MonthGridView({ allEntries, loading = false }: MonthGridViewProps) {
+export function MonthGridView({
+  allEntries,
+  loading = false,
+}: MonthGridViewProps) {
   const { t } = useTranslation();
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
@@ -279,7 +321,12 @@ export function MonthGridView({ allEntries, loading = false }: MonthGridViewProp
       }
       rows.push(week);
       // Stop early if we're into the next month past the last row with current-month days
-      if (row >= 4 && !week.some(d => parseInt(d.slice(5, 7), 10) - 1 === viewMonth)) break;
+      if (
+        row >= 4 &&
+        !week.some(d => parseInt(d.slice(5, 7), 10) - 1 === viewMonth)
+      ) {
+        break;
+      }
     }
     return rows;
   }, [viewYear, viewMonth]);
@@ -301,16 +348,24 @@ export function MonthGridView({ allEntries, loading = false }: MonthGridViewProp
   });
 
   const prevMonth = () => {
-    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
-    else setViewMonth(m => m - 1);
+    if (viewMonth === 0) {
+      setViewMonth(11);
+      setViewYear(y => y - 1);
+    } else {
+      setViewMonth(m => m - 1);
+    }
   };
   const nextMonth = () => {
-    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
-    else setViewMonth(m => m + 1);
+    if (viewMonth === 11) {
+      setViewMonth(0);
+      setViewYear(y => y + 1);
+    } else {
+      setViewMonth(m => m + 1);
+    }
   };
 
   const toggleExpand = (date: string) => {
-    setExpandedDate(prev => prev === date ? null : date);
+    setExpandedDate(prev => (prev === date ? null : date));
   };
 
   return (
@@ -340,7 +395,14 @@ export function MonthGridView({ allEntries, loading = false }: MonthGridViewProp
         >
           ‹
         </Button>
-        <Text style={{ flex: 1, textAlign: 'center', fontWeight: 600, fontSize: 14 }}>
+        <Text
+          style={{
+            flex: 1,
+            textAlign: 'center',
+            fontWeight: 600,
+            fontSize: 14,
+          }}
+        >
           {monthName}
         </Text>
         <Button
@@ -352,20 +414,25 @@ export function MonthGridView({ allEntries, loading = false }: MonthGridViewProp
         </Button>
         <Button
           variant="bare"
-          onPress={() => { setViewYear(today.getFullYear()); setViewMonth(today.getMonth()); }}
+          onPress={() => {
+            setViewYear(today.getFullYear());
+            setViewMonth(today.getMonth());
+          }}
           style={{ fontSize: 11, marginLeft: 8 }}
         >
-          {t('Today')}
+          {<Trans>Today</Trans>}
         </Button>
       </View>
 
       {/* Day-of-week header row */}
       <View
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(7, 1fr)',
-          borderBottom: `1px solid ${theme.tableBorder}`,
-        } as React.CSSProperties}
+        style={
+          {
+            display: 'grid',
+            gridTemplateColumns: 'repeat(7, 1fr)',
+            borderBottom: `1px solid ${theme.tableBorder}`,
+          } as React.CSSProperties
+        }
       >
         {DAY_HEADERS.map(d => (
           <View
@@ -393,18 +460,27 @@ export function MonthGridView({ allEntries, loading = false }: MonthGridViewProp
 
       {/* Grid rows */}
       {loading ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 }}>
-          <Text style={{ color: theme.pageTextSubdued }}>{t('Loading…')}</Text>
+        <View
+          style={{
+            flex: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 40,
+          }}
+        >
+          <Text style={{ color: theme.pageTextSubdued }}>{<Trans>Loading…</Trans>}</Text>
         </View>
       ) : (
         grid.map((week, rowIdx) => (
           <View
             key={rowIdx}
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(7, 1fr)',
-              flex: 1,
-            } as React.CSSProperties}
+            style={
+              {
+                display: 'grid',
+                gridTemplateColumns: 'repeat(7, 1fr)',
+                flex: 1,
+              } as React.CSSProperties
+            }
           >
             {week.map(dateStr => {
               const cellMonth = parseInt(dateStr.slice(5, 7), 10) - 1;

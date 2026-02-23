@@ -3,16 +3,20 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
 import { Button } from '@actual-app/components/button';
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
-import { send } from 'loot-core/platform/client/connection';
 
-import { useNavigate } from '@desktop-client/hooks/useNavigate';
+import { send } from 'loot-core/platform/client/connection';
 
 import type { ImportCommitResult } from './types';
 
-const EUR_FORMATTER = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
+import { useNavigate } from '@desktop-client/hooks/useNavigate';
+
+const EUR_FORMATTER = new Intl.NumberFormat('de-DE', {
+  style: 'currency',
+  currency: 'EUR',
+});
 
 function formatEurCents(cents: number): string {
   return EUR_FORMATTER.format(Math.abs(cents) / 100);
@@ -50,14 +54,18 @@ export function ImportAdvisor({ result, onReset }: Props) {
     // Auto-run detection after import completes
     let cancelled = false;
     setDetecting(true);
-    void (send as Function)('import-detect-contracts', {}).then((res: unknown) => {
-      if (cancelled) return;
-      if (res && typeof res === 'object' && !('error' in (res as object))) {
-        setDetected(res as DetectResult);
-      }
-      setDetecting(false);
-    }).catch(() => setDetecting(false));
-    return () => { cancelled = true; };
+    void (send as Function)('import-detect-contracts', {})
+      .then((res: unknown) => {
+        if (cancelled) return;
+        if (res && typeof res === 'object' && !('error' in (res as object))) {
+          setDetected(res as DetectResult);
+        }
+        setDetecting(false);
+      })
+      .catch(() => setDetecting(false));
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleCreateContract = useCallback(
@@ -67,7 +75,8 @@ export function ImportAdvisor({ result, onReset }: Props) {
         `/contracts/new?prefill=${encodeURIComponent(
           JSON.stringify({
             name: contract.name,
-            amount: contract.amount != null ? String(contract.amount / 100) : '',
+            amount:
+              contract.amount != null ? String(contract.amount / 100) : '',
             interval: contract.interval ?? 'monthly',
             provider: contract.provider ?? '',
           }),
@@ -103,7 +112,12 @@ export function ImportAdvisor({ result, onReset }: Props) {
 
       {/* Title */}
       <Text
-        style={{ fontSize: 20, fontWeight: 600, color: theme.pageText, textAlign: 'center' }}
+        style={{
+          fontSize: 20,
+          fontWeight: 600,
+          color: theme.pageText,
+          textAlign: 'center',
+        }}
       >
         <Trans>Import Complete</Trans>
       </Text>
@@ -120,7 +134,7 @@ export function ImportAdvisor({ result, onReset }: Props) {
         <StatCard
           label={t('Imported')}
           value={result.imported}
-          color='#10b981'
+          color="#10b981"
         />
         <StatCard
           label={t('Skipped')}
@@ -131,7 +145,7 @@ export function ImportAdvisor({ result, onReset }: Props) {
           <StatCard
             label={t('Contracts detected')}
             value={result.contracts_detected}
-            color='#3b82f6'
+            color="#3b82f6"
           />
         )}
       </View>
@@ -147,7 +161,9 @@ export function ImportAdvisor({ result, onReset }: Props) {
           textAlign: 'center',
         }}
       >
-        <Text style={{ fontSize: 14, color: theme.pageText, lineHeight: '1.5' }}>
+        <Text
+          style={{ fontSize: 14, color: theme.pageText, lineHeight: '1.5' }}
+        >
           {t(
             '{{imported}} transactions imported. {{skipped}} skipped (duplicates or errors). Check the Review Queue for any items that need attention.',
             {
@@ -171,10 +187,14 @@ export function ImportAdvisor({ result, onReset }: Props) {
             gap: 12,
           }}
         >
-          <Text style={{ fontSize: 14, fontWeight: 600, color: theme.pageText }}>
+          <Text
+            style={{ fontSize: 14, fontWeight: 600, color: theme.pageText }}
+          >
             {detecting
               ? t('Scanning for recurring patterns…')
-              : t('{{n}} recurring pattern(s) found', { n: detected!.detected })}
+              : t('{{n}} recurring pattern(s) found', {
+                  n: detected!.detected,
+                })}
           </Text>
 
           {!detecting && detected && detected.contracts.length > 0 && (
@@ -206,7 +226,9 @@ export function ImportAdvisor({ result, onReset }: Props) {
                       {contract.name}
                     </Text>
                     {contract.amount != null && contract.interval && (
-                      <Text style={{ fontSize: 11, color: theme.pageTextSubdued }}>
+                      <Text
+                        style={{ fontSize: 11, color: theme.pageTextSubdued }}
+                      >
                         {formatEurCents(contract.amount)} / {contract.interval}
                       </Text>
                     )}
@@ -222,8 +244,16 @@ export function ImportAdvisor({ result, onReset }: Props) {
                 </View>
               ))}
               {detected.contracts.length > 5 && (
-                <Text style={{ fontSize: 12, color: theme.pageTextSubdued, textAlign: 'center' }}>
-                  {t('+{{n}} more patterns', { n: detected.contracts.length - 5 })}
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: theme.pageTextSubdued,
+                    textAlign: 'center',
+                  }}
+                >
+                  {t('+{{n}} more patterns', {
+                    n: detected.contracts.length - 5,
+                  })}
                 </Text>
               )}
             </View>
@@ -232,7 +262,14 @@ export function ImportAdvisor({ result, onReset }: Props) {
       )}
 
       {/* CTAs */}
-      <View style={{ flexDirection: 'row', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          gap: 12,
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+        }}
+      >
         <Button variant="primary" onPress={() => void navigate('/review')}>
           <Trans>Go to Review Queue</Trans>
         </Button>
@@ -268,7 +305,9 @@ function StatCard({
       }}
     >
       <Text style={{ fontSize: 28, fontWeight: 700, color }}>{value}</Text>
-      <Text style={{ fontSize: 12, color: theme.pageTextSubdued, marginTop: 4 }}>
+      <Text
+        style={{ fontSize: 12, color: theme.pageTextSubdued, marginTop: 4 }}
+      >
         {label}
       </Text>
     </View>

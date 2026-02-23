@@ -2,17 +2,16 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { theme } from '@actual-app/components/theme';
-import { Text } from '@actual-app/components/text';
-import { View } from '@actual-app/components/view';
-
 import type { UpcomingPayment } from './types';
 
+import { Card, CardContent } from '@/components/ui/card';
+
 function formatEur(cents: number | null): string {
-  if (cents == null) return '—';
-  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(
-    cents / 100,
-  );
+  if (cents == null) return '\u2014';
+  return new Intl.NumberFormat('de-DE', {
+    style: 'currency',
+    currency: 'EUR',
+  }).format(cents / 100);
 }
 
 type Props = {
@@ -48,34 +47,17 @@ export function MoneyPulse({ upcomingPayments }: Props) {
       : t('No bills due in the next 7 days. Looking good!');
 
   return (
-    <View
-      style={{
-        backgroundColor: theme.pageBackground,
-        border: `1px solid ${theme.tableBorder}`,
-        borderRadius: 8,
-        padding: '10px 16px',
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gridColumn: '1 / -1',
-      }}
-    >
-      <Text style={{ color: theme.pageText, fontSize: 13 }}>{message}</Text>
-      <button
-        onClick={() => setDismissed(true)}
-        style={{
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          color: theme.pageTextSubdued,
-          fontSize: 18,
-          lineHeight: 1,
-          padding: '0 0 0 12px',
-        }}
-        aria-label={t('Dismiss')}
-      >
-        ×
-      </button>
-    </View>
+    <Card className="gap-0 border-0 bg-gradient-to-r from-primary/5 to-primary/10 py-0 shadow-none">
+      <CardContent className="flex flex-row items-center justify-between px-4 py-2.5">
+        <span className="text-[13px] text-foreground">{message}</span>
+        <button
+          onClick={() => setDismissed(true)}
+          className="cursor-pointer border-none bg-transparent pl-3 text-lg leading-none text-muted-foreground hover:text-foreground"
+          aria-label={t('Dismiss')}
+        >
+          &times;
+        </button>
+      </CardContent>
+    </Card>
   );
 }

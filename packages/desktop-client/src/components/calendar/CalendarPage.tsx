@@ -3,22 +3,28 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
 import { Button } from '@actual-app/components/button';
-import { theme } from '@actual-app/components/theme';
+import {
+  SvgCalendar,
+  SvgDownloadThickBottom,
+} from '@actual-app/components/icons/v2';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
-import { SvgCalendar, SvgDownloadThickBottom } from '@actual-app/components/icons/v2';
 
-import { Page } from '@desktop-client/components/Page';
+import { groupByWeek, useCalendarData } from './hooks/useCalendarData';
+import { MonthGridView } from './MonthGridView';
+import type { CalendarEntry, CalendarView } from './types';
+import { ListView } from './views/ListView';
+
 import { EmptyState } from '@desktop-client/components/common/EmptyState';
+import { Page } from '@desktop-client/components/Page';
 import { useFeatureFlag } from '@desktop-client/hooks/useFeatureFlag';
 import { useNavigate } from '@desktop-client/hooks/useNavigate';
 import { useSyncedPref } from '@desktop-client/hooks/useSyncedPref';
 import { downloadICS } from '@desktop-client/utils/ics-export';
 
-import { groupByWeek, useCalendarData } from './hooks/useCalendarData';
-import type { CalendarEntry, CalendarView } from './types';
-import { ListView } from './views/ListView';
-import { MonthGridView } from './MonthGridView';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export function CalendarPage() {
   const { t } = useTranslation();
@@ -33,9 +39,13 @@ export function CalendarPage() {
   const paydayEnabled = paydayDate !== null && !Number.isNaN(paydayDate);
 
   // Balance threshold preference: stored as string of cents (e.g. "50000" = €500) or '' (disabled)
-  const [balanceThresholdRaw, setBalanceThresholdRaw] = useSyncedPref('balanceThreshold');
-  const balanceThreshold = balanceThresholdRaw ? parseInt(balanceThresholdRaw, 10) : null;
-  const thresholdEnabled = balanceThreshold !== null && !Number.isNaN(balanceThreshold);
+  const [balanceThresholdRaw, setBalanceThresholdRaw] =
+    useSyncedPref('balanceThreshold');
+  const balanceThreshold = balanceThresholdRaw
+    ? parseInt(balanceThresholdRaw, 10)
+    : null;
+  const thresholdEnabled =
+    balanceThreshold !== null && !Number.isNaN(balanceThreshold);
 
   // Local state for threshold input editing
   const [thresholdInput, setThresholdInput] = useState<string>(
@@ -87,12 +97,13 @@ export function CalendarPage() {
 
   // Apply income filter
   const allEntries = useMemo(
-    () => showIncome ? rawAllEntries : rawAllEntries.filter(e => e.amount <= 0),
+    () =>
+      showIncome ? rawAllEntries : rawAllEntries.filter(e => e.amount <= 0),
     [rawAllEntries, showIncome],
   );
 
   const weeks = useMemo(
-    () => showIncome ? rawWeeks : groupByWeek(allEntries, startingBalance),
+    () => (showIncome ? rawWeeks : groupByWeek(allEntries, startingBalance)),
     [showIncome, rawWeeks, allEntries, startingBalance],
   );
 
@@ -101,7 +112,9 @@ export function CalendarPage() {
       <Page header={t('Payment Calendar')}>
         <View style={{ padding: 20 }}>
           <Text style={{ color: theme.pageTextSubdued }}>
-            {t('Payment Calendar is not enabled. Enable it in Settings > Feature Flags.')}
+            {t(
+              'Payment Calendar is not enabled. Enable it in Settings > Feature Flags.',
+            )}
           </Text>
         </View>
       </Page>
@@ -122,29 +135,22 @@ export function CalendarPage() {
         }}
       >
         {/* View toggle */}
+        <Tabs value={view} onValueChange={v => handleToggleView(v as CalendarView)}>
+          <TabsList>
+            <TabsTrigger value="list">{t('List')}</TabsTrigger>
+            <TabsTrigger value="month">{t('Month')}</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        {/* Right-side controls */}
         <View
           style={{
             flexDirection: 'row',
-            gap: 0,
-            border: `1px solid ${theme.tableBorder}`,
-            borderRadius: 5,
-            overflow: 'hidden',
+            alignItems: 'center',
+            gap: 10,
+            flexWrap: 'wrap',
           }}
         >
-          <ViewToggleButton
-            label={t('List')}
-            active={view === 'list'}
-            onPress={() => handleToggleView('list')}
-          />
-          <ViewToggleButton
-            label={t('Month')}
-            active={view === 'month'}
-            onPress={() => handleToggleView('month')}
-          />
-        </View>
-
-        {/* Right-side controls */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           {/* Payday cycle toggle */}
           <Button
             variant="bare"
@@ -167,7 +173,9 @@ export function CalendarPage() {
                 width: 7,
                 height: 7,
                 borderRadius: '50%',
-                backgroundColor: paydayEnabled ? '#6366f1' : theme.pageTextSubdued,
+                backgroundColor: paydayEnabled
+                  ? '#6366f1'
+                  : theme.pageTextSubdued,
                 flexShrink: 0,
               }}
             />
@@ -178,7 +186,10 @@ export function CalendarPage() {
 
           {/* Payday day selector — shown only when payday mode is active */}
           {paydayEnabled && (
-            <PaydayDayPicker currentDay={paydayDate!} onChange={d => setPaydayDateRaw(String(d))} />
+            <PaydayDayPicker
+              currentDay={paydayDate!}
+              onChange={d => setPaydayDateRaw(String(d))}
+            />
           )}
 
           {/* Window label */}
@@ -201,8 +212,12 @@ export function CalendarPage() {
               fontWeight: thresholdEnabled ? 600 : 400,
               border: `1px solid ${thresholdEnabled ? (theme.errorText ?? '#ef4444') : theme.tableBorder}`,
               borderRadius: 12,
-              backgroundColor: thresholdEnabled ? `${theme.errorText ?? '#ef4444'}18` : 'transparent',
-              color: thresholdEnabled ? (theme.errorText ?? '#ef4444') : theme.pageTextSubdued,
+              backgroundColor: thresholdEnabled
+                ? `${theme.errorText ?? '#ef4444'}18`
+                : 'transparent',
+              color: thresholdEnabled
+                ? (theme.errorText ?? '#ef4444')
+                : theme.pageTextSubdued,
             }}
           >
             <View
@@ -210,7 +225,9 @@ export function CalendarPage() {
                 width: 7,
                 height: 7,
                 borderRadius: '50%',
-                backgroundColor: thresholdEnabled ? (theme.errorText ?? '#ef4444') : theme.pageTextSubdued,
+                backgroundColor: thresholdEnabled
+                  ? (theme.errorText ?? '#ef4444')
+                  : theme.pageTextSubdued,
                 flexShrink: 0,
               }}
             />
@@ -219,8 +236,12 @@ export function CalendarPage() {
 
           {/* Threshold amount input — shown only when threshold is enabled */}
           {thresholdEnabled && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Text style={{ fontSize: 11, color: theme.pageTextSubdued }}>€</Text>
+            <View
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+            >
+              <Text style={{ fontSize: 11, color: theme.pageTextSubdued }}>
+                €
+              </Text>
               <input
                 type="number"
                 min={0}
@@ -267,7 +288,7 @@ export function CalendarPage() {
                 flexShrink: 0,
               }}
             />
-            {t('Income')}
+            <Trans>Income</Trans>
           </Button>
 
           <SourceBadges entries={rawAllEntries} />
@@ -283,8 +304,12 @@ export function CalendarPage() {
               downloadICS(allEntries, `actual-calendar-${yyyy}-${mm}.ics`);
             }}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-              <SvgDownloadThickBottom style={{ width: 13, height: 13, color: theme.pageTextSubdued }} />
+            <View
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}
+            >
+              <SvgDownloadThickBottom
+                style={{ width: 13, height: 13, color: theme.pageTextSubdued }}
+              />
               <Text style={{ fontSize: 12, color: theme.pageTextSubdued }}>
                 {t('Export .ics')}
               </Text>
@@ -292,8 +317,12 @@ export function CalendarPage() {
           </Button>
 
           <Button variant="bare" onPress={reload}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-              <SvgCalendar style={{ width: 13, height: 13, color: theme.pageTextSubdued }} />
+            <View
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}
+            >
+              <SvgCalendar
+                style={{ width: 13, height: 13, color: theme.pageTextSubdued }}
+              />
               <Text style={{ fontSize: 12, color: theme.pageTextSubdued }}>
                 <Trans>Refresh</Trans>
               </Text>
@@ -342,36 +371,11 @@ export function CalendarPage() {
 
 function formatWindowLabel(start: string, end: string): string {
   const fmt = (d: string) =>
-    new Date(d + 'T00:00:00').toLocaleDateString('de-DE', { day: 'numeric', month: 'short' });
+    new Date(d + 'T00:00:00').toLocaleDateString('de-DE', {
+      day: 'numeric',
+      month: 'short',
+    });
   return `${fmt(start)} – ${fmt(end)}`;
-}
-
-function ViewToggleButton({
-  label,
-  active,
-  onPress,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Button
-      variant="bare"
-      onPress={onPress}
-      style={{
-        padding: '5px 14px',
-        fontSize: 12,
-        fontWeight: active ? 600 : 400,
-        borderRight: `1px solid ${theme.tableBorder}`,
-        backgroundColor: active ? theme.buttonPrimaryBackground : theme.tableBackground,
-        color: active ? theme.buttonPrimaryText : theme.pageText,
-        borderRadius: 0,
-      }}
-    >
-      {label}
-    </Button>
-  );
 }
 
 function PaydayDayPicker({
@@ -384,7 +388,9 @@ function PaydayDayPicker({
   const { t } = useTranslation();
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-      <Text style={{ fontSize: 11, color: theme.pageTextSubdued }}>{t('Payday:')}</Text>
+      <Text style={{ fontSize: 11, color: theme.pageTextSubdued }}>
+        <Trans>Payday:</Trans>
+      </Text>
       <select
         value={currentDay}
         onChange={e => onChange(parseInt(e.target.value, 10))}
@@ -423,48 +429,24 @@ function SourceBadges({ entries }: { entries: CalendarEntry[] }) {
   if (counts.schedules === 0 && counts.contracts === 0) return null;
 
   return (
-    <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+    <div className="flex items-center gap-1.5">
       {counts.schedules > 0 && (
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 4,
-            padding: '2px 8px',
-            borderRadius: 10,
-            backgroundColor: `${theme.pageTextSubdued}15`,
-          }}
-        >
-          <SvgCalendar style={{ width: 10, height: 10, color: theme.pageTextSubdued }} />
-          <Text style={{ fontSize: 10, color: theme.pageTextSubdued }}>
-            {t('{{count}} Schedule(s)', { count: counts.schedules })}
-          </Text>
-        </View>
+        <Badge variant="outline" className="gap-1 text-[10px] px-2 py-0">
+          <SvgCalendar
+            style={{ width: 10, height: 10, color: theme.pageTextSubdued }}
+          />
+          {t('{{count}} Schedule(s)', { count: counts.schedules })}
+        </Badge>
       )}
       {counts.contracts > 0 && (
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 4,
-            padding: '2px 8px',
-            borderRadius: 10,
-            backgroundColor: `${theme.pageTextSubdued}15`,
-          }}
-        >
-          <View
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: '50%',
-              backgroundColor: theme.pageTextSubdued,
-            }}
+        <Badge variant="outline" className="gap-1 text-[10px] px-2 py-0">
+          <span
+            className="h-1.5 w-1.5 rounded-full"
+            style={{ backgroundColor: theme.pageTextSubdued }}
           />
-          <Text style={{ fontSize: 10, color: theme.pageTextSubdued }}>
-            {t('{{count}} Contract(s)', { count: counts.contracts })}
-          </Text>
-        </View>
+          {t('{{count}} Contract(s)', { count: counts.contracts })}
+        </Badge>
       )}
-    </View>
+    </div>
   );
 }

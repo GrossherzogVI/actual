@@ -3,8 +3,8 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { theme } from '@actual-app/components/theme';
-import { Text } from '@actual-app/components/text';
-import { View } from '@actual-app/components/view';
+
+import { Badge } from '@/components/ui/badge';
 
 import type { ReviewCount } from './types';
 
@@ -12,49 +12,23 @@ type ReviewStatsProps = {
   counts: ReviewCount;
 };
 
-type StatChipProps = {
-  label: string;
-  count: number;
-  color: string;
-};
-
-function StatChip({ label, count, color }: StatChipProps) {
+function StatChip({ label, count, color }: { label: string; count: number; color: string }) {
   return (
-    <View
+    <Badge
+      variant="outline"
+      className="gap-1.5 px-3 py-1 text-sm"
       style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
+        borderColor: `${color}40`,
         backgroundColor: `${color}15`,
-        border: `1px solid ${color}40`,
-        borderRadius: 20,
-        paddingTop: 5,
-        paddingBottom: 5,
-        paddingLeft: 12,
-        paddingRight: 12,
       }}
     >
-      <Text
-        style={{
-          fontSize: 18,
-          fontWeight: 700,
-          color,
-          lineHeight: '1',
-        }}
-      >
+      <span className="text-lg font-bold leading-none" style={{ color }}>
         {count}
-      </Text>
-      <Text
-        style={{
-          fontSize: 12,
-          fontWeight: 500,
-          color,
-          opacity: 0.85,
-        }}
-      >
+      </span>
+      <span className="text-xs font-medium opacity-85" style={{ color }}>
         {label}
-      </Text>
-    </View>
+      </span>
+    </Badge>
   );
 }
 
@@ -62,14 +36,7 @@ export function ReviewStats({ counts }: ReviewStatsProps) {
   const { t } = useTranslation();
 
   return (
-    <View
-      style={{
-        flexDirection: 'row',
-        gap: 10,
-        padding: '12px 0',
-        flexWrap: 'wrap',
-      }}
-    >
+    <div className="flex flex-wrap gap-2.5 py-3">
       <StatChip
         label={t('Pending')}
         count={counts.pending}
@@ -82,6 +49,6 @@ export function ReviewStats({ counts }: ReviewStatsProps) {
         count={counts.suggestion}
         color="#3b82f6"
       />
-    </View>
+    </div>
   );
 }

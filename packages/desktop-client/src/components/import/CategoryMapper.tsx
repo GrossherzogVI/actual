@@ -3,8 +3,8 @@ import React from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
 import { Button } from '@actual-app/components/button';
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
 import type { CategoryMapping } from './types';
@@ -64,12 +64,24 @@ export function CategoryMapper({
         }}
       >
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 11, fontWeight: 600, color: theme.tableHeaderText }}>
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              color: theme.tableHeaderText,
+            }}
+          >
             <Trans>External Category</Trans>
           </Text>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 11, fontWeight: 600, color: theme.tableHeaderText }}>
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              color: theme.tableHeaderText,
+            }}
+          >
             <Trans>Actual Category</Trans>
           </Text>
         </View>
@@ -98,9 +110,12 @@ export function CategoryMapper({
                 alignItems: 'center',
                 padding: '9px 12px',
                 borderBottom:
-                  i < mappings.length - 1 ? `1px solid ${theme.tableBorder}` : 'none',
-                backgroundColor:
-                  mapping.internal_id ? theme.tableBackground : `${theme.warningText}08`,
+                  i < mappings.length - 1
+                    ? `1px solid ${theme.tableBorder}`
+                    : 'none',
+                backgroundColor: mapping.internal_id
+                  ? theme.tableBackground
+                  : `${theme.warningText}08`,
                 gap: 12,
               }}
             >

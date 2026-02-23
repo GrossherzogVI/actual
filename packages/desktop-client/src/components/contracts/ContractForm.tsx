@@ -5,24 +5,24 @@ import { Trans, useTranslation } from 'react-i18next';
 import { Button, ButtonWithLoading } from '@actual-app/components/button';
 import { Input } from '@actual-app/components/input';
 import { Select } from '@actual-app/components/select';
-import { Toggle } from '@actual-app/components/toggle';
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
+import { Toggle } from '@actual-app/components/toggle';
 import { View } from '@actual-app/components/view';
 
 import { PAYMENT_METHOD_LABELS } from 'loot-core/shared/deadlines';
 import type { PaymentMethod } from 'loot-core/shared/deadlines';
 
-import { useCategories } from '@desktop-client/hooks/useCategories';
-import { useNavigate } from '@desktop-client/hooks/useNavigate';
-
+import { SUGGESTED_TAGS } from './ContractsPage';
 import {
   CONTRACT_INTERVAL_OPTIONS,
   CONTRACT_TYPE_OPTIONS,
   EMPTY_CONTRACT_FORM,
 } from './types';
 import type { ContractEntity, ContractFormData } from './types';
-import { SUGGESTED_TAGS } from './ContractsPage';
+
+import { useCategories } from '@desktop-client/hooks/useCategories';
+import { useNavigate } from '@desktop-client/hooks/useNavigate';
 
 // ─── Contract templates ───────────────────────────────────────────────────────
 
@@ -102,7 +102,11 @@ const CONTRACT_TEMPLATES: ContractTemplate[] = [
   },
 ];
 
-function TemplatePicker({ onSelect }: { onSelect: (data: Partial<ContractFormData>) => void }) {
+function TemplatePicker({
+  onSelect,
+}: {
+  onSelect: (data: Partial<ContractFormData>) => void;
+}) {
   const { t } = useTranslation();
   return (
     <View style={{ marginBottom: 20 }}>
@@ -114,7 +118,7 @@ function TemplatePicker({ onSelect }: { onSelect: (data: Partial<ContractFormDat
           marginBottom: 8,
         }}
       >
-        {t('Start from a template')}
+        <Trans>Start from a template</Trans>
       </Text>
       <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
         {CONTRACT_TEMPLATES.map(tmpl => (
@@ -243,8 +247,14 @@ function TagsInput({
 
       {/* Suggested tags */}
       <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
-        <Text style={{ fontSize: 11, color: theme.pageTextSubdued, alignSelf: 'center' }}>
-          {t('Suggestions:')}
+        <Text
+          style={{
+            fontSize: 11,
+            color: theme.pageTextSubdued,
+            alignSelf: 'center',
+          }}
+        >
+          <Trans>Suggestions:</Trans>
         </Text>
         {SUGGESTED_TAGS.filter(s => !value.includes(s)).map(s => (
           <Button
@@ -312,9 +322,7 @@ function FormField({
   );
 }
 
-const TYPE_SELECT_OPTIONS: [string, string][] = [
-  ...CONTRACT_TYPE_OPTIONS,
-];
+const TYPE_SELECT_OPTIONS: [string, string][] = [...CONTRACT_TYPE_OPTIONS];
 
 const INTERVAL_SELECT_OPTIONS: [string, string][] = [
   ...CONTRACT_INTERVAL_OPTIONS,
@@ -368,13 +376,16 @@ export function ContractForm({
   // tags are stored separately as string[] but ContractFormData uses string fields
   // We manage them as a derived state from form.tags (which we add to the type below)
   const [tags, setTags] = useState<string[]>(
-    (initialData as any)?.tags ?? (contract?.tags ?? []),
+    (initialData as any)?.tags ?? contract?.tags ?? [],
   );
 
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const updateField = useCallback(
-    <K extends keyof ContractFormData>(field: K, value: ContractFormData[K]) => {
+    <K extends keyof ContractFormData>(
+      field: K,
+      value: ContractFormData[K],
+    ) => {
       setForm(prev => ({ ...prev, [field]: value }));
     },
     [],
@@ -606,7 +617,10 @@ export function ContractForm({
           <Trans>Zahlungsfristen</Trans>
         </Text>
         <View style={{ flexDirection: 'row', gap: 16 }}>
-          <FormField label={t('Zahlungsmethode')} style={{ flex: 1, marginBottom: 0 }}>
+          <FormField
+            label={t('Zahlungsmethode')}
+            style={{ flex: 1, marginBottom: 0 }}
+          >
             <Select
               options={PAYMENT_METHOD_OPTIONS}
               value={form.payment_method}
@@ -614,7 +628,10 @@ export function ContractForm({
               style={{ width: '100%' }}
             />
           </FormField>
-          <FormField label={t('Kulanzzeit (Werktage)')} style={{ flex: 1, marginBottom: 0 }}>
+          <FormField
+            label={t('Kulanzzeit (Werktage)')}
+            style={{ flex: 1, marginBottom: 0 }}
+          >
             <Input
               value={form.grace_period_days}
               onChangeValue={v => updateField('grace_period_days', v)}
@@ -637,13 +654,18 @@ export function ContractForm({
             alignSelf: 'flex-start',
           }}
         >
-          {advancedOpen ? t('▲ Erweitert ausblenden') : t('▼ Erweiterte Optionen')}
+          {advancedOpen
+            ? t('▲ Erweitert ausblenden')
+            : t('▼ Erweiterte Optionen')}
         </Button>
 
         {advancedOpen && (
           <View style={{ marginTop: 10, gap: 10 }}>
             <View style={{ flexDirection: 'row', gap: 16 }}>
-              <FormField label={t('Fälligkeitsverschiebung (weich)')} style={{ flex: 1, marginBottom: 0 }}>
+              <FormField
+                label={t('Fälligkeitsverschiebung (weich)')}
+                style={{ flex: 1, marginBottom: 0 }}
+              >
                 <Select
                   options={DEADLINE_SHIFT_OPTIONS}
                   value={form.soft_shift}
@@ -651,7 +673,10 @@ export function ContractForm({
                   style={{ width: '100%' }}
                 />
               </FormField>
-              <FormField label={t('Fälligkeitsverschiebung (hart)')} style={{ flex: 1, marginBottom: 0 }}>
+              <FormField
+                label={t('Fälligkeitsverschiebung (hart)')}
+                style={{ flex: 1, marginBottom: 0 }}
+              >
                 <Select
                   options={DEADLINE_SHIFT_OPTIONS}
                   value={form.hard_shift}
@@ -661,7 +686,10 @@ export function ContractForm({
               </FormField>
             </View>
             <View style={{ flexDirection: 'row', gap: 16 }}>
-              <FormField label={t('Vorlaufzeit überschreiben (Werktage)')} style={{ flex: 1, marginBottom: 0 }}>
+              <FormField
+                label={t('Vorlaufzeit überschreiben (Werktage)')}
+                style={{ flex: 1, marginBottom: 0 }}
+              >
                 <Input
                   value={form.lead_time_override}
                   onChangeValue={v => updateField('lead_time_override', v)}
@@ -670,15 +698,27 @@ export function ContractForm({
                   inputMode="numeric"
                 />
               </FormField>
-              <FormField label={t('Harte Frist anzeigen')} style={{ flex: 1, marginBottom: 0 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 }}>
+              <FormField
+                label={t('Harte Frist anzeigen')}
+                style={{ flex: 1, marginBottom: 0 }}
+              >
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 10,
+                    marginTop: 4,
+                  }}
+                >
                   <Toggle
                     id="show-hard-deadline-toggle"
                     isOn={form.show_hard_deadline}
                     onToggle={isOn => updateField('show_hard_deadline', isOn)}
                   />
                   <Text style={{ fontSize: 13, color: theme.pageText }}>
-                    {form.show_hard_deadline ? t('Aktiviert') : t('Deaktiviert')}
+                    {form.show_hard_deadline
+                      ? t('Aktiviert')
+                      : t('Deaktiviert')}
                   </Text>
                 </View>
               </FormField>

@@ -1,9 +1,9 @@
 // @ts-strict-ignore
 import React from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
 import { useAnalyticsData } from '@desktop-client/components/analytics/hooks/useAnalyticsData';
@@ -37,7 +37,7 @@ export function MonthlyOverviewCard() {
     return (
       <CardShell title={t('This Month')}>
         <Text style={{ color: theme.pageTextSubdued, fontSize: 12 }}>
-          {t('No data yet')}
+          <Trans>No data yet</Trans>
         </Text>
       </CardShell>
     );
@@ -48,7 +48,7 @@ export function MonthlyOverviewCard() {
       <View style={{ gap: 8 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           <Text style={{ fontSize: 12, color: theme.pageTextSubdued }}>
-            {t('Income')}
+            {<Trans>Income</Trans>}
           </Text>
           <Text
             style={{
@@ -63,7 +63,7 @@ export function MonthlyOverviewCard() {
 
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           <Text style={{ fontSize: 12, color: theme.pageTextSubdued }}>
-            {t('Expenses')}
+            {<Trans>Expenses</Trans>}
           </Text>
           <Text
             style={{
@@ -84,8 +84,10 @@ export function MonthlyOverviewCard() {
             borderTop: `1px solid ${theme.tableBorder}`,
           }}
         >
-          <Text style={{ fontSize: 12, fontWeight: 600, color: theme.pageText }}>
-            {t('Net')}
+          <Text
+            style={{ fontSize: 12, fontWeight: 600, color: theme.pageText }}
+          >
+            {<Trans>Net</Trans>}
           </Text>
           <Text
             style={{

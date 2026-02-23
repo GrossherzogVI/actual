@@ -1,15 +1,16 @@
 // @ts-strict-ignore
 import React from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
-import { useNavigate } from '@desktop-client/hooks/useNavigate';
+import type { ReviewCounts } from '@/components/dashboard/types';
 
-import type { ReviewCounts } from '../types';
 import { WidgetCard } from './WidgetCard';
+
+import { useNavigate } from '@desktop-client/hooks/useNavigate';
 
 type RowProps = {
   label: string;
@@ -43,7 +44,9 @@ function CountRow({ label, count, color, onClick }: RowProps) {
           alignItems: 'center',
         }}
       >
-        <Text style={{ color: '#fff', fontSize: 11, fontWeight: 600 }}>{count}</Text>
+        <Text style={{ color: '#fff', fontSize: 11, fontWeight: 600 }}>
+          {count}
+        </Text>
       </View>
     </View>
   );
@@ -63,10 +66,12 @@ export function AttentionQueueWidget({ counts, loading }: Props) {
   return (
     <WidgetCard title={t('Attention Queue')}>
       {loading ? (
-        <Text style={{ color: theme.pageTextSubdued, fontSize: 13 }}>{t('Loading…')}</Text>
+        <Text style={{ color: theme.pageTextSubdued, fontSize: 13 }}>
+          <Trans>Loading…</Trans>
+        </Text>
       ) : counts == null ? (
         <Text style={{ color: theme.pageTextSubdued, fontSize: 13 }}>
-          {t('No review data available.')}
+          {<Trans>No review data available.</Trans>}
         </Text>
       ) : (
         <>

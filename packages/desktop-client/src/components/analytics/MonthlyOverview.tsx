@@ -1,19 +1,19 @@
 // @ts-strict-ignore
 import React from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 import {
-  BarChart,
   Bar,
+  BarChart,
+  CartesianGrid,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  ReferenceLine,
 } from 'recharts';
 
 import type { AnalyticsData } from './hooks/useAnalyticsData';
@@ -38,7 +38,7 @@ export function MonthlyOverview({ data }: Props) {
     return (
       <View style={{ padding: 20, alignItems: 'center' }}>
         <Text style={{ color: theme.pageTextSubdued }}>
-          {t('No data available.')}
+          <Trans>No data available.</Trans>
         </Text>
       </View>
     );
@@ -117,7 +117,10 @@ export function MonthlyOverview({ data }: Props) {
               style={{
                 fontWeight: 600,
                 fontSize: 12,
-                color: m.net >= 0 ? theme.reportsNumberPositive : theme.reportsNumberNegative,
+                color:
+                  m.net >= 0
+                    ? theme.reportsNumberPositive
+                    : theme.reportsNumberNegative,
               }}
             >
               {m.net >= 0 ? '+' : ''}

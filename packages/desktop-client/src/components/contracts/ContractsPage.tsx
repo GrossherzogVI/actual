@@ -4,70 +4,77 @@ import { Trans, useTranslation } from 'react-i18next';
 
 import { Button } from '@actual-app/components/button';
 import { Select } from '@actual-app/components/select';
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
-import { Page } from '@desktop-client/components/Page';
+
+import { ContractHealthBadge } from './ContractHealthBadge';
+import { ContractSummaryCard } from './ContractSummaryCard';
+import { useContracts } from './hooks/useContracts';
+import {
+  CONTRACT_INTERVAL_OPTIONS,
+  CONTRACT_STATUS_COLORS,
+  CONTRACT_TYPE_COLORS,
+  CONTRACT_TYPE_OPTIONS,
+  formatAmountEur,
+  isDeadlineSoon,
+} from './types';
+import type { ContractEntity } from './types';
+
 import { EmptyState } from '@desktop-client/components/common/EmptyState';
 import { Search } from '@desktop-client/components/common/Search';
 import { SkeletonList } from '@desktop-client/components/common/Skeleton';
+import { Page } from '@desktop-client/components/Page';
 import { useFeatureFlag } from '@desktop-client/hooks/useFeatureFlag';
 import { useNavigate } from '@desktop-client/hooks/useNavigate';
 
-import { ContractListItem } from './ContractListItem';
-import { ContractSummaryCard } from './ContractSummaryCard';
-import { useContracts } from './hooks/useContracts';
-import { CONTRACT_TYPE_OPTIONS, formatAmountEur } from './types';
-import type { ContractEntity } from './types';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import {
+  TableHeader as ShadcnTableHeader,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+} from '@/components/ui/table';
 
 // '' means "all"
-type StatusFilter = '' | 'active' | 'expiring' | 'cancelled' | 'paused' | 'discovered';
+type StatusFilter =
+  | ''
+  | 'active'
+  | 'expiring'
+  | 'cancelled'
+  | 'paused'
+  | 'discovered';
 type TypeFilter = '' | string;
 export type CostView = 'monthly' | 'annual';
-
-// Status and type filter options are built inside the component so labels pass through t().
 
 // Pre-suggested tags (German context)
 const SUGGESTED_TAGS = ['Urlaub', 'Steuerlich relevant', 'Geteilt', 'Einmalig'];
 
-function TableHeader({ costView }: { costView: CostView }) {
-  const { t } = useTranslation();
-  return (
-    <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: '7px 15px',
-        borderBottom: `1px solid ${theme.tableBorder}`,
-        backgroundColor: theme.tableHeaderBackground,
-        fontSize: 11,
-        fontWeight: 600,
-        color: theme.tableHeaderText,
-        textTransform: 'uppercase',
-        letterSpacing: '0.04em',
-        gap: 4,
-        flexShrink: 0,
-      }}
-    >
-      {/* checkbox placeholder */}
-      <View style={{ width: 24, flexShrink: 0 }} />
-      <View style={{ flex: 2 }}>{t('Name')}</View>
-      <View style={{ flex: 1 }}>{t('Type')}</View>
-      <View style={{ flex: 1, alignItems: 'flex-end', paddingRight: 4 }}>
-        {costView === 'monthly' ? t('Monthly') : t('Annual')}
-      </View>
-      <View style={{ flex: 1 }}>{t('Status')}</View>
-      <View style={{ flex: 1 }}>{t('Health')}</View>
-      <View style={{ flex: 1 }}>{t('Cancel deadline')}</View>
-    </View>
-  );
+const INTERVAL_LABELS: Record<string, string> = Object.fromEntries(
+  CONTRACT_INTERVAL_OPTIONS,
+);
+
+const DE_DATE_FORMATTER = new Intl.DateTimeFormat('de-DE', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+});
+
+function formatDateDE(dateStr: string): string {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return DE_DATE_FORMATTER.format(new Date(year, month - 1, day));
 }
 
 /** Compute the display amount for a contract given the chosen cost view. */
-function displayAmount(contract: ContractEntity, costView: CostView): number | null {
+function displayAmount(
+  contract: ContractEntity,
+  costView: CostView,
+): number | null {
   if (contract.amount == null) return null;
   if (costView === 'annual') {
-    // Use pre-computed annual_cost if available, otherwise convert
     if (contract.annual_cost != null) return contract.annual_cost;
     const INTERVAL_MULTIPLIERS: Record<string, number> = {
       weekly: 52,
@@ -81,6 +88,27 @@ function displayAmount(contract: ContractEntity, costView: CostView): number | n
   }
   return contract.amount;
 }
+
+const DAYS_BY_INTERVAL: Record<string, number> = {
+  weekly: 7,
+  monthly: 30,
+  quarterly: 90,
+  'semi-annual': 182,
+  annual: 365,
+};
+
+function computeCostPerDay(contract: ContractEntity): number | null {
+  if (contract.amount == null || !contract.interval) return null;
+  if (contract.cost_per_day != null) return contract.cost_per_day;
+  const days = DAYS_BY_INTERVAL[contract.interval];
+  return days != null ? contract.amount / days : null;
+}
+
+const HEALTH_PROGRESS: Record<string, number> = {
+  green: 100,
+  yellow: 55,
+  red: 20,
+};
 
 // ─── Selection bar ────────────────────────────────────────────────────────────
 
@@ -125,19 +153,7 @@ function SelectionBar({
   const displayLabel = costView === 'monthly' ? t('month') : t('year');
 
   return (
-    <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-        padding: '8px 15px',
-        backgroundColor: `${theme.buttonPrimaryBackground}15`,
-        borderRadius: 5,
-        border: `1px solid ${theme.buttonPrimaryBackground}40`,
-        marginBottom: 8,
-        flexWrap: 'wrap',
-      }}
-    >
+    <div className="mb-2 flex flex-wrap items-center gap-2.5 rounded-md border border-primary/25 bg-primary/5 px-4 py-2">
       <Text style={{ fontSize: 13, fontWeight: 600, color: theme.pageText }}>
         {t('{{n}} selected', { n: selected.size })}
         {' — '}
@@ -167,10 +183,28 @@ function SelectionBar({
       >
         <Trans>Delete</Trans>
       </Button>
-      <Button variant="bare" onPress={onClearSelection} style={{ fontSize: 12 }}>
+      <Button
+        variant="bare"
+        onPress={onClearSelection}
+        style={{ fontSize: 12 }}
+      >
         <Trans>Clear</Trans>
       </Button>
-    </View>
+    </div>
+  );
+}
+
+// ─── Status badge with dot ───────────────────────────────────────────────────
+
+function StatusDotBadge({ label, color }: { label: string; color: string }) {
+  return (
+    <Badge variant="outline" className="gap-1.5 capitalize">
+      <span
+        className="inline-block h-2 w-2 rounded-full"
+        style={{ backgroundColor: color }}
+      />
+      {label}
+    </Badge>
   );
 }
 
@@ -196,7 +230,9 @@ export function ContractsPage() {
   const typeFilterOptions = useMemo<[string, string][]>(
     () => [
       ['', t('All types')],
-      ...CONTRACT_TYPE_OPTIONS.map(([value, label]) => [value, t(label)] as [string, string]),
+      ...CONTRACT_TYPE_OPTIONS.map(
+        ([value, label]) => [value, t(label)] as [string, string],
+      ),
     ],
     [t],
   );
@@ -211,10 +247,11 @@ export function ContractsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const lastClickedId = useRef<string | null>(null);
 
-  const { contracts, loading, error, updateContract, deleteContract } = useContracts({
-    status: statusFilter || undefined,
-    type: typeFilter || undefined,
-  });
+  const { contracts, loading, error, updateContract, deleteContract } =
+    useContracts({
+      status: statusFilter || undefined,
+      type: typeFilter || undefined,
+    });
 
   const filteredContracts = useMemo(() => {
     let list = contracts;
@@ -228,12 +265,13 @@ export function ContractsPage() {
       );
     }
     if (tagFilter) {
-      list = list.filter(c => Array.isArray(c.tags) && c.tags.includes(tagFilter));
+      list = list.filter(
+        c => Array.isArray(c.tags) && c.tags.includes(tagFilter),
+      );
     }
     return list;
   }, [contracts, searchQuery, tagFilter]);
 
-  // Collect all tags across loaded contracts for the filter dropdown
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
     for (const c of contracts) {
@@ -245,7 +283,10 @@ export function ContractsPage() {
   }, [contracts]);
 
   const tagFilterOptions: [string, string][] = useMemo(
-    () => [['', t('All tags')], ...allTags.map(tag => [tag, tag] as [string, string])],
+    () => [
+      ['', t('All tags')],
+      ...allTags.map(tag => [tag, tag] as [string, string]),
+    ],
     [allTags, t],
   );
 
@@ -264,19 +305,18 @@ export function ContractsPage() {
       setSelected(prev => {
         const next = new Set(prev);
         if (shiftKey && lastClickedId.current && lastClickedId.current !== id) {
-          // Range select: find indices in filteredContracts
           const ids = filteredContracts.map(c => c.id);
           const fromIdx = ids.indexOf(lastClickedId.current);
           const toIdx = ids.indexOf(id);
           if (fromIdx !== -1 && toIdx !== -1) {
-            const [start, end] = fromIdx < toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx];
+            const [start, end] =
+              fromIdx < toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx];
             for (let i = start; i <= end; i++) {
               next.add(ids[i]);
             }
             return next;
           }
         }
-        // Toggle single item
         if (next.has(id)) {
           next.delete(id);
         } else {
@@ -295,7 +335,9 @@ export function ContractsPage() {
   }, []);
 
   const handleBatchDelete = useCallback(async () => {
-    if (!window.confirm(t('Delete {{n}} contract(s)?', { n: selected.size }))) return;
+    if (!window.confirm(t('Delete {{n}} contract(s)?', { n: selected.size }))) {
+      return;
+    }
     for (const id of selected) {
       await deleteContract(id);
     }
@@ -305,11 +347,35 @@ export function ContractsPage() {
   const handleBatchStatus = useCallback(
     async (status: string) => {
       for (const id of selected) {
-        await updateContract(id, { status: status as ContractEntity['status'] });
+        await updateContract(id, {
+          status: status as ContractEntity['status'],
+        });
       }
       clearSelection();
     },
     [selected, updateContract, clearSelection],
+  );
+
+  const handleRowClick = useCallback(
+    (contract: ContractEntity, e: React.MouseEvent) => {
+      if ((e.target as HTMLElement).closest('[data-checkbox]')) return;
+
+      if (e.shiftKey || e.metaKey || e.ctrlKey) {
+        e.preventDefault();
+        handleSelectContract(contract.id, e.shiftKey);
+        return;
+      }
+      navigate(`/contracts/${contract.id}`);
+    },
+    [navigate, handleSelectContract],
+  );
+
+  const handleCheckboxClick = useCallback(
+    (contractId: string, e: React.MouseEvent) => {
+      e.stopPropagation();
+      handleSelectContract(contractId, e.shiftKey);
+    },
+    [handleSelectContract],
   );
 
   // ── Feature flag guard ──────────────────────────────────────────────────────
@@ -318,7 +384,9 @@ export function ContractsPage() {
       <Page header={t('Contracts')}>
         <View style={{ padding: 20 }}>
           <Text style={{ color: theme.pageTextSubdued }}>
-            {t('Contract management is not enabled. Enable it in Settings > Feature Flags.')}
+            {t(
+              'Contract management is not enabled. Enable it in Settings > Feature Flags.',
+            )}
           </Text>
         </View>
       </Page>
@@ -327,7 +395,7 @@ export function ContractsPage() {
 
   return (
     <Page header={t('Contracts')}>
-      {/* Summary card — pass costView so it can toggle too */}
+      {/* Summary card */}
       <ContractSummaryCard costView={costView} />
 
       {/* Toolbar */}
@@ -386,7 +454,9 @@ export function ContractsPage() {
           />
         </View>
 
-        <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'flex-end' }}>
+        <View
+          style={{ flex: 1, flexDirection: 'row', justifyContent: 'flex-end' }}
+        >
           <Search
             placeholder={t('Filter contracts…')}
             value={searchQuery}
@@ -395,7 +465,7 @@ export function ContractsPage() {
         </View>
       </View>
 
-      {/* Selection bar (only when items are selected) */}
+      {/* Selection bar */}
       {selected.size > 0 && (
         <SelectionBar
           selected={selected}
@@ -408,18 +478,7 @@ export function ContractsPage() {
       )}
 
       {/* Table */}
-      <View
-        style={{
-          backgroundColor: theme.tableBackground,
-          borderRadius: 6,
-          border: `1px solid ${theme.tableBorder}`,
-          overflow: 'hidden',
-          flex: 1,
-        }}
-      >
-        <TableHeader costView={costView} />
-
-        {/* Body */}
+      <div className="overflow-hidden rounded-lg border">
         {error ? (
           <View style={{ padding: 20 }}>
             <Text style={{ color: theme.errorText }}>
@@ -433,8 +492,14 @@ export function ContractsPage() {
         ) : filteredContracts.length === 0 ? (
           searchQuery || statusFilter || typeFilter || tagFilter ? (
             <View style={{ padding: 40, alignItems: 'center' }}>
-              <Text style={{ color: theme.pageTextSubdued, fontSize: 14, textAlign: 'center' }}>
-                {t('No contracts match the current filters.')}
+              <Text
+                style={{
+                  color: theme.pageTextSubdued,
+                  fontSize: 14,
+                  textAlign: 'center',
+                }}
+              >
+                <Trans>No contracts match the current filters.</Trans>
               </Text>
             </View>
           ) : (
@@ -457,19 +522,185 @@ export function ContractsPage() {
             />
           )
         ) : (
-          filteredContracts.map(contract => (
-            <ContractListItem
-              key={contract.id}
-              contract={contract}
-              costView={costView}
-              isSelected={selected.has(contract.id)}
-              onSelect={handleSelectContract}
-            />
-          ))
-        )}
-      </View>
+          <Table>
+            <ShadcnTableHeader className="sticky top-0 z-10 bg-card">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-[24px]" />
+                <TableHead className="min-w-[200px]">
+                  <Trans>Name</Trans>
+                </TableHead>
+                <TableHead><Trans>Type</Trans></TableHead>
+                <TableHead className="text-right">
+                  {costView === 'monthly' ? t('Monthly') : t('Annual')}
+                </TableHead>
+                <TableHead><Trans>Status</Trans></TableHead>
+                <TableHead><Trans>Health</Trans></TableHead>
+                <TableHead><Trans>Cancel deadline</Trans></TableHead>
+              </TableRow>
+            </ShadcnTableHeader>
+            <TableBody>
+              {filteredContracts.map(contract => {
+                const isSelected = selected.has(contract.id);
+                const deadlineSoon = isDeadlineSoon(
+                  contract.cancellation_deadline,
+                );
+                const amt = displayAmount(contract, costView);
+                const intervalLabel =
+                  costView === 'annual'
+                    ? t('year')
+                    : (INTERVAL_LABELS[contract.interval] ?? contract.interval);
 
-      {/* Footer — count + add button */}
+                return (
+                  <TableRow
+                    key={contract.id}
+                    className={`cursor-pointer ${isSelected ? 'bg-primary/5 border-l-2 border-l-primary' : ''}`}
+                    data-state={isSelected ? 'selected' : undefined}
+                    onClick={e => handleRowClick(contract, e)}
+                  >
+                    {/* Checkbox */}
+                    <TableCell className="w-[24px] pr-0">
+                      <div
+                        data-checkbox
+                        onClick={e => handleCheckboxClick(contract.id, e)}
+                        className="flex h-6 w-6 cursor-pointer items-center justify-center"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => {}}
+                          onClick={e => e.stopPropagation()}
+                          className="cursor-pointer"
+                          style={{ accentColor: theme.buttonPrimaryBackground }}
+                        />
+                      </div>
+                    </TableCell>
+
+                    {/* Name + provider + tags */}
+                    <TableCell className="min-w-[200px]">
+                      <div className="flex flex-col gap-0.5">
+                        <span
+                          className="truncate font-medium"
+                          style={{ color: theme.pageText }}
+                        >
+                          {contract.name}
+                        </span>
+                        {contract.provider && (
+                          <span className="truncate text-xs text-muted-foreground">
+                            {contract.provider}
+                          </span>
+                        )}
+                        {Array.isArray(contract.tags) &&
+                          contract.tags.length > 0 && (
+                            <div className="mt-0.5 flex flex-wrap gap-1">
+                              {contract.tags.map(tag => (
+                                <Badge
+                                  key={tag}
+                                  variant="secondary"
+                                  className="text-[10px] px-1.5 py-0"
+                                >
+                                  {tag}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                      </div>
+                    </TableCell>
+
+                    {/* Type badge */}
+                    <TableCell>
+                      {contract.type && (
+                        <Badge variant="outline" className="capitalize">
+                          {contract.type}
+                        </Badge>
+                      )}
+                    </TableCell>
+
+                    {/* Amount */}
+                    <TableCell className="text-right">
+                      <div className="flex flex-col items-end">
+                        <span className="font-medium tabular-nums">
+                          {amt != null ? `€${formatAmountEur(amt)}` : '-'}
+                        </span>
+                        {intervalLabel && (
+                          <span className="text-xs text-muted-foreground">
+                            /{intervalLabel}
+                          </span>
+                        )}
+                        {costView === 'monthly' &&
+                          (() => {
+                            const costPerDay = computeCostPerDay(contract);
+                            if (costPerDay == null) return null;
+                            return (
+                              <span className="text-xs text-muted-foreground">
+                                {`€${formatAmountEur(costPerDay)}/${t('day')}`}
+                              </span>
+                            );
+                          })()}
+                      </div>
+                    </TableCell>
+
+                    {/* Status badge */}
+                    <TableCell>
+                      <StatusDotBadge
+                        label={contract.status}
+                        color={
+                          CONTRACT_STATUS_COLORS[contract.status] ?? '#6b7280'
+                        }
+                      />
+                    </TableCell>
+
+                    {/* Health */}
+                    <TableCell>
+                      {contract.health ? (
+                        <div className="flex items-center gap-2">
+                          <Progress
+                            value={HEALTH_PROGRESS[contract.health] ?? 50}
+                            className="h-2 w-16"
+                          />
+                          <ContractHealthBadge health={contract.health} />
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+
+                    {/* Cancellation deadline */}
+                    <TableCell>
+                      {contract.cancellation_deadline ? (
+                        <div className="flex flex-col">
+                          <span
+                            className="text-xs"
+                            style={{
+                              color: deadlineSoon
+                                ? theme.warningText
+                                : theme.pageText,
+                              fontWeight: deadlineSoon ? 600 : 400,
+                            }}
+                          >
+                            {formatDateDE(contract.cancellation_deadline)}
+                          </span>
+                          {deadlineSoon && (
+                            <Badge
+                              variant="destructive"
+                              className="mt-0.5 text-[10px] px-1.5 py-0 w-fit"
+                            >
+                              <Trans>Soon!</Trans>
+                            </Badge>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        )}
+      </div>
+
+      {/* Footer */}
       <View
         style={{
           flexDirection: 'row',
@@ -521,7 +752,9 @@ function CostToggleButton({
         fontSize: 12,
         fontWeight: active ? 600 : 400,
         borderRight: `1px solid ${theme.tableBorder}`,
-        backgroundColor: active ? theme.buttonPrimaryBackground : theme.tableBackground,
+        backgroundColor: active
+          ? theme.buttonPrimaryBackground
+          : theme.tableBackground,
         color: active ? theme.buttonPrimaryText : theme.pageText,
         borderRadius: 0,
       }}

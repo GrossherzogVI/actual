@@ -2,14 +2,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { send } from 'loot-core/platform/client/connection';
+import { computeDeadlines, deadlineStatus } from 'loot-core/shared/deadlines';
+import type { DeadlineShift, PaymentMethod } from 'loot-core/shared/deadlines';
+import type { Bundesland } from 'loot-core/shared/german-holidays';
 import { q } from 'loot-core/shared/query';
 import { getScheduledAmount } from 'loot-core/shared/schedules';
-import {
-  computeDeadlines,
-  deadlineStatus,
-} from 'loot-core/shared/deadlines';
-import type { PaymentMethod, DeadlineShift } from 'loot-core/shared/deadlines';
-import type { Bundesland } from 'loot-core/shared/german-holidays';
 import type { ScheduleEntity } from 'loot-core/types/models';
 
 import { usePayees } from '@desktop-client/hooks/usePayees';
@@ -18,7 +15,11 @@ import { useSheetValue } from '@desktop-client/hooks/useSheetValue';
 import { useSyncedPref } from '@desktop-client/hooks/useSyncedPref';
 import { allAccountBalance } from '@desktop-client/spreadsheet/bindings';
 
-import type { CalendarEntry, CrunchDay, WeekData } from '../types';
+import type {
+  CalendarEntry,
+  CrunchDay,
+  WeekData,
+} from '@/components/calendar/types';
 
 // ---------------------------------------------------------------------------
 // Date helpers
@@ -111,7 +112,10 @@ function advanceByInterval(d: Date, interval: ContractInterval): Date {
 const CRUNCH_PAYMENT_COUNT = 3;
 const CRUNCH_AMOUNT_CENTS = 50000; // €500
 
-export function groupByWeek(entries: CalendarEntry[], startingBalance: number): WeekData[] {
+export function groupByWeek(
+  entries: CalendarEntry[],
+  startingBalance: number,
+): WeekData[] {
   if (entries.length === 0) return [];
 
   const map = new Map<string, CalendarEntry[]>();
@@ -128,7 +132,9 @@ export function groupByWeek(entries: CalendarEntry[], startingBalance: number): 
 
   let runningBalance = startingBalance;
   return sortedKeys.map(weekStart => {
-    const weekEntries = map.get(weekStart)!.sort((a, b) => a.date.localeCompare(b.date));
+    const weekEntries = map
+      .get(weekStart)!
+      .sort((a, b) => a.date.localeCompare(b.date));
     const totalAmount = weekEntries.reduce((sum, e) => sum + e.amount, 0);
     runningBalance += totalAmount;
 
@@ -147,7 +153,10 @@ export function groupByWeek(entries: CalendarEntry[], startingBalance: number): 
 
     const crunchDays: CrunchDay[] = [];
     for (const [date, day] of byDay) {
-      if (day.count >= CRUNCH_PAYMENT_COUNT || Math.abs(day.total) >= CRUNCH_AMOUNT_CENTS) {
+      if (
+        day.count >= CRUNCH_PAYMENT_COUNT ||
+        Math.abs(day.total) >= CRUNCH_AMOUNT_CENTS
+      ) {
         crunchDays.push({ date, count: day.count, total: day.total });
       }
     }
@@ -168,7 +177,7 @@ export function groupByWeek(entries: CalendarEntry[], startingBalance: number): 
 // Hook
 // ---------------------------------------------------------------------------
 
-interface ContractRaw {
+type ContractRaw = {
   id: string;
   name: string;
   amount: number | null;
@@ -182,16 +191,16 @@ interface ContractRaw {
   soft_shift: string | null;
   hard_shift: string | null;
   lead_time_override: number | null;
-}
+};
 
-interface UseCalendarDataOptions {
+type UseCalendarDataOptions = {
   /** Day of month for payday cycle (1–28). When set the window runs from
    *  the most recent past payday to the next payday. When undefined/null
    *  the classic 30-day window from today is used. */
   paydayDate?: number | null;
-}
+};
 
-interface UseCalendarDataResult {
+type UseCalendarDataResult = {
   weeks: WeekData[];
   allEntries: CalendarEntry[];
   loading: boolean;
@@ -202,7 +211,7 @@ interface UseCalendarDataResult {
   windowStart: string;
   /** ISO date string for the end of the active window */
   windowEnd: string;
-}
+};
 
 import {
   getScheduleInterval,
@@ -217,14 +226,21 @@ import {
  * Given a payday day-of-month (1–28) and today, compute [fromDate, toDate]
  * spanning from the most recent past payday to the next upcoming payday.
  */
-function getPaydayCycleWindow(paydayDay: number, today: Date): [string, string] {
+function getPaydayCycleWindow(
+  paydayDay: number,
+  today: Date,
+): [string, string] {
   const year = today.getFullYear();
   const month = today.getMonth();
   const day = today.getDate();
 
   // Clamp paydayDay to avoid issues with short months
   const clamp = (d: Date, pd: number) =>
-    new Date(d.getFullYear(), d.getMonth(), Math.min(pd, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()));
+    new Date(
+      d.getFullYear(),
+      d.getMonth(),
+      Math.min(pd, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()),
+    );
 
   let cycleStart: Date;
   let cycleEnd: Date;
@@ -250,7 +266,9 @@ function getPaydayCycleWindow(paydayDay: number, today: Date): [string, string] 
   return [toISODate(cycleStart), toISODate(cycleEndInclusive)];
 }
 
-export function useCalendarData(options?: UseCalendarDataOptions): UseCalendarDataResult {
+export function useCalendarData(
+  options?: UseCalendarDataOptions,
+): UseCalendarDataResult {
   const { paydayDate } = options ?? {};
   const [contracts, setContracts] = useState<ContractRaw[]>([]);
   const [contractsLoading, setContractsLoading] = useState(true);
@@ -261,10 +279,9 @@ export function useCalendarData(options?: UseCalendarDataOptions): UseCalendarDa
     () => q('schedules').select('*').filter({ '_account.closed': false }),
     [],
   );
-  const {
-    schedules,
-    isLoading: schedulesLoading,
-  } = useSchedules({ query: schedulesQuery });
+  const { schedules, isLoading: schedulesLoading } = useSchedules({
+    query: schedulesQuery,
+  });
 
   // Fetch payees for schedule name resolution
   const { data: payees } = usePayees();
@@ -276,7 +293,8 @@ export function useCalendarData(options?: UseCalendarDataOptions): UseCalendarDa
     return map;
   }, [payees]);
 
-  const startingBalance = useSheetValue<'account', 'accounts-balance'>(allAccountBalance()) ?? 0;
+  const startingBalance =
+    useSheetValue<'account', 'accounts-balance'>(allAccountBalance()) ?? 0;
   const [bundeslandPref] = useSyncedPref('deadlineBundesland');
   const bundesland = (bundeslandPref ?? null) as Bundesland | null;
 
@@ -329,7 +347,12 @@ export function useCalendarData(options?: UseCalendarDataOptions): UseCalendarDa
       if (!contract.amount || !contract.interval) continue;
 
       const startDate = contract.start_date ?? fromDate;
-      const dates = getContractDates(startDate, contract.interval, fromDate, toDate);
+      const dates = getContractDates(
+        startDate,
+        contract.interval,
+        fromDate,
+        toDate,
+      );
 
       for (const date of dates) {
         let softDeadline: string | undefined;
@@ -341,7 +364,8 @@ export function useCalendarData(options?: UseCalendarDataOptions): UseCalendarDa
           try {
             const dl = computeDeadlines({
               nominalDate: date,
-              paymentMethod: (contract.payment_method as PaymentMethod) ?? 'manual_sepa',
+              paymentMethod:
+                (contract.payment_method as PaymentMethod) ?? 'manual_sepa',
               leadTimeOverride: contract.lead_time_override ?? null,
               gracePeriodDays: contract.grace_period_days ?? 5,
               softShift: (contract.soft_shift as DeadlineShift) ?? 'before',
@@ -362,7 +386,7 @@ export function useCalendarData(options?: UseCalendarDataOptions): UseCalendarDa
           date,
           name: contract.name,
           // Contracts are expenses (negative)
-          amount: -(Math.abs(contract.amount)),
+          amount: -Math.abs(contract.amount),
           type: 'contract',
           sourceId: contract.id,
           contractType: contract.type ?? undefined,
@@ -410,5 +434,14 @@ export function useCalendarData(options?: UseCalendarDataOptions): UseCalendarDa
     [allEntries, startingBalance],
   );
 
-  return { weeks, allEntries, loading, error, reload: load, startingBalance, windowStart, windowEnd };
+  return {
+    weeks,
+    allEntries,
+    loading,
+    error,
+    reload: load,
+    startingBalance,
+    windowStart,
+    windowEnd,
+  };
 }

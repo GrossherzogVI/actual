@@ -1,18 +1,15 @@
 import React from 'react';
-import type { ComponentType, SVGProps, CSSProperties } from 'react';
+import type { ComponentType, CSSProperties, SVGProps } from 'react';
 import { NavLink, useLocation } from 'react-router';
 
-import {
-  SidebarMenuItem,
-  SidebarMenuButton,
-} from '@/components/ui/sidebar';
+import { SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 
 type SecondaryItemProps = {
   title: string;
   to?: string;
   Icon?:
-  | ComponentType<SVGProps<SVGElement>>
-  | ComponentType<SVGProps<SVGSVGElement>>;
+    | ComponentType<SVGProps<SVGElement>>
+    | ComponentType<SVGProps<SVGSVGElement>>;
   style?: CSSProperties;
   onClick?: () => void;
   bold?: boolean;
@@ -45,16 +42,12 @@ export function SecondaryItem({
         isActive={isActive}
         onClick={!to ? onClick : undefined}
         tooltip={title}
+        className={
+          isActive ? 'border-l-2 border-sidebar-primary rounded-l-none' : ''
+        }
       >
-        {to ? (
-          <NavLink to={to}>
-            {content}
-          </NavLink>
-        ) : (
-          content
-        )}
+        {to ? <NavLink to={to}>{content}</NavLink> : content}
       </SidebarMenuButton>
     </SidebarMenuItem>
   );
 }
-

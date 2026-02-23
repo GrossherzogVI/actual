@@ -20,7 +20,11 @@ import { useUpdatedAccounts } from '@desktop-client/hooks/useUpdatedAccounts';
 import { useSelector } from '@desktop-client/redux';
 import * as bindings from '@desktop-client/spreadsheet/bindings';
 
-import { SidebarGroup, SidebarMenu, SidebarSeparator } from '@/components/ui/sidebar';
+import {
+  SidebarGroup,
+  SidebarMenu,
+  SidebarSeparator,
+} from '@/components/ui/sidebar';
 
 const fontWeight = 600;
 

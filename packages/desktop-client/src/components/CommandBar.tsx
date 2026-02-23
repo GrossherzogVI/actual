@@ -24,6 +24,7 @@ import { Text } from '@actual-app/components/text';
 import { View } from '@actual-app/components/view';
 import { css } from '@emotion/css';
 import { Command } from 'cmdk';
+
 import { send } from 'loot-core/platform/client/connection';
 
 import { CellValue, CellValueText } from './spreadsheet/CellValue';
@@ -90,7 +91,10 @@ function evalMath(expr: string): number | null {
 
 function parseMathExpr(tokens: string[], state: { pos: number }): number {
   let left = parseMathTerm(tokens, state);
-  while (state.pos < tokens.length && (tokens[state.pos] === '+' || tokens[state.pos] === '-')) {
+  while (
+    state.pos < tokens.length &&
+    (tokens[state.pos] === '+' || tokens[state.pos] === '-')
+  ) {
     const op = tokens[state.pos++];
     const right = parseMathTerm(tokens, state);
     left = op === '+' ? left + right : left - right;
@@ -100,7 +104,10 @@ function parseMathExpr(tokens: string[], state: { pos: number }): number {
 
 function parseMathTerm(tokens: string[], state: { pos: number }): number {
   let left = parseMathFactor(tokens, state);
-  while (state.pos < tokens.length && (tokens[state.pos] === '*' || tokens[state.pos] === '/')) {
+  while (
+    state.pos < tokens.length &&
+    (tokens[state.pos] === '*' || tokens[state.pos] === '/')
+  ) {
     const op = tokens[state.pos++];
     const right = parseMathFactor(tokens, state);
     if (op === '/' && right === 0) throw new Error('div/0');
@@ -189,7 +196,12 @@ export function CommandBar() {
         path: '/reports',
         Icon: SvgReports,
       },
-      { id: 'ops', name: t('Ops Command Center'), path: '/ops', Icon: SvgQueue },
+      {
+        id: 'ops',
+        name: t('Ops Command Center'),
+        path: '/ops',
+        Icon: SvgQueue,
+      },
       {
         id: 'schedules',
         name: t('Schedules'),
@@ -266,7 +278,11 @@ export function CommandBar() {
     () => [
       { id: 'qa-add-transaction', name: t('Add Transaction'), Icon: SvgAdd },
       { id: 'qa-open-ops', name: t('Open Ops Command Center'), Icon: SvgQueue },
-      { id: 'qa-new-contract', name: t('New Contract'), Icon: SvgNotesPaperText },
+      {
+        id: 'qa-new-contract',
+        name: t('New Contract'),
+        Icon: SvgNotesPaperText,
+      },
       { id: 'qa-review-queue', name: t('Review Queue'), Icon: SvgCreditCard },
       { id: 'qa-sync-all', name: t('Sync All'), Icon: SvgWallet },
       { id: 'qa-close-weekly', name: t('Run Weekly Close'), Icon: SvgQueue },
@@ -317,16 +333,32 @@ export function CommandBar() {
   const calcItems: SearchableItem[] = useMemo(() => {
     if (!isCalcMode || calcExpr === '') return [];
     if (calcResult === null) {
-      return [{ id: 'calc-invalid', name: t('Invalid expression'), Icon: SvgTuning }];
+      return [
+        { id: 'calc-invalid', name: t('Invalid expression'), Icon: SvgTuning },
+      ];
     }
     return [
       {
         id: 'calc-result',
         name: `= ${calcResult}`,
         content: (
-          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', flex: 1 }}>
-            <Text style={{ fontFamily: 'monospace' }}>{calcExpr} = {calcResult}</Text>
-            <Text style={{ fontSize: '0.75rem', color: 'var(--color-pageTextSubdued)' }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              gap: 8,
+              alignItems: 'center',
+              flex: 1,
+            }}
+          >
+            <Text style={{ fontFamily: 'monospace' }}>
+              {calcExpr} = {calcResult}
+            </Text>
+            <Text
+              style={{
+                fontSize: '0.75rem',
+                color: 'var(--color-pageTextSubdued)',
+              }}
+            >
               {t('Press Enter to copy')}
             </Text>
           </View>
@@ -367,7 +399,8 @@ export function CommandBar() {
             items: quickActionItems.filter(item =>
               item.name.toLowerCase().includes(search.slice(1).toLowerCase()),
             ),
-            onSelect: ({ id }: Pick<SearchableItem, 'id'>) => handleQuickAction(id),
+            onSelect: ({ id }: Pick<SearchableItem, 'id'>) =>
+              handleQuickAction(id),
           },
         ]
       : isCalcMode
@@ -376,7 +409,8 @@ export function CommandBar() {
               key: 'calculator',
               heading: t('Calculator'),
               items: calcItems,
-              onSelect: ({ id }: Pick<SearchableItem, 'id'>) => handleCalcSelect(id),
+              onSelect: ({ id }: Pick<SearchableItem, 'id'>) =>
+                handleCalcSelect(id),
             },
           ]
         : isAmountMode

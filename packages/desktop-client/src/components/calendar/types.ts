@@ -1,4 +1,4 @@
-export interface CalendarEntry {
+export type CalendarEntry = {
   id: string;
   date: string; // YYYY-MM-DD
   name: string;
@@ -12,21 +12,21 @@ export interface CalendarEntry {
   hardDeadline?: string;
   actionDeadline?: string;
   deadlineStatus?: 'ok' | 'action_due' | 'soft_passed' | 'hard_passed';
-}
+};
 
-export interface CrunchDay {
+export type CrunchDay = {
   date: string; // YYYY-MM-DD
   count: number;
   total: number; // cents
-}
+};
 
-export interface WeekData {
+export type WeekData = {
   weekStart: string; // YYYY-MM-DD (Monday)
   weekEnd: string; // YYYY-MM-DD (Sunday)
   entries: CalendarEntry[];
   totalAmount: number; // sum of all entries (cents)
   runningBalance: number; // projected balance at end of week (cents)
   crunchDays: CrunchDay[];
-}
+};
 
 export type CalendarView = 'list' | 'month';

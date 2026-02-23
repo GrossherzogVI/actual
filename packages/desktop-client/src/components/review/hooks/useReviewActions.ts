@@ -3,7 +3,7 @@ import { useCallback, useState } from 'react';
 
 import { send } from 'loot-core/platform/client/connection';
 
-import type { ReviewItem, ReviewItemStatus } from '../types';
+import type { ReviewItem, ReviewItemStatus } from '@/components/review/types';
 
 type UseReviewActionsOptions = {
   onSuccess?: () => void;
@@ -15,11 +15,17 @@ type UseReviewActionsReturn = {
   reject: (id: string) => Promise<boolean>;
   snooze: (id: string) => Promise<boolean>;
   dismiss: (id: string) => Promise<boolean>;
-  acceptHighConfidence: (items: ReviewItem[], threshold?: number) => Promise<number>;
+  acceptHighConfidence: (
+    items: ReviewItem[],
+    threshold?: number,
+  ) => Promise<number>;
   dismissAllSuggestions: (items: ReviewItem[]) => Promise<number>;
 };
 
-async function updateItem(id: string, status: ReviewItemStatus): Promise<boolean> {
+async function updateItem(
+  id: string,
+  status: ReviewItemStatus,
+): Promise<boolean> {
   const result = await (send as Function)('review-update', { id, status });
   return result && !('error' in result);
 }
@@ -106,8 +112,7 @@ export function useReviewActions({
   const dismissAllSuggestions = useCallback(
     async (items: ReviewItem[]): Promise<number> => {
       const eligible = items.filter(
-        item =>
-          item.status === 'pending' && item.type === 'budget_suggestion',
+        item => item.status === 'pending' && item.type === 'budget_suggestion',
       );
       if (eligible.length === 0) return 0;
 

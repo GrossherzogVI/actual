@@ -1,8 +1,8 @@
 import React from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
 import { daysUntil, isDeadlineSoon } from './types';
@@ -12,7 +12,11 @@ type CancellationInfoProps = {
   contract: ContractEntity;
 };
 
-function InfoRow({ label, value, valueStyle }: {
+function InfoRow({
+  label,
+  value,
+  valueStyle,
+}: {
   label: string;
   value: React.ReactNode;
   valueStyle?: React.CSSProperties;
@@ -79,7 +83,7 @@ export function CancellationInfo({ contract }: CancellationInfoProps) {
       )}
     </Text>
   ) : (
-    <Text style={{ color: theme.pageTextSubdued }}>{t('None')}</Text>
+    <Text style={{ color: theme.pageTextSubdued }}><Trans>None</Trans></Text>
   );
 
   return (
@@ -107,13 +111,18 @@ export function CancellationInfo({ contract }: CancellationInfoProps) {
             borderRadius: 4,
           }}
         >
-          <Text style={{ fontSize: 12, color: theme.warningText, fontWeight: 600 }}>
+          <Text
+            style={{ fontSize: 12, color: theme.warningText, fontWeight: 600 }}
+          >
             <Trans>Action required: cancellation deadline approaching</Trans>
           </Text>
         </View>
       )}
 
-      <InfoRow label={t('End date')} value={contract.end_date || t('Open-ended')} />
+      <InfoRow
+        label={t('End date')}
+        value={contract.end_date || t('Open-ended')}
+      />
       <InfoRow
         label={t('Notice period')}
         value={

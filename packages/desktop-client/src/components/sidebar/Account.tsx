@@ -2,6 +2,7 @@
 import React, { useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NavLink, useLocation } from 'react-router';
 
 import { AlignedText } from '@actual-app/components/aligned-text';
 import { Button } from '@actual-app/components/button';
@@ -19,7 +20,6 @@ import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
 import { Tooltip } from '@actual-app/components/tooltip';
 import { View } from '@actual-app/components/view';
-import { css, cx } from '@emotion/css';
 
 import type { AccountEntity } from 'loot-core/types/models';
 
@@ -28,7 +28,6 @@ import {
   useUpdateAccountMutation,
 } from '@desktop-client/accounts';
 import { BalanceHistoryGraph } from '@desktop-client/components/accounts/BalanceHistoryGraph';
-import { Link } from '@desktop-client/components/common/Link';
 import { Notes } from '@desktop-client/components/Notes';
 import {
   DropHighlight,
@@ -39,7 +38,10 @@ import type {
   OnDragChangeCallback,
   OnDropCallback,
 } from '@desktop-client/components/sort';
-import { CellValue } from '@desktop-client/components/spreadsheet/CellValue';
+import {
+  CellValue,
+  CellValueText,
+} from '@desktop-client/components/spreadsheet/CellValue';
 import { useContextMenu } from '@desktop-client/hooks/useContextMenu';
 import { useDragRef } from '@desktop-client/hooks/useDragRef';
 import { useIsTestEnv } from '@desktop-client/hooks/useIsTestEnv';
@@ -49,8 +51,8 @@ import { openAccountCloseModal } from '@desktop-client/modals/modalsSlice';
 import { useDispatch } from '@desktop-client/redux';
 import type { Binding, SheetFields } from '@desktop-client/spreadsheet';
 
-import { SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
-import { NavLink, useLocation } from 'react-router';
+import { SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
+import { cn } from '@/lib/utils';
 
 export const accountNameStyle: CSSProperties = {
   marginTop: -2,
@@ -160,32 +162,33 @@ export function Account<FieldName extends SheetFields<'account'>>({
             asChild
             isActive={isActive}
             tooltip={needsTooltip ? name : undefined}
-            className={cx(
-              titleAccount && "border-b-[1.5px] border-white/40 pb-1 rounded-none",
-              updated && "font-bold"
+            className={cn(
+              titleAccount &&
+                'border-b-[1.5px] border-white/40 pb-1 rounded-none',
+              updated && 'font-bold',
+              isActive &&
+                !titleAccount &&
+                'border-l-2 border-sidebar-primary rounded-l-none',
             )}
           >
             <NavLink
               to={to}
-              onClick={isEditing ? (e: React.MouseEvent) => e.preventDefault() : undefined}
+              onClick={
+                isEditing
+                  ? (e: React.MouseEvent) => e.preventDefault()
+                  : undefined
+              }
               className="relative flex items-center gap-2 text-sidebar-foreground no-underline"
             >
               {connected && (
                 <div
-                  className={cx(
-                    'dot',
-                    css({
-                      width: 5,
-                      height: 5,
-                      borderRadius: 5,
-                      backgroundColor: pending
-                        ? theme.sidebarItemBackgroundPending
-                        : failed
-                          ? theme.sidebarItemBackgroundFailed
-                          : theme.sidebarItemBackgroundPositive,
-                      transition: 'transform .3s',
-                      flexShrink: 0,
-                    }),
+                  className={cn(
+                    'size-[5px] rounded-full shrink-0 transition-transform duration-300',
+                    pending
+                      ? 'bg-yellow-500'
+                      : failed
+                        ? 'bg-red-500'
+                        : 'bg-emerald-500',
                   )}
                 />
               )}
@@ -219,7 +222,25 @@ export function Account<FieldName extends SheetFields<'account'>>({
                     name
                   )
                 }
-                right={<CellValue binding={query} type="financial" />}
+                right={
+                  <CellValue binding={query} type="financial">
+                    {({ type, name: cellName, value }) => {
+                      const numValue = typeof value === 'number' ? value : 0;
+                      return (
+                        <CellValueText<'account', FieldName>
+                          type={type}
+                          name={cellName}
+                          value={value as any}
+                          className={cn(
+                            numValue > 0 && 'text-emerald-500',
+                            numValue < 0 && 'text-red-500',
+                            numValue === 0 && 'text-sidebar-foreground/50',
+                          )}
+                        />
+                      );
+                    }}
+                  </CellValue>
+                }
               />
             </NavLink>
           </SidebarMenuButton>

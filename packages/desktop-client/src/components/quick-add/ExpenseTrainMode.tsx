@@ -3,8 +3,8 @@ import React from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
 import { Button } from '@actual-app/components/button';
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
 type ExpenseTrainModeProps = {
@@ -48,7 +48,9 @@ export function ExpenseTrainMode({
             borderRadius: 4,
             border: `1px solid ${enabled ? theme.formInputBorderSelected : theme.tableBorder}`,
             color: enabled ? theme.formLabelText : theme.pageTextSubdued,
-            backgroundColor: enabled ? theme.menuItemBackgroundHover : 'transparent',
+            backgroundColor: enabled
+              ? theme.menuItemBackgroundHover
+              : 'transparent',
           }}
         >
           <Trans>Train mode</Trans>

@@ -2,41 +2,40 @@
 import React from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 
-import { theme } from '@actual-app/components/theme';
-import { Text } from '@actual-app/components/text';
-import { View } from '@actual-app/components/view';
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 type Props = {
   title: string;
   children: ReactNode;
   style?: CSSProperties;
+  className?: string;
+  /** Optional element rendered in the top-right corner of the card header */
+  action?: ReactNode;
 };
 
-export function WidgetCard({ title, children, style }: Props) {
+export function WidgetCard({
+  title,
+  children,
+  style,
+  className,
+  action,
+}: Props) {
   return (
-    <View
-      style={{
-        backgroundColor: theme.tableBackground,
-        borderRadius: 10,
-        border: `1px solid ${theme.tableBorder}`,
-        padding: 16,
-        boxShadow: '0 1px 3px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.06)',
-        ...style,
-      }}
-    >
-      <Text
-        style={{
-          fontSize: 11,
-          fontWeight: 600,
-          color: theme.tableHeaderText,
-          textTransform: 'uppercase',
-          letterSpacing: '0.04em',
-          marginBottom: 12,
-        }}
-      >
-        {title}
-      </Text>
-      {children}
-    </View>
+    <Card className={cn('gap-0 py-0 shadow-sm', className)} style={style}>
+      <CardHeader className="px-4 pb-2 pt-3">
+        <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {title}
+        </CardTitle>
+        {action && <CardAction>{action}</CardAction>}
+      </CardHeader>
+      <CardContent className="px-4 pb-3">{children}</CardContent>
+    </Card>
   );
 }

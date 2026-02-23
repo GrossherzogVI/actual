@@ -18,7 +18,7 @@ export type ReviewItemStatus =
   | 'snoozed'
   | 'dismissed';
 
-export interface ReviewItem {
+export type ReviewItem = {
   id: string;
   type: ReviewItemType;
   priority: ReviewItemPriority;
@@ -38,24 +38,24 @@ export interface ReviewItem {
   // Optional: payload fields the server may denormalize for display
   transaction_payee?: string | null;
   transaction_amount?: number | null; // cents
-}
+};
 
-export interface ReviewCount {
+export type ReviewCount = {
   pending: number;
   urgent: number;
   review: number;
   suggestion: number;
-}
+};
 
 /** Parsed shape of ReviewItem.ai_suggestion JSON */
-export interface AiSuggestion {
+export type AiSuggestion = {
   category_id?: string;
   category_name?: string;
   confidence?: number;
   payee_pattern?: string;
   label?: string;
   notes?: string;
-}
+};
 
 // ---- Filter types ----
 
@@ -122,11 +122,15 @@ export function getItemTitle(item: ReviewItem): string {
     case 'uncategorized':
       return payee ? `Uncategorized: ${payee}` : 'Uncategorized transaction';
     case 'low_confidence':
-      return payee ? `Low confidence: ${payee}` : 'Low confidence classification';
+      return payee
+        ? `Low confidence: ${payee}`
+        : 'Low confidence classification';
     case 'recurring_detected': {
       const suggestion = parseAiSuggestion(item.ai_suggestion);
       const pattern = suggestion?.payee_pattern ?? payee;
-      return pattern ? `Recurring pattern: ${pattern}` : 'Recurring pattern detected';
+      return pattern
+        ? `Recurring pattern: ${pattern}`
+        : 'Recurring pattern detected';
     }
     case 'amount_mismatch':
       return payee ? `Amount mismatch: ${payee}` : 'Amount mismatch detected';

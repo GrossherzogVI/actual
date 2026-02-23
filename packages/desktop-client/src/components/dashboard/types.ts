@@ -1,5 +1,8 @@
 // @ts-strict-ignore
-import type { ContractEntity, ContractSummary } from 'loot-core/server/contracts/app';
+import type {
+  ContractEntity,
+  ContractSummary,
+} from 'loot-core/server/contracts/app';
 
 export type { ContractEntity, ContractSummary };
 

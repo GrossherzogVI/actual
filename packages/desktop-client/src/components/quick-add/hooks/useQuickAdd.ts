@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { send } from 'loot-core/platform/client/connection';
 
-import type { Preset, QuickAddFormData } from '../types';
+import type { Preset, QuickAddFormData } from '@/components/quick-add/types';
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
@@ -27,7 +27,10 @@ type UseQuickAddReturn = {
   form: QuickAddFormData;
   isIncome: boolean;
   setIsIncome: Dispatch<SetStateAction<boolean>>;
-  setField: <K extends keyof QuickAddFormData>(key: K, value: QuickAddFormData[K]) => void;
+  setField: <K extends keyof QuickAddFormData>(
+    key: K,
+    value: QuickAddFormData[K],
+  ) => void;
   resetForm: () => void;
   resetAmountOnly: () => void;
   prefill: (preset: Preset) => void;
@@ -35,7 +38,10 @@ type UseQuickAddReturn = {
 };
 
 export function useQuickAdd(defaultAccountId?: string): UseQuickAddReturn {
-  const [form, setForm] = useState<QuickAddFormData>({ ...EMPTY_FORM, date: todayISO() });
+  const [form, setForm] = useState<QuickAddFormData>({
+    ...EMPTY_FORM,
+    date: todayISO(),
+  });
   const [isIncome, setIsIncome] = useState(false);
 
   const setField = useCallback(
@@ -84,7 +90,7 @@ export function useQuickAdd(defaultAccountId?: string): UseQuickAddReturn {
       try {
         const payees = await send('payees-get');
         const match = payees.find(
-          (p) => p.name.toLowerCase() === form.payee.trim().toLowerCase(),
+          p => p.name.toLowerCase() === form.payee.trim().toLowerCase(),
         );
         if (match) {
           payeeId = match.id;
@@ -116,5 +122,14 @@ export function useQuickAdd(defaultAccountId?: string): UseQuickAddReturn {
     return id;
   }, [form, defaultAccountId, isIncome]);
 
-  return { form, isIncome, setIsIncome, setField, resetForm, resetAmountOnly, prefill, submitTransaction };
+  return {
+    form,
+    isIncome,
+    setIsIncome,
+    setField,
+    resetForm,
+    resetAmountOnly,
+    prefill,
+    submitTransaction,
+  };
 }

@@ -3,8 +3,8 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Button } from '@actual-app/components/button';
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
 import { WidgetCard } from './WidgetCard';
@@ -26,7 +26,13 @@ export function QuickAddWidget({ onOpenQuickAdd }: Props) {
         >
           {t('Add Expense')}
         </Button>
-        <Text style={{ color: theme.pageTextSubdued, fontSize: 11, textAlign: 'center' }}>
+        <Text
+          style={{
+            color: theme.pageTextSubdued,
+            fontSize: 11,
+            textAlign: 'center',
+          }}
+        >
           {t('or press {{shortcut}} anywhere', { shortcut: '\u2318N' })}
         </Text>
       </View>

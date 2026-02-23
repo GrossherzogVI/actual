@@ -1,19 +1,19 @@
 // @ts-strict-ignore
 import React from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 import {
-  LineChart,
+  CartesianGrid,
+  Legend,
   Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
 } from 'recharts';
 
 import type { AnalyticsData } from './hooks/useAnalyticsData';
@@ -29,7 +29,7 @@ export function SpendingTrends({ data }: Props) {
     return (
       <View style={{ padding: 20, alignItems: 'center' }}>
         <Text style={{ color: theme.pageTextSubdued }}>
-          {t('Not enough data to show trends.')}
+          <Trans>Not enough data to show trends.</Trans>
         </Text>
       </View>
     );

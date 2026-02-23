@@ -3,8 +3,8 @@ import React from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
 import { Button } from '@actual-app/components/button';
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
 import type { ReviewItem } from './types';
@@ -33,19 +33,7 @@ export function ReviewBatchActions({
   if (pendingItems.length === 0) return null;
 
   return (
-    <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-        padding: '10px 15px',
-        backgroundColor: theme.tableHeaderBackground,
-        border: `1px solid ${theme.tableBorder}`,
-        borderRadius: 6,
-        marginBottom: 12,
-        flexWrap: 'wrap',
-      }}
-    >
+    <div className="mb-3 flex flex-wrap items-center gap-2.5 rounded-lg border bg-muted/50 px-4 py-2.5">
       <Text
         style={{
           fontSize: 13,
@@ -82,6 +70,6 @@ export function ReviewBatchActions({
           {suggestionCount > 0 ? ` (${suggestionCount})` : ''}
         </Trans>
       </Button>
-    </View>
+    </div>
   );
 }

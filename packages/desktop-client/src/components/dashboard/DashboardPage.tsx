@@ -1,40 +1,41 @@
 // @ts-strict-ignore
 import React, { useCallback, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import ReactGridLayout from 'react-grid-layout';
 import type { Layout, LayoutItem } from 'react-grid-layout';
-import 'react-grid-layout/css/styles.css';
+import { Trans, useTranslation } from 'react-i18next';
 
+import 'react-grid-layout/css/styles.css';
 import { Button } from '@actual-app/components/button';
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
-import { Page } from '@desktop-client/components/Page';
+import { send } from 'loot-core/platform/client/connection';
+import * as monthUtils from 'loot-core/shared/months';
+
+import { QuickAddOverlay } from '@/components/quick-add/QuickAddOverlay';
+
+import { useDashboardData } from './hooks/useDashboardData';
+import { useUpcomingPayments } from './hooks/useUpcomingPayments';
+import { MoneyPulse } from './MoneyPulse';
+import { AccountBalancesWidget } from './widgets/AccountBalancesWidget';
+import { AttentionQueueWidget } from './widgets/AttentionQueueWidget';
+import { AvailableToSpendWidget } from './widgets/AvailableToSpendWidget';
+import { BalanceProjectionWidget } from './widgets/BalanceProjectionWidget';
+import { CashRunwayWidget } from './widgets/CashRunwayWidget';
+import { QuickAddWidget } from './widgets/QuickAddWidget';
+import { ThisMonthWidget } from './widgets/ThisMonthWidget';
+import { UpcomingPaymentsWidget } from './widgets/UpcomingPaymentsWidget';
+
 import { EmptyState } from '@desktop-client/components/common/EmptyState';
 import { SkeletonCard } from '@desktop-client/components/common/Skeleton';
+import { Page } from '@desktop-client/components/Page';
 import { useAccounts } from '@desktop-client/hooks/useAccounts';
 import { useFeatureFlag } from '@desktop-client/hooks/useFeatureFlag';
 import { useNavigate } from '@desktop-client/hooks/useNavigate';
 import { useResizeObserver } from '@desktop-client/hooks/useResizeObserver';
-import { useSyncedPref } from '@desktop-client/hooks/useSyncedPref';
 import { SheetNameProvider } from '@desktop-client/hooks/useSheetName';
-
-import * as monthUtils from 'loot-core/shared/months';
-import { send } from 'loot-core/platform/client/connection';
-
-import { MoneyPulse } from './MoneyPulse';
-import { useDashboardData } from './hooks/useDashboardData';
-import { useUpcomingPayments } from './hooks/useUpcomingPayments';
-import { AccountBalancesWidget } from './widgets/AccountBalancesWidget';
-import { AttentionQueueWidget } from './widgets/AttentionQueueWidget';
-import { BalanceProjectionWidget } from './widgets/BalanceProjectionWidget';
-import { CashRunwayWidget } from './widgets/CashRunwayWidget';
-import { QuickAddWidget } from './widgets/QuickAddWidget';
-import { QuickAddOverlay } from '../quick-add/QuickAddOverlay';
-import { ThisMonthWidget } from './widgets/ThisMonthWidget';
-import { AvailableToSpendWidget } from './widgets/AvailableToSpendWidget';
-import { UpcomingPaymentsWidget } from './widgets/UpcomingPaymentsWidget';
+import { useSyncedPref } from '@desktop-client/hooks/useSyncedPref';
 
 // ---------------------------------------------------------------------------
 // Widget registry
@@ -62,15 +63,15 @@ type WidgetId = (typeof ALL_WIDGET_IDS)[number];
 // Row 5: this-month (col 0-3, h=3), available-to-spend (col 4-7, h=3), attention-queue (col 8-11, h=3)
 // Row 8: balance-projection (col 0-5, h=4), cash-runway (col 6-11, h=4)
 const DEFAULT_LAYOUT: LayoutItem[] = [
-  { i: 'money-pulse',         x: 0, y: 0, w: 12, h: 2, minW: 6, minH: 1 },
-  { i: 'account-balances',    x: 0, y: 2, w: 4,  h: 3, minW: 3, minH: 2 },
-  { i: 'upcoming-payments',   x: 4, y: 2, w: 4,  h: 3, minW: 3, minH: 2 },
-  { i: 'quick-add',           x: 8, y: 2, w: 4,  h: 3, minW: 3, minH: 2 },
-  { i: 'this-month',          x: 0, y: 5, w: 4,  h: 3, minW: 3, minH: 2 },
-  { i: 'available-to-spend',  x: 4, y: 5, w: 4,  h: 3, minW: 3, minH: 2 },
-  { i: 'attention-queue',     x: 8, y: 5, w: 4,  h: 3, minW: 3, minH: 2 },
-  { i: 'balance-projection',  x: 0, y: 8, w: 6,  h: 4, minW: 4, minH: 3 },
-  { i: 'cash-runway',         x: 6, y: 8, w: 6,  h: 4, minW: 4, minH: 3 },
+  { i: 'money-pulse', x: 0, y: 0, w: 12, h: 2, minW: 6, minH: 1 },
+  { i: 'account-balances', x: 0, y: 2, w: 4, h: 3, minW: 3, minH: 2 },
+  { i: 'upcoming-payments', x: 4, y: 2, w: 4, h: 3, minW: 3, minH: 2 },
+  { i: 'quick-add', x: 8, y: 2, w: 4, h: 3, minW: 3, minH: 2 },
+  { i: 'this-month', x: 0, y: 5, w: 4, h: 3, minW: 3, minH: 2 },
+  { i: 'available-to-spend', x: 4, y: 5, w: 4, h: 3, minW: 3, minH: 2 },
+  { i: 'attention-queue', x: 8, y: 5, w: 4, h: 3, minW: 3, minH: 2 },
+  { i: 'balance-projection', x: 0, y: 8, w: 6, h: 4, minW: 4, minH: 3 },
+  { i: 'cash-runway', x: 6, y: 8, w: 6, h: 4, minW: 4, minH: 3 },
 ];
 
 function parseLayout(raw: string | undefined): LayoutItem[] | null {
@@ -90,17 +91,20 @@ function parseLayout(raw: string | undefined): LayoutItem[] | null {
 
 export function DashboardPage() {
   const { t } = useTranslation();
-  const widgetLabels = useMemo<Record<WidgetId, string>>(() => ({
-    'money-pulse': t('Money Pulse'),
-    'account-balances': t('Account Balances'),
-    'this-month': t('This Month'),
-    'upcoming-payments': t('Upcoming Payments'),
-    'available-to-spend': t('Available to Spend'),
-    'quick-add': t('Quick Add'),
-    'attention-queue': t('Attention Queue'),
-    'balance-projection': t('Balance Projection'),
-    'cash-runway': t('Cash Runway'),
-  }), [t]);
+  const widgetLabels = useMemo<Record<WidgetId, string>>(
+    () => ({
+      'money-pulse': t('Money Pulse'),
+      'account-balances': t('Account Balances'),
+      'this-month': t('This Month'),
+      'upcoming-payments': t('Upcoming Payments'),
+      'available-to-spend': t('Available to Spend'),
+      'quick-add': t('Quick Add'),
+      'attention-queue': t('Attention Queue'),
+      'balance-projection': t('Balance Projection'),
+      'cash-runway': t('Cash Runway'),
+    }),
+    [t],
+  );
   const enabled = useFeatureFlag('financeOS');
   const navigate = useNavigate();
 
@@ -112,7 +116,11 @@ export function DashboardPage() {
     return lastDay.getDate() - now.getDate() + 1;
   })();
 
-  const { grouped, loading: paymentsLoading, error: paymentsError } = useUpcomingPayments(daysLeftInMonth);
+  const {
+    grouped,
+    loading: paymentsLoading,
+    error: paymentsError,
+  } = useUpcomingPayments(daysLeftInMonth);
   const upcomingFlat = Array.from(grouped.values()).flat();
 
   const accountsQuery = useAccounts();
@@ -127,17 +135,25 @@ export function DashboardPage() {
 
   // Layout persistence via synced prefs
   const [savedLayoutRaw, setSavedLayoutRaw] = useSyncedPref('dashboardLayout');
-  const savedLayout = useMemo(() => parseLayout(savedLayoutRaw), [savedLayoutRaw]);
+  const savedLayout = useMemo(
+    () => parseLayout(savedLayoutRaw),
+    [savedLayoutRaw],
+  );
 
   // Visible widgets (derived from layout items)
   const initialVisibleIds = useMemo<Set<WidgetId>>(() => {
     if (savedLayout) {
-      return new Set(savedLayout.map(l => l.i as WidgetId).filter(id => ALL_WIDGET_IDS.includes(id)));
+      return new Set(
+        savedLayout
+          .map(l => l.i as WidgetId)
+          .filter(id => ALL_WIDGET_IDS.includes(id)),
+      );
     }
     return new Set(ALL_WIDGET_IDS);
   }, []);
 
-  const [visibleWidgets, setVisibleWidgets] = useState<Set<WidgetId>>(initialVisibleIds);
+  const [visibleWidgets, setVisibleWidgets] =
+    useState<Set<WidgetId>>(initialVisibleIds);
 
   // Active layout (merge saved with defaults for any new widgets)
   const [layout, setLayout] = useState<LayoutItem[]>(() => {
@@ -204,7 +220,9 @@ export function DashboardPage() {
       <Page header={t('Dashboard')}>
         <View style={{ padding: 20 }}>
           <Text style={{ color: theme.pageTextSubdued }}>
-            {t('Dashboard is not enabled. Enable it in Settings > Feature Flags.')}
+            {t(
+              'Dashboard is not enabled. Enable it in Settings > Feature Flags.',
+            )}
           </Text>
         </View>
       </Page>
@@ -253,7 +271,9 @@ export function DashboardPage() {
         }}
       >
         {isEditing && hiddenWidgets.length > 0 && (
-          <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', flex: 1 }}>
+          <View
+            style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', flex: 1 }}
+          >
             {hiddenWidgets.map(id => (
               <Button
                 key={id}
@@ -274,7 +294,7 @@ export function DashboardPage() {
         )}
         {isEditing ? (
           <Button onPress={() => setIsEditing(false)}>
-            {t('Done')}
+            <Trans>Done</Trans>
           </Button>
         ) : (
           <Button variant="bare" onPress={() => setIsEditing(true)}>
@@ -300,7 +320,14 @@ export function DashboardPage() {
           <SkeletonCard height={140} />
           <SkeletonCard height={140} />
           <SkeletonCard height={140} />
-          <View style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <View
+            style={{
+              gridColumn: '1 / -1',
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: 16,
+            }}
+          >
             <SkeletonCard height={160} />
             <SkeletonCard height={160} />
           </View>
@@ -309,7 +336,9 @@ export function DashboardPage() {
         <View style={{ padding: 16 }}>
           <EmptyState
             title={t('Welcome to your Finance Dashboard')}
-            description={t('Start by importing your bank data to see everything here.')}
+            description={t(
+              'Start by importing your bank data to see everything here.',
+            )}
             actions={[
               {
                 label: t('Add Account'),
@@ -322,7 +351,8 @@ export function DashboardPage() {
               },
               {
                 label: t('Set Up Categories'),
-                onPress: () => (send as Function)('categories-setup-german-tree'),
+                onPress: () =>
+                  (send as Function)('categories-setup-german-tree'),
               },
             ]}
           />
@@ -330,7 +360,10 @@ export function DashboardPage() {
       ) : (
         <View
           innerRef={containerRef}
-          style={{ padding: '0 16px 16px', userSelect: isEditing ? 'none' : undefined }}
+          style={{
+            padding: '0 16px 16px',
+            userSelect: isEditing ? 'none' : undefined,
+          }}
         >
           {containerWidth > 0 && (
             <ReactGridLayout
@@ -357,7 +390,7 @@ export function DashboardPage() {
                       ? {
                           outline: `2px dashed ${theme.tableBorder}`,
                           outlineOffset: -2,
-                          borderRadius: 10,
+                          borderRadius: 12,
                           cursor: 'grab',
                         }
                       : {}),

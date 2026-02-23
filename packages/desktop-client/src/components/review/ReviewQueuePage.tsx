@@ -2,20 +2,20 @@
 import React, { useCallback, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
-import { Page } from '@desktop-client/components/Page';
-import { useFeatureFlag } from '@desktop-client/hooks/useFeatureFlag';
-
+import { useReviewActions } from './hooks/useReviewActions';
+import { useReviewQueue } from './hooks/useReviewQueue';
 import { ReviewBatchActions } from './ReviewBatchActions';
 import { ReviewFilters } from './ReviewFilters';
 import { ReviewItem } from './ReviewItem';
 import { ReviewStats } from './ReviewStats';
-import { useReviewQueue } from './hooks/useReviewQueue';
-import { useReviewActions } from './hooks/useReviewActions';
-import type { TypeFilter, PriorityFilter } from './types';
+import type { PriorityFilter, TypeFilter } from './types';
+
+import { Page } from '@desktop-client/components/Page';
+import { useFeatureFlag } from '@desktop-client/hooks/useFeatureFlag';
 
 export function ReviewQueuePage() {
   const { t } = useTranslation();
@@ -27,8 +27,15 @@ export function ReviewQueuePage() {
   const { items, counts, loading, error, hasMore, reload, loadMore } =
     useReviewQueue({ typeFilter, priorityFilter });
 
-  const { processing, accept, reject, snooze, dismiss, acceptHighConfidence, dismissAllSuggestions } =
-    useReviewActions({ onSuccess: reload });
+  const {
+    processing,
+    accept,
+    reject,
+    snooze,
+    dismiss,
+    acceptHighConfidence,
+    dismissAllSuggestions,
+  } = useReviewActions({ onSuccess: reload });
 
   const handleAcceptHighConfidence = useCallback(async () => {
     await acceptHighConfidence(items);
@@ -74,18 +81,12 @@ export function ReviewQueuePage() {
       />
 
       {/* Main list */}
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: theme.tableBackground,
-          borderRadius: 6,
-          border: `1px solid ${theme.tableBorder}`,
-          overflow: 'hidden',
-        }}
-      >
+      <div className="flex-1 overflow-hidden rounded-lg border">
         {loading && items.length === 0 ? (
           <View style={{ padding: 20, alignItems: 'center' }}>
-            <Text style={{ color: theme.pageTextSubdued }}>{t('Loading...')}</Text>
+            <Text style={{ color: theme.pageTextSubdued }}>
+              {t('Loading...')}
+            </Text>
           </View>
         ) : error ? (
           <View style={{ padding: 20, alignItems: 'center' }}>
@@ -113,7 +114,14 @@ export function ReviewQueuePage() {
                 ? t('No matches')
                 : t('All caught up!')}
             </Text>
-            <Text style={{ fontSize: 13, color: theme.pageTextSubdued, textAlign: 'center', maxWidth: 360 }}>
+            <Text
+              style={{
+                fontSize: 13,
+                color: theme.pageTextSubdued,
+                textAlign: 'center',
+                maxWidth: 360,
+              }}
+            >
               {typeFilter !== 'all' || priorityFilter !== 'all'
                 ? t('No items match the current filters.')
                 : t(
@@ -157,14 +165,14 @@ export function ReviewQueuePage() {
                     }}
                     onClick={loadMore}
                   >
-                    {t('Load more')}
+                    <Trans>Load more</Trans>
                   </Text>
                 )}
               </View>
             )}
           </>
         )}
-      </View>
+      </div>
     </Page>
   );
 }

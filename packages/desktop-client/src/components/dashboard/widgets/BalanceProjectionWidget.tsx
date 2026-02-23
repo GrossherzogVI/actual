@@ -1,19 +1,22 @@
 // @ts-strict-ignore
 import React, { useCallback, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 
 import { Button } from '@actual-app/components/button';
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
+
+import type { UpcomingPayment } from '@/components/dashboard/types';
+import { formatEur } from '@/components/dashboard/utils';
+
+import { WidgetCard } from './WidgetCard';
 
 import { useSheetValue } from '@desktop-client/hooks/useSheetValue';
 import { useSyncedPref } from '@desktop-client/hooks/useSyncedPref';
 import { allAccountBalance } from '@desktop-client/spreadsheet/bindings';
 
-import type { UpcomingPayment } from '../types';
-import { formatEur } from '../utils';
-import { WidgetCard } from './WidgetCard';
+import { Badge } from '@/components/ui/badge';
 
 type Props = {
   upcomingPayments?: UpcomingPayment[];
@@ -37,7 +40,6 @@ function projectBalance(
   for (const p of payments) {
     const pDate = new Date(p.date + 'T00:00:00');
     if (pDate >= today && pDate <= cutoff && p.amount != null) {
-      // Contract amounts are stored as positive costs; subtract them
       totalOutflow += Math.abs(p.amount);
     }
   }
@@ -56,9 +58,10 @@ function ProjectionRow({
   isNegative: boolean;
   isBelowThreshold: boolean;
 }) {
-  const textColor = isNegative || isBelowThreshold
-    ? (theme.errorText ?? '#ef4444')
-    : theme.pageText;
+  const textColor =
+    isNegative || isBelowThreshold
+      ? (theme.errorText ?? '#ef4444')
+      : theme.pageText;
 
   return (
     <View
@@ -75,7 +78,9 @@ function ProjectionRow({
           : {}),
       }}
     >
-      <Text style={{ color: theme.pageTextSubdued, fontSize: 13 }}>{label}</Text>
+      <Text style={{ color: theme.pageTextSubdued, fontSize: 13 }}>
+        {label}
+      </Text>
       <Text
         style={{
           fontSize: 13,
@@ -92,15 +97,14 @@ function ProjectionRow({
 export function BalanceProjectionWidget({ upcomingPayments = [] }: Props) {
   const { t } = useTranslation();
 
-  // Query-based binding — no SheetNameProvider needed
-  const currentBalance = useSheetValue<'account', 'accounts-balance'>(allAccountBalance());
+  const currentBalance = useSheetValue<'account', 'accounts-balance'>(
+    allAccountBalance(),
+  );
 
-  // Balance threshold pref (shared with CalendarPage, stored as cents string)
   const [thresholdRaw, setThresholdRaw] = useSyncedPref('balanceThreshold');
   const threshold = thresholdRaw ? parseInt(thresholdRaw, 10) : null;
   const thresholdEnabled = threshold !== null && !Number.isNaN(threshold);
 
-  // Local state for threshold settings popover
   const [showSettings, setShowSettings] = useState(false);
   const [thresholdInput, setThresholdInput] = useState<string>(
     threshold ? String(threshold / 100) : '',
@@ -145,73 +149,19 @@ export function BalanceProjectionWidget({ upcomingPayments = [] }: Props) {
       })
     : [];
 
-  // Determine if any projection crosses the threshold (for card border highlight)
-  const anyBelowThreshold = thresholdEnabled && projections.some(p => p.isBelowThreshold);
+  const anyBelowThreshold =
+    thresholdEnabled && projections.some(p => p.isBelowThreshold);
 
   return (
     <WidgetCard
       title={t('Balance Projection')}
-      style={{
-        gridColumn: '1 / -1',
-        ...(anyBelowThreshold
-          ? {
-              borderColor: theme.errorText ?? '#ef4444',
-              boxShadow: `0 0 0 1px ${theme.errorText ?? '#ef4444'}30`,
-            }
-          : {}),
-      }}
-    >
-      {/* Settings toggle row */}
-      <View
-        style={{
-          flexDirection: 'row',
-          justifyContent: 'flex-end',
-          alignItems: 'center',
-          marginTop: -8,
-          marginBottom: 4,
-          gap: 6,
-        }}
-      >
-        {showSettings && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Button
-              variant="bare"
-              onPress={handleToggleThreshold}
-              style={{
-                fontSize: 11,
-                padding: '2px 8px',
-                border: `1px solid ${thresholdEnabled ? (theme.errorText ?? '#ef4444') : theme.tableBorder}`,
-                borderRadius: 10,
-                backgroundColor: thresholdEnabled ? `${theme.errorText ?? '#ef4444'}18` : 'transparent',
-                color: thresholdEnabled ? (theme.errorText ?? '#ef4444') : theme.pageTextSubdued,
-              }}
-            >
-              {thresholdEnabled ? t('Disable') : t('Enable')}
-            </Button>
-            {thresholdEnabled && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                <Text style={{ fontSize: 11, color: theme.pageTextSubdued }}>Min €</Text>
-                <input
-                  type="number"
-                  min={0}
-                  step={100}
-                  value={thresholdInput}
-                  onChange={e => setThresholdInput(e.target.value)}
-                  onBlur={handleThresholdBlur}
-                  style={{
-                    width: 60,
-                    fontSize: 11,
-                    padding: '2px 4px',
-                    border: `1px solid ${theme.tableBorder}`,
-                    borderRadius: 4,
-                    backgroundColor: theme.tableBackground,
-                    color: theme.pageText,
-                  }}
-                />
-              </View>
-            )}
-          </View>
-        )}
+      className={
+        anyBelowThreshold
+          ? 'border-destructive shadow-[0_0_0_1px_hsl(var(--destructive)/0.2)]'
+          : undefined
+      }
+      style={{ gridColumn: '1 / -1' }}
+      action={
         <Button
           variant="bare"
           onPress={() => setShowSettings(prev => !prev)}
@@ -219,12 +169,72 @@ export function BalanceProjectionWidget({ upcomingPayments = [] }: Props) {
           style={{
             fontSize: 13,
             padding: '2px 6px',
-            color: thresholdEnabled ? (theme.errorText ?? '#ef4444') : theme.pageTextSubdued,
+            color: thresholdEnabled
+              ? (theme.errorText ?? '#ef4444')
+              : theme.pageTextSubdued,
           }}
         >
-          ⚙
+          &#x2699;
         </Button>
-      </View>
+      }
+    >
+      {/* Settings row */}
+      {showSettings && (
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'flex-end',
+            alignItems: 'center',
+            marginBottom: 4,
+            gap: 6,
+          }}
+        >
+          <Button
+            variant="bare"
+            onPress={handleToggleThreshold}
+            style={{
+              fontSize: 11,
+              padding: '2px 8px',
+              border: `1px solid ${thresholdEnabled ? (theme.errorText ?? '#ef4444') : theme.tableBorder}`,
+              borderRadius: 10,
+              backgroundColor: thresholdEnabled
+                ? `${theme.errorText ?? '#ef4444'}18`
+                : 'transparent',
+              color: thresholdEnabled
+                ? (theme.errorText ?? '#ef4444')
+                : theme.pageTextSubdued,
+            }}
+          >
+            {thresholdEnabled ? t('Disable') : t('Enable')}
+          </Button>
+          {thresholdEnabled && (
+            <View
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}
+            >
+              <Text style={{ fontSize: 11, color: theme.pageTextSubdued }}>
+                Min &euro;
+              </Text>
+              <input
+                type="number"
+                min={0}
+                step={100}
+                value={thresholdInput}
+                onChange={e => setThresholdInput(e.target.value)}
+                onBlur={handleThresholdBlur}
+                style={{
+                  width: 60,
+                  fontSize: 11,
+                  padding: '2px 4px',
+                  border: `1px solid ${theme.tableBorder}`,
+                  borderRadius: 4,
+                  backgroundColor: theme.tableBackground,
+                  color: theme.pageText,
+                }}
+              />
+            </View>
+          )}
+        </View>
+      )}
 
       {!hasData ? (
         <Text style={{ color: theme.pageTextSubdued, fontSize: 13 }}>
@@ -246,7 +256,7 @@ export function BalanceProjectionWidget({ upcomingPayments = [] }: Props) {
               marginTop: 4,
             }}
           >
-            {t('Add contracts to see projected outflows.')}
+            <Trans>Add contracts to see projected outflows.</Trans>
           </Text>
         </View>
       ) : (
@@ -267,23 +277,11 @@ export function BalanceProjectionWidget({ upcomingPayments = [] }: Props) {
                 alignItems: 'center',
                 gap: 4,
                 marginTop: 6,
-                padding: '3px 6px',
-                borderRadius: 4,
-                backgroundColor: `${theme.errorText ?? '#ef4444'}08`,
               }}
             >
-              <View
-                style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: '50%',
-                  backgroundColor: theme.errorText ?? '#ef4444',
-                  flexShrink: 0,
-                }}
-              />
-              <Text style={{ fontSize: 11, color: theme.errorText ?? '#ef4444' }}>
+              <Badge className="bg-red-50 text-red-700 border-red-200 text-[11px]">
                 {t('Threshold: {{amount}}', { amount: formatEur(threshold) })}
-              </Text>
+              </Badge>
             </View>
           )}
           <Text

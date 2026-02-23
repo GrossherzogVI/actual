@@ -1,19 +1,19 @@
 // @ts-strict-ignore
 import React from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 import {
-  BarChart,
   Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
 } from 'recharts';
 
 import type { AnalyticsData } from './hooks/useAnalyticsData';
@@ -39,7 +39,7 @@ export function SpendingByCategory({ data, totalSpent }: Props) {
     return (
       <View style={{ padding: 20, alignItems: 'center' }}>
         <Text style={{ color: theme.pageTextSubdued }}>
-          {t('No spending data for this month yet.')}
+          <Trans>No spending data for this month yet.</Trans>
         </Text>
       </View>
     );
@@ -94,7 +94,10 @@ export function SpendingByCategory({ data, totalSpent }: Props) {
               tick={{ fill: theme.pageText, fontSize: 11 }}
             />
             <Tooltip
-              formatter={(value: number) => [formatCents(value * 100), t('Spent')]}
+              formatter={(value: number) => [
+                formatCents(value * 100),
+                t('Spent'),
+              ]}
               contentStyle={{
                 backgroundColor: theme.menuBackground,
                 border: `1px solid ${theme.tableBorder}`,

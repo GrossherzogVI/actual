@@ -8,21 +8,17 @@ import { useResponsive } from '@actual-app/components/hooks/useResponsive';
 import { SvgArrowLeft } from '@actual-app/components/icons/v1';
 import {
   SvgAlertTriangle,
-  SvgNavigationMenu,
   SvgViewHide,
   SvgViewShow,
 } from '@actual-app/components/icons/v2';
-import { SpaceBetween } from '@actual-app/components/space-between';
 import { styles } from '@actual-app/components/styles';
 import type { CSSProperties } from '@actual-app/components/styles';
 import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
-import { css } from '@emotion/css';
 
 import { listen } from 'loot-core/platform/client/connection';
 import { isDevelopmentEnvironment } from 'loot-core/shared/environment';
-import * as Platform from 'loot-core/shared/platform';
 
 import { AccountSyncCheck } from './accounts/AccountSyncCheck';
 import { AnimatedRefresh } from './AnimatedRefresh';
@@ -32,6 +28,16 @@ import { HelpMenu } from './HelpMenu';
 import { LoggedInUser } from './LoggedInUser';
 import { useServerURL } from './ServerContext';
 import { ThemeSelector } from './ThemeSelector';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from './ui/breadcrumb';
+import { Separator } from './ui/separator';
+import { SidebarTrigger, useSidebar } from './ui/sidebar';
 
 import { sync } from '@desktop-client/app/appSlice';
 import { useGlobalPref } from '@desktop-client/hooks/useGlobalPref';
@@ -43,21 +49,10 @@ import { useSyncedPref } from '@desktop-client/hooks/useSyncedPref';
 import { useDispatch } from '@desktop-client/redux';
 import * as bindings from '@desktop-client/spreadsheet/bindings';
 
-import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
-import { Separator } from '@/components/ui/separator';
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb';
-
 function PageBreadcrumbs() {
   const location = useLocation();
   const paths = location.pathname.split('/').filter(Boolean);
-  
+
   if (paths.length === 0) return null;
 
   // We only want to show the first two levels to avoid overly long breadcrumbs
@@ -69,12 +64,14 @@ function PageBreadcrumbs() {
           const isLast = index === paths.slice(0, 2).length - 1;
           const href = `/${paths.slice(0, index + 1).join('/')}`;
           const title = path.replace(/-/g, ' ');
-          
+
           return (
             <React.Fragment key={path}>
               <BreadcrumbItem className="hidden md:block">
                 {isLast ? (
-                  <BreadcrumbPage className="capitalize">{title}</BreadcrumbPage>
+                  <BreadcrumbPage className="capitalize">
+                    {title}
+                  </BreadcrumbPage>
                 ) : (
                   <BreadcrumbLink href={href} className="capitalize">
                     {title}
@@ -260,21 +257,21 @@ function SyncButton({ style, isMobile = false }: SyncButtonProps) {
     <Button
       variant="bare"
       aria-label={t('Sync')}
-      className={css({
-        ...(isMobile
-          ? {
-              ...style,
-              WebkitAppRegion: 'none',
-              ...mobileIconStyle,
-            }
-          : {
-              ...style,
-              WebkitAppRegion: 'none',
-              color: desktopColor,
-            }),
-        '&[data-hovered]': hoveredStyle,
-        '&[data-pressed]': activeStyle,
-      })}
+      style={
+        {
+          ...(isMobile
+            ? {
+                ...style,
+                WebkitAppRegion: 'none',
+                ...mobileIconStyle,
+              }
+            : {
+                ...style,
+                WebkitAppRegion: 'none',
+                color: desktopColor,
+              }),
+        } as React.CSSProperties
+      }
       onPress={onSync}
     >
       {isMobile ? (
@@ -328,16 +325,23 @@ export function Titlebar({ style }: TitlebarProps) {
 
   return isNarrowWidth ? null : (
     <header
-      className="flex h-12 shrink-0 items-center justify-between px-4 border-b bg-background"
-      style={{
-        pointerEvents: 'none',
-        WebkitAppRegion: 'drag',
-        ...style,
-      }}
+      className="flex h-12 shrink-0 items-center justify-between px-4 border-b border-border bg-background"
+      style={
+        {
+          pointerEvents: 'none',
+          WebkitAppRegion: 'drag',
+          ...style,
+        } as React.CSSProperties
+      }
     >
-      <div 
-        className="flex items-center gap-2" 
-        style={{ pointerEvents: 'auto', WebkitAppRegion: 'no-drag' }}
+      <div
+        className="flex items-center gap-2"
+        style={
+          {
+            pointerEvents: 'auto',
+            WebkitAppRegion: 'no-drag',
+          } as React.CSSProperties
+        }
       >
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-2 h-4" />
@@ -365,9 +369,14 @@ export function Titlebar({ style }: TitlebarProps) {
         </Routes>
       </div>
 
-      <div 
+      <div
         className="flex items-center gap-2"
-        style={{ pointerEvents: 'auto', WebkitAppRegion: 'no-drag' }}
+        style={
+          {
+            pointerEvents: 'auto',
+            WebkitAppRegion: 'no-drag',
+          } as React.CSSProperties
+        }
       >
         <UncategorizedButton />
         {isDevelopmentEnvironment() && !isTestEnv && <ThemeSelector />}

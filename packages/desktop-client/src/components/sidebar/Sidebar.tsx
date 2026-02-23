@@ -3,25 +3,25 @@ import { useTranslation } from 'react-i18next';
 
 import { SvgAdd } from '@actual-app/components/icons/v1';
 
-import {
-  Sidebar as ShadcnSidebar,
-  SidebarContent,
-  SidebarHeader,
-  SidebarFooter,
-  SidebarRail,
-  SidebarMenu,
-  SidebarMenuItem,
-} from '@/components/ui/sidebar';
-
 import { Accounts } from './Accounts';
 import { BudgetName } from './BudgetName';
 import { PrimaryButtons } from './PrimaryButtons';
 import { SecondaryButtons } from './SecondaryButtons';
 import { ToggleButton } from './ToggleButton';
-import { useSidebar } from '@/components/ui/sidebar';
 
 import { replaceModal } from '@desktop-client/modals/modalsSlice';
 import { useDispatch } from '@desktop-client/redux';
+
+import {
+  Sidebar as ShadcnSidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarRail,
+} from '@/components/ui/sidebar';
+import { useSidebar } from '@/components/ui/sidebar';
 
 export function Sidebar() {
   const { t } = useTranslation();
@@ -66,4 +66,3 @@ export function Sidebar() {
     </ShadcnSidebar>
   );
 }
-

@@ -4,15 +4,16 @@
  * Generates a valid VCALENDAR / VEVENT file per RFC 5545.
  */
 
-import type { CalendarEntry } from '../components/calendar/types';
+import type { CalendarEntry } from '@/components/calendar/types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /** Format amount in cents as EUR string (e.g. -4999 → "-49,99 EUR") */
 function formatAmount(cents: number): string {
-  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(
-    cents / 100,
-  );
+  return new Intl.NumberFormat('de-DE', {
+    style: 'currency',
+    currency: 'EUR',
+  }).format(cents / 100);
 }
 
 /**
@@ -134,7 +135,10 @@ export function generateICS(entries: CalendarEntry[]): string {
  * Trigger a browser download of the ICS file.
  * Creates a temporary Blob URL and clicks a hidden anchor element.
  */
-export function downloadICS(entries: CalendarEntry[], filename = 'zahlungskalender.ics'): void {
+export function downloadICS(
+  entries: CalendarEntry[],
+  filename = 'zahlungskalender.ics',
+): void {
   const content = generateICS(entries);
   const blob = new Blob([content], { type: 'text/calendar;charset=utf-8' });
   const url = URL.createObjectURL(blob);

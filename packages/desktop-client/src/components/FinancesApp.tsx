@@ -7,6 +7,7 @@ import React, {
   useState,
 } from 'react';
 import type { ReactElement } from 'react';
+import { ErrorBoundary } from 'react-error-boundary';
 import { useTranslation } from 'react-i18next';
 import { Navigate, Route, Routes, useHref, useLocation } from 'react-router';
 
@@ -17,27 +18,24 @@ import { useQuery } from '@tanstack/react-query';
 
 import * as undo from 'loot-core/platform/client/undo';
 
-import { ErrorBoundary } from 'react-error-boundary';
-import { FatalError } from './FatalError';
-
 import { BankSyncStatus } from './BankSyncStatus';
 import { CommandBar } from './CommandBar';
+import { ToastProvider } from './common/Toast';
+import { FatalError } from './FatalError';
 import { GlobalKeys } from './GlobalKeys';
 import { MobileBankSyncAccountEditPage } from './mobile/banksync/MobileBankSyncAccountEditPage';
 import { MobileNavTabs } from './mobile/MobileNavTabs';
 import { TransactionEdit } from './mobile/transactions/TransactionEdit';
 import { Notifications } from './Notifications';
+import { QuickAddOverlay } from './quick-add/QuickAddOverlay';
 import { LoadingIndicator } from './reports/LoadingIndicator';
 import { NarrowAlternate, WideComponent } from './responsive';
 import { useMultiuserEnabled } from './ServerContext';
 import { FloatableSidebar } from './sidebar';
-import { ToastProvider } from './common/Toast';
-import { QuickAddOverlay } from './quick-add/QuickAddOverlay';
 import { Titlebar } from './Titlebar';
-
-import { SidebarProvider } from '@/components/ui/sidebar';
-import { TooltipProvider } from '@/components/ui/tooltip';
-import { Toaster } from '@/components/ui/sonner';
+import { SidebarProvider } from './ui/sidebar';
+import { Toaster } from './ui/sonner';
+import { TooltipProvider } from './ui/tooltip';
 
 // Lazy-loaded routes (code-split for smaller initial bundle)
 const AnalyticsPage = lazy(() =>
@@ -221,14 +219,14 @@ export function FinancesApp() {
               title: t('A new version of Actual is available!'),
               message:
                 (process.env.REACT_APP_IS_PIKAPODS ?? '').toLowerCase() ===
-                  'true'
+                'true'
                   ? t(
-                    'A new version of Actual is available! Your Pikapods instance will be automatically updated in the next few days - no action needed.',
-                  )
+                      'A new version of Actual is available! Your Pikapods instance will be automatically updated in the next few days - no action needed.',
+                    )
                   : t(
-                    'Version {{latestVersion}} of Actual was recently released.',
-                    { latestVersion: versionInfo.latestVersion },
-                  ),
+                      'Version {{latestVersion}} of Actual was recently released.',
+                      { latestVersion: versionInfo.latestVersion },
+                    ),
               sticky: true,
               id: 'update-notification',
               button: {
@@ -283,14 +281,10 @@ export function FinancesApp() {
                 onClose={() => setQuickAddOpen(false)}
               />
             )}
-            <View
-              className="bg-background flex-1 flex-row"
-            >
+            <View className="bg-background flex-1 flex-row">
               <FloatableSidebar />
 
-              <View
-                className="text-foreground bg-background flex-1 overflow-hidden w-full"
-              >
+              <View className="text-foreground bg-background flex-1 overflow-hidden w-full">
                 <ScrollProvider
                   isDisabled={!isNarrowWidth}
                   scrollableRef={scrollableRef}
@@ -323,7 +317,10 @@ export function FinancesApp() {
                           isAccountsFetching || !accounts ? (
                             <LoadingIndicator />
                           ) : accounts.length > 0 ? (
-                            <Navigate to={financeOS ? '/dashboard' : '/budget'} replace />
+                            <Navigate
+                              to={financeOS ? '/dashboard' : '/budget'}
+                              replace
+                            />
                           ) : (
                             // If there are no accounts, we want to redirect the user to
                             // the All Accounts screen which will prompt them to add an account
@@ -332,7 +329,14 @@ export function FinancesApp() {
                         }
                       />
 
-                      <Route path="/reports/*" element={<Suspense fallback={<LoadingIndicator />}><Reports /></Suspense>} />
+                      <Route
+                        path="/reports/*"
+                        element={
+                          <Suspense fallback={<LoadingIndicator />}>
+                            <Reports />
+                          </Suspense>
+                        }
+                      />
 
                       <Route
                         path="/budget"
@@ -384,8 +388,22 @@ export function FinancesApp() {
                           </WideNotSupported>
                         }
                       />
-                      <Route path="/tags" element={<Suspense fallback={<LoadingIndicator />}><ManageTagsPage /></Suspense>} />
-                      <Route path="/settings" element={<Suspense fallback={<LoadingIndicator />}><Settings /></Suspense>} />
+                      <Route
+                        path="/tags"
+                        element={
+                          <Suspense fallback={<LoadingIndicator />}>
+                            <ManageTagsPage />
+                          </Suspense>
+                        }
+                      />
+                      <Route
+                        path="/settings"
+                        element={
+                          <Suspense fallback={<LoadingIndicator />}>
+                            <Settings />
+                          </Suspense>
+                        }
+                      />
 
                       <Route
                         path="/gocardless/link"
@@ -446,17 +464,106 @@ export function FinancesApp() {
                           }
                         />
                       )}
-                      <Route path="/dashboard" element={<ErrorBoundary FallbackComponent={FatalError}><Suspense fallback={<LoadingIndicator />}><DashboardPage /></Suspense></ErrorBoundary>} />
-                      <Route path="/contracts" element={<ErrorBoundary FallbackComponent={FatalError}><Suspense fallback={<LoadingIndicator />}><ContractsPage /></Suspense></ErrorBoundary>} />
-                      <Route path="/contracts/:id" element={<ErrorBoundary FallbackComponent={FatalError}><Suspense fallback={<LoadingIndicator />}><ContractDetailPage /></Suspense></ErrorBoundary>} />
-                      <Route path="/calendar" element={<ErrorBoundary FallbackComponent={FatalError}><Suspense fallback={<LoadingIndicator />}><CalendarPage /></Suspense></ErrorBoundary>} />
-                      <Route path="/review" element={<ErrorBoundary FallbackComponent={FatalError}><Suspense fallback={<LoadingIndicator />}><ReviewQueuePage /></Suspense></ErrorBoundary>} />
-                      <Route path="/analytics" element={<ErrorBoundary FallbackComponent={FatalError}><Suspense fallback={<LoadingIndicator />}><AnalyticsPage /></Suspense></ErrorBoundary>} />
-                      <Route path="/import" element={<ErrorBoundary FallbackComponent={FatalError}><Suspense fallback={<LoadingIndicator />}><ImportPage /></Suspense></ErrorBoundary>} />
-                      <Route path="/import/:type" element={<ErrorBoundary FallbackComponent={FatalError}><Suspense fallback={<LoadingIndicator />}><ImportPage /></Suspense></ErrorBoundary>} />
-                      <Route path="/ops" element={<ErrorBoundary FallbackComponent={FatalError}><Suspense fallback={<LoadingIndicator />}><OpsCommandCenterPage /></Suspense></ErrorBoundary>} />
+                      <Route
+                        path="/dashboard"
+                        element={
+                          <ErrorBoundary FallbackComponent={FatalError}>
+                            <Suspense fallback={<LoadingIndicator />}>
+                              <DashboardPage />
+                            </Suspense>
+                          </ErrorBoundary>
+                        }
+                      />
+                      <Route
+                        path="/contracts"
+                        element={
+                          <ErrorBoundary FallbackComponent={FatalError}>
+                            <Suspense fallback={<LoadingIndicator />}>
+                              <ContractsPage />
+                            </Suspense>
+                          </ErrorBoundary>
+                        }
+                      />
+                      <Route
+                        path="/contracts/:id"
+                        element={
+                          <ErrorBoundary FallbackComponent={FatalError}>
+                            <Suspense fallback={<LoadingIndicator />}>
+                              <ContractDetailPage />
+                            </Suspense>
+                          </ErrorBoundary>
+                        }
+                      />
+                      <Route
+                        path="/calendar"
+                        element={
+                          <ErrorBoundary FallbackComponent={FatalError}>
+                            <Suspense fallback={<LoadingIndicator />}>
+                              <CalendarPage />
+                            </Suspense>
+                          </ErrorBoundary>
+                        }
+                      />
+                      <Route
+                        path="/review"
+                        element={
+                          <ErrorBoundary FallbackComponent={FatalError}>
+                            <Suspense fallback={<LoadingIndicator />}>
+                              <ReviewQueuePage />
+                            </Suspense>
+                          </ErrorBoundary>
+                        }
+                      />
+                      <Route
+                        path="/analytics"
+                        element={
+                          <ErrorBoundary FallbackComponent={FatalError}>
+                            <Suspense fallback={<LoadingIndicator />}>
+                              <AnalyticsPage />
+                            </Suspense>
+                          </ErrorBoundary>
+                        }
+                      />
+                      <Route
+                        path="/import"
+                        element={
+                          <ErrorBoundary FallbackComponent={FatalError}>
+                            <Suspense fallback={<LoadingIndicator />}>
+                              <ImportPage />
+                            </Suspense>
+                          </ErrorBoundary>
+                        }
+                      />
+                      <Route
+                        path="/import/:type"
+                        element={
+                          <ErrorBoundary FallbackComponent={FatalError}>
+                            <Suspense fallback={<LoadingIndicator />}>
+                              <ImportPage />
+                            </Suspense>
+                          </ErrorBoundary>
+                        }
+                      />
+                      <Route
+                        path="/ops"
+                        element={
+                          <ErrorBoundary FallbackComponent={FatalError}>
+                            <Suspense fallback={<LoadingIndicator />}>
+                              <OpsCommandCenterPage />
+                            </Suspense>
+                          </ErrorBoundary>
+                        }
+                      />
                       {/* redirect all other traffic to the budget page */}
-                      <Route path="/*" element={<Navigate to={financeOS ? '/dashboard' : '/budget'} replace />} />
+                      <Route
+                        path="/*"
+                        element={
+                          <Navigate
+                            to={financeOS ? '/dashboard' : '/budget'}
+                            replace
+                          />
+                        }
+                      />
                     </Routes>
                   </View>
 
@@ -465,7 +572,10 @@ export function FinancesApp() {
                     <Route path="/accounts" element={<MobileNavTabs />} />
                     <Route path="/settings" element={<MobileNavTabs />} />
                     <Route path="/reports" element={<MobileNavTabs />} />
-                    <Route path="/reports/:dashboardId" element={<MobileNavTabs />} />
+                    <Route
+                      path="/reports/:dashboardId"
+                      element={<MobileNavTabs />}
+                    />
                     <Route path="/bank-sync" element={<MobileNavTabs />} />
                     <Route path="/rules" element={<MobileNavTabs />} />
                     <Route path="/payees" element={<MobileNavTabs />} />

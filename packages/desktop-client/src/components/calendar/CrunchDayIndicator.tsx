@@ -2,21 +2,24 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { SvgAlertTriangle } from '@actual-app/components/icons/v2';
 import { theme } from '@actual-app/components/theme';
 import { Tooltip } from '@actual-app/components/tooltip';
 import { View } from '@actual-app/components/view';
-import { SvgAlertTriangle } from '@actual-app/components/icons/v2';
 
-interface Props {
+type Props = {
   paymentCount: number;
   totalCents: number;
-}
+};
 
 const CRUNCH_PAYMENT_COUNT = 3;
 const CRUNCH_AMOUNT_CENTS = 50000; // 500€
 
 export function isCrunchDay(paymentCount: number, totalCents: number): boolean {
-  return paymentCount >= CRUNCH_PAYMENT_COUNT || Math.abs(totalCents) >= CRUNCH_AMOUNT_CENTS;
+  return (
+    paymentCount >= CRUNCH_PAYMENT_COUNT ||
+    Math.abs(totalCents) >= CRUNCH_AMOUNT_CENTS
+  );
 }
 
 export function CrunchDayIndicator({ paymentCount, totalCents }: Props) {

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { send } from 'loot-core/platform/client/connection';
 
-import type { FrecencyEntry } from '../types';
+import type { FrecencyEntry } from '@/components/quick-add/types';
 
 type UseFrecencyReturn = {
   frecency: FrecencyEntry[];

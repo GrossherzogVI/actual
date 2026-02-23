@@ -1,35 +1,39 @@
 // @ts-strict-ignore
 import React, { useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
 import { DialogTrigger } from 'react-aria-components';
+import { Trans, useTranslation } from 'react-i18next';
 
 import { Button } from '@actual-app/components/button';
-import { Menu } from '@actual-app/components/menu';
-import { Popover } from '@actual-app/components/popover';
-import { theme } from '@actual-app/components/theme';
-import { Text } from '@actual-app/components/text';
-import { View } from '@actual-app/components/view';
-import { Tooltip } from '@actual-app/components/tooltip';
 import {
-  SvgTag,
-  SvgDotsHorizontalTriple,
   SvgCheckmark,
-  SvgRefresh,
+  SvgClose,
+  SvgDotsHorizontalTriple,
   SvgLightBulb,
   SvgPause,
-  SvgTime,
-  SvgClose,
+  SvgRefresh,
   SvgStarFull,
+  SvgTag,
+  SvgTime,
 } from '@actual-app/components/icons/v1';
 import { SvgAlertTriangle } from '@actual-app/components/icons/v2';
+import { Menu } from '@actual-app/components/menu';
+import { Popover } from '@actual-app/components/popover';
+import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
+import { Tooltip } from '@actual-app/components/tooltip';
+import { View } from '@actual-app/components/view';
 
-import {
-  PRIORITY_BORDER_COLORS,
-  getItemTitle,
-  getItemSubtitle,
-  type ReviewItem as ReviewItemType,
-  type ReviewItemType as ItemType,
-} from './types';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+
+import { PRIORITY_BORDER_COLORS, getItemTitle, getItemSubtitle } from './types';
+import type { ReviewItem as ReviewItemType, ReviewItemType as ItemType } from './types';
+
+const PRIORITY_BADGE_VARIANT: Record<string, 'destructive' | 'default' | 'secondary'> = {
+  urgent: 'destructive',
+  review: 'default',
+  suggestion: 'secondary',
+};
 
 // ---- Icon by type ----
 
@@ -66,37 +70,14 @@ type ConfidenceBarProps = {
 
 function ConfidenceBar({ confidence }: ConfidenceBarProps) {
   const pct = Math.round(confidence * 100);
-  const color = confidence >= 0.9 ? '#10b981' : confidence >= 0.7 ? '#f59e0b' : '#ef4444';
+  const color =
+    confidence >= 0.9 ? '#10b981' : confidence >= 0.7 ? '#f59e0b' : '#ef4444';
 
   return (
-    <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        marginTop: 4,
-      }}
-    >
-      <View
-        style={{
-          flex: 1,
-          height: 4,
-          borderRadius: 2,
-          backgroundColor: `${color}30`,
-          maxWidth: 120,
-        }}
-      >
-        <View
-          style={{
-            width: `${pct}%`,
-            height: '100%',
-            borderRadius: 2,
-            backgroundColor: color,
-          }}
-        />
-      </View>
-      <Text style={{ fontSize: 11, color, fontWeight: 500 }}>{pct}%</Text>
-    </View>
+    <div className="mt-1 flex items-center gap-1.5">
+      <Progress value={pct} className="h-1 w-[120px]" />
+      <span className="text-xs font-medium" style={{ color }}>{pct}%</span>
+    </div>
   );
 }
 
@@ -121,10 +102,22 @@ export function ReviewItem({
 }: ReviewItemProps) {
   const { t } = useTranslation();
 
-  const handleAccept = useCallback(() => onAccept(item.id), [onAccept, item.id]);
-  const handleReject = useCallback(() => onReject(item.id), [onReject, item.id]);
-  const handleSnooze = useCallback(() => onSnooze(item.id), [onSnooze, item.id]);
-  const handleDismiss = useCallback(() => onDismiss(item.id), [onDismiss, item.id]);
+  const handleAccept = useCallback(
+    () => onAccept(item.id),
+    [onAccept, item.id],
+  );
+  const handleReject = useCallback(
+    () => onReject(item.id),
+    [onReject, item.id],
+  );
+  const handleSnooze = useCallback(
+    () => onSnooze(item.id),
+    [onSnooze, item.id],
+  );
+  const handleDismiss = useCallback(
+    () => onDismiss(item.id),
+    [onDismiss, item.id],
+  );
 
   const title = getItemTitle(item);
   const subtitle = getItemSubtitle(item);
@@ -176,18 +169,23 @@ export function ReviewItem({
 
       {/* Main content */}
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text
-          style={{
-            fontSize: 14,
-            fontWeight: 500,
-            color: theme.pageText,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {title}
-        </Text>
+        <div className="flex items-center gap-2">
+          <Text
+            style={{
+              fontSize: 14,
+              fontWeight: 500,
+              color: theme.pageText,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {title}
+          </Text>
+          <Badge variant={PRIORITY_BADGE_VARIANT[item.priority] ?? 'secondary'} className="text-[10px] px-1.5 py-0 capitalize">
+            {item.priority}
+          </Badge>
+        </div>
 
         {subtitle && (
           <Text
@@ -213,7 +211,8 @@ export function ReviewItem({
               marginTop: 3,
             }}
           >
-            {t('Amount')}: {(item.transaction_amount / 100).toFixed(2)}
+            <Trans>Amount</Trans>:{' '}
+            {(item.transaction_amount / 100).toFixed(2)}
           </Text>
         )}
       </View>
@@ -289,9 +288,7 @@ export function ReviewItem({
               onMenuSelect={name => {
                 if (name === 'dismiss') handleDismiss();
               }}
-              items={[
-                { name: 'dismiss', text: t('Dismiss permanently') },
-              ]}
+              items={[{ name: 'dismiss', text: t('Dismiss permanently') }]}
             />
           </Popover>
         </DialogTrigger>

@@ -87,7 +87,6 @@ export function Overview({ dashboard }: OverviewProps) {
 
   const formulaMode = useFeatureFlag('formulaMode');
 
-
   const [isImporting, setIsImporting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const { isNarrowWidth } = useResponsive();

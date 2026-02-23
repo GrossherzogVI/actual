@@ -1,17 +1,18 @@
 // @ts-strict-ignore
 import React from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
+
+import type { ContractSummary } from '@/components/dashboard/types';
+import { formatEur } from '@/components/dashboard/utils';
+
+import { WidgetCard } from './WidgetCard';
 
 import { useSheetValue } from '@desktop-client/hooks/useSheetValue';
 import { envelopeBudget } from '@desktop-client/spreadsheet/bindings';
-
-import type { ContractSummary } from '../types';
-import { formatEur } from '../utils';
-import { WidgetCard } from './WidgetCard';
 
 type RowProps = {
   label: string;
@@ -29,8 +30,12 @@ function Row({ label, value, valueStyle }: RowProps) {
         paddingBottom: 8,
       }}
     >
-      <Text style={{ color: theme.pageTextSubdued, fontSize: 13 }}>{label}</Text>
-      <Text style={{ fontSize: 13, fontWeight: 500, ...valueStyle }}>{value}</Text>
+      <Text style={{ color: theme.pageTextSubdued, fontSize: 13 }}>
+        {label}
+      </Text>
+      <Text style={{ fontSize: 13, fontWeight: 500, ...valueStyle }}>
+        {value}
+      </Text>
     </View>
   );
 }
@@ -62,7 +67,9 @@ export function ThisMonthWidget({ summary, loading }: Props) {
   return (
     <WidgetCard title={t('This Month')}>
       {loading ? (
-        <Text style={{ color: theme.pageTextSubdued, fontSize: 13 }}>{t('Loading…')}</Text>
+        <Text style={{ color: theme.pageTextSubdued, fontSize: 13 }}>
+          <Trans>Loading…</Trans>
+        </Text>
       ) : (
         <>
           <Row

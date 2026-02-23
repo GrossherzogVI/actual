@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { send } from 'loot-core/platform/client/connection';
 
-import type { BankFormat } from '../types';
+import type { BankFormat } from '@/components/import/types';
 
 type UseBankFormatDetectionReturn = {
   formats: BankFormat[];

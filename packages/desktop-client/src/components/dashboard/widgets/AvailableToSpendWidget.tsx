@@ -1,17 +1,20 @@
 // @ts-strict-ignore
 import React from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
+
+import type { UpcomingPayment } from '@/components/dashboard/types';
+import { formatEur } from '@/components/dashboard/utils';
+
+import { WidgetCard } from './WidgetCard';
 
 import { useSheetValue } from '@desktop-client/hooks/useSheetValue';
 import { allAccountBalance } from '@desktop-client/spreadsheet/bindings';
 
-import type { UpcomingPayment } from '../types';
-import { formatEur } from '../utils';
-import { WidgetCard } from './WidgetCard';
+import { Badge } from '@/components/ui/badge';
 
 type Props = {
   upcomingPayments: UpcomingPayment[];
@@ -21,10 +24,10 @@ type Props = {
 export function AvailableToSpendWidget({ upcomingPayments, loading }: Props) {
   const { t } = useTranslation();
 
-  const totalBalance = useSheetValue<'account', 'accounts-balance'>(allAccountBalance());
+  const totalBalance = useSheetValue<'account', 'accounts-balance'>(
+    allAccountBalance(),
+  );
 
-  // Sum all upcoming committed payments (amounts are in cents, may be negative for outflows).
-  // Skip entries where amount is null — those are schedule placeholders without a known amount.
   const committedCents = upcomingPayments.reduce(
     (sum, p) => (p.amount != null ? sum + Math.abs(p.amount) : sum),
     0,
@@ -38,21 +41,43 @@ export function AvailableToSpendWidget({ upcomingPayments, loading }: Props) {
   return (
     <WidgetCard title={t('Available to Spend')}>
       {loading ? (
-        <Text style={{ color: theme.pageTextSubdued, fontSize: 13 }}>{t('Loading…')}</Text>
+        <Text style={{ color: theme.pageTextSubdued, fontSize: 13 }}>
+          <Trans>Loading…</Trans>
+        </Text>
       ) : (
         <>
-          {/* Hero number */}
-          <View style={{ marginBottom: 12 }}>
+          {/* Hero number with trend badge */}
+          <View
+            style={{
+              marginBottom: 12,
+              flexDirection: 'row',
+              alignItems: 'baseline',
+              gap: 8,
+            }}
+          >
             <Text
               style={{
                 fontSize: 28,
                 fontWeight: 700,
-                color: isPositive ? theme.noticeText : theme.errorText ?? '#ef4444',
+                color: isPositive
+                  ? theme.noticeText
+                  : (theme.errorText ?? '#ef4444'),
                 letterSpacing: '-0.5px',
               }}
             >
               {formatEur(availableCents)}
             </Text>
+            {availableCents !== null && (
+              <Badge
+                className={
+                  isPositive
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    : 'bg-red-50 text-red-700 border border-red-200'
+                }
+              >
+                {isPositive ? t('Healthy') : t('Low')}
+              </Badge>
+            )}
           </View>
 
           {/* Breakdown */}
@@ -63,19 +88,29 @@ export function AvailableToSpendWidget({ upcomingPayments, loading }: Props) {
               gap: 6,
             }}
           >
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <View
+              style={{ flexDirection: 'row', justifyContent: 'space-between' }}
+            >
               <Text style={{ fontSize: 12, color: theme.pageTextSubdued }}>
-                {t('Balance')}
+                {<Trans>Balance</Trans>}
               </Text>
               <Text style={{ fontSize: 12, fontWeight: 500 }}>
                 {formatEur(totalBalance)}
               </Text>
             </View>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <View
+              style={{ flexDirection: 'row', justifyContent: 'space-between' }}
+            >
               <Text style={{ fontSize: 12, color: theme.pageTextSubdued }}>
-                {t('Committed this month')}
+                {<Trans>Committed this month</Trans>}
               </Text>
-              <Text style={{ fontSize: 12, fontWeight: 500, color: theme.errorText ?? '#ef4444' }}>
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: theme.errorText ?? '#ef4444',
+                }}
+              >
                 -{formatEur(committedCents)}
               </Text>
             </View>

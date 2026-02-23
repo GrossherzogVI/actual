@@ -4,11 +4,11 @@ import { useCallback, useState } from 'react';
 import { send } from 'loot-core/platform/client/connection';
 
 import type {
-  ImportState,
-  ImportPreviewRow,
-  ImportPreviewResult,
   ImportCommitResult,
-} from '../types';
+  ImportPreviewResult,
+  ImportPreviewRow,
+  ImportState,
+} from '@/components/import/types';
 
 type UseImportOptions = {
   format: 'finanzguru' | 'csv';
@@ -22,7 +22,12 @@ type UseImportReturn = {
   loading: boolean;
   uploadAndPreview: (
     fileData: string,
-    opts?: { bankFormat?: string; delimiter?: string; encoding?: string; accountMapping?: Record<string, string> },
+    opts?: {
+      bankFormat?: string;
+      delimiter?: string;
+      encoding?: string;
+      accountMapping?: Record<string, string>;
+    },
   ) => Promise<void>;
   commit: (args: {
     rows: ImportPreviewRow[];
@@ -55,7 +60,9 @@ export function useImport({ format }: UseImportOptions): UseImportReturn {
       setError(null);
 
       const handler =
-        format === 'finanzguru' ? 'import-finanzguru-preview' : 'import-csv-preview';
+        format === 'finanzguru'
+          ? 'import-finanzguru-preview'
+          : 'import-csv-preview';
 
       const args =
         format === 'finanzguru'
@@ -92,7 +99,9 @@ export function useImport({ format }: UseImportOptions): UseImportReturn {
       setState('importing');
 
       const handler =
-        format === 'finanzguru' ? 'import-finanzguru-commit' : 'import-csv-commit';
+        format === 'finanzguru'
+          ? 'import-finanzguru-commit'
+          : 'import-csv-commit';
 
       const payload =
         format === 'finanzguru'

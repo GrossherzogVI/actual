@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+
 import { Command } from 'cmdk';
 
 type CommandEntry = {
@@ -44,7 +45,9 @@ export function CommandPaletteAdvanced({
             >
               <span>{entry.label}</span>
               {entry.hint ? (
-                <span style={{ marginLeft: 'auto', opacity: 0.7 }}>{entry.hint}</span>
+                <span style={{ marginLeft: 'auto', opacity: 0.7 }}>
+                  {entry.hint}
+                </span>
               ) : null}
             </Command.Item>
           ))}

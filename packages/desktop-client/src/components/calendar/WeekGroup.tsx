@@ -1,25 +1,32 @@
 // @ts-strict-ignore
 import React, { useCallback, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 
-import { theme } from '@actual-app/components/theme';
+import {
+  SvgCheveronDown,
+  SvgCheveronRight,
+} from '@actual-app/components/icons/v1';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
-import { SvgCheveronDown, SvgCheveronRight } from '@actual-app/components/icons/v1';
 
 import { BalanceProjectionLine } from './BalanceProjectionLine';
 import { CrunchDayIndicator, isCrunchDay } from './CrunchDayIndicator';
 import { PaymentItem } from './PaymentItem';
 import type { WeekData } from './types';
 
-interface Props {
+type Props = {
   week: WeekData;
   balanceThreshold?: number | null;
 }
 
 function formatWeekHeader(weekStart: string): string {
   const d = new Date(weekStart + 'T00:00:00');
-  return d.toLocaleDateString('de-DE', { weekday: 'short', month: 'short', day: 'numeric' });
+  return d.toLocaleDateString('de-DE', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
 }
 
 function formatCurrency(cents: number): string {
@@ -29,7 +36,9 @@ function formatCurrency(cents: number): string {
 }
 
 /** Group entries by their date string for crunch-day detection. */
-function getByDay(week: WeekData): Map<string, { count: number; total: number }> {
+function getByDay(
+  week: WeekData,
+): Map<string, { count: number; total: number }> {
   const map = new Map<string, { count: number; total: number }>();
   for (const entry of week.entries) {
     const prev = map.get(entry.date) ?? { count: 0, total: 0 };
@@ -102,14 +111,25 @@ export function WeekGroup({ week, balanceThreshold }: Props) {
         {/* Chevron */}
         <View style={{ flexShrink: 0, width: 14, alignItems: 'center' }}>
           {expanded ? (
-            <SvgCheveronDown style={{ width: 12, height: 12, color: theme.pageTextSubdued }} />
+            <SvgCheveronDown
+              style={{ width: 12, height: 12, color: theme.pageTextSubdued }}
+            />
           ) : (
-            <SvgCheveronRight style={{ width: 12, height: 12, color: theme.pageTextSubdued }} />
+            <SvgCheveronRight
+              style={{ width: 12, height: 12, color: theme.pageTextSubdued }}
+            />
           )}
         </View>
 
         {/* "Week of ..." label */}
-        <Text style={{ flex: 1, fontSize: 13, fontWeight: 600, color: theme.pageText }}>
+        <Text
+          style={{
+            flex: 1,
+            fontSize: 13,
+            fontWeight: 600,
+            color: theme.pageText,
+          }}
+        >
           {t('Week of {{date}}', { date: formatWeekHeader(week.weekStart) })}
         </Text>
 
@@ -122,7 +142,9 @@ export function WeekGroup({ week, balanceThreshold }: Props) {
         )}
 
         {/* Entry count */}
-        <Text style={{ fontSize: 11, color: theme.pageTextSubdued, flexShrink: 0 }}>
+        <Text
+          style={{ fontSize: 11, color: theme.pageTextSubdued, flexShrink: 0 }}
+        >
           {t('{{count}} payment(s)', { count: week.entries.length })}
         </Text>
 
@@ -147,7 +169,7 @@ export function WeekGroup({ week, balanceThreshold }: Props) {
           {week.entries.length === 0 ? (
             <View style={{ padding: '10px 12px' }}>
               <Text style={{ fontSize: 12, color: theme.pageTextSubdued }}>
-                {t('No payments this week')}
+                <Trans>No payments this week</Trans>
               </Text>
             </View>
           ) : (
@@ -168,7 +190,10 @@ export function WeekGroup({ week, balanceThreshold }: Props) {
               backgroundColor: `${theme.tableHeaderBackground}80`,
             }}
           >
-            <BalanceProjectionLine balance={week.runningBalance} threshold={balanceThreshold} />
+            <BalanceProjectionLine
+              balance={week.runningBalance}
+              threshold={balanceThreshold}
+            />
           </View>
         </>
       )}

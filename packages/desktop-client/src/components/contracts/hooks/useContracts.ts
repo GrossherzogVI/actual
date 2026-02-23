@@ -3,7 +3,10 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { send } from 'loot-core/platform/client/connection';
 
-import type { ContractEntity, ContractFormData } from '../types';
+import type {
+  ContractEntity,
+  ContractFormData,
+} from '@/components/contracts/types';
 
 type UseContractsOptions = {
   status?: string;

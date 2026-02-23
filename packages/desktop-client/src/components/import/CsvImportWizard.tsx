@@ -3,23 +3,30 @@ import React, { useCallback, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
 import { Button } from '@actual-app/components/button';
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
 import { CategoryMapper } from './CategoryMapper';
-import { ImportAdvisor } from './ImportAdvisor';
-import { ImportPreview } from './ImportPreview';
-import { useImport } from './hooks/useImport';
 import { useBankFormatDetection } from './hooks/useBankFormatDetection';
 import { useCategoryMapping } from './hooks/useCategoryMapping';
+import { useImport } from './hooks/useImport';
+import { ImportAdvisor } from './ImportAdvisor';
+import { ImportPreview } from './ImportPreview';
 import type { BankFormat } from './types';
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
 function StepIndicator({ step, total }: { step: Step; total: number }) {
   return (
-    <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginBottom: 20 }}>
+    <View
+      style={{
+        flexDirection: 'row',
+        gap: 8,
+        alignItems: 'center',
+        marginBottom: 20,
+      }}
+    >
       {Array.from({ length: total }, (_, i) => i + 1).map(n => (
         <View
           key={n}
@@ -86,8 +93,18 @@ export function CsvImportWizard() {
   const [accountId, setAccountId] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { formats, detectedFormat, detectFromHeader } = useBankFormatDetection();
-  const { state, preview, result, error, loading, uploadAndPreview, commit, reset } = useImport({
+  const { formats, detectedFormat, detectFromHeader } =
+    useBankFormatDetection();
+  const {
+    state,
+    preview,
+    result,
+    error,
+    loading,
+    uploadAndPreview,
+    commit,
+    reset,
+  } = useImport({
     format: 'csv',
   });
 
@@ -153,12 +170,15 @@ export function CsvImportWizard() {
       {/* ── Step 1: File upload ── */}
       {step === 1 && (
         <View style={{ gap: 16 }}>
-          <Text style={{ fontSize: 15, fontWeight: 600, color: theme.pageText }}>
+          <Text
+            style={{ fontSize: 15, fontWeight: 600, color: theme.pageText }}
+          >
             <Trans>Upload Bank CSV</Trans>
           </Text>
           <Text style={{ fontSize: 13, color: theme.pageTextSubdued }}>
             <Trans>
-              Export your transactions from your bank as CSV and upload the file below.
+              Export your transactions from your bank as CSV and upload the file
+              below.
             </Trans>
           </Text>
 
@@ -176,13 +196,18 @@ export function CsvImportWizard() {
               transition: 'all 0.15s',
               gap: 12,
             }}
-            onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+            onDragOver={e => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
             onDragLeave={() => setDragOver(false)}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
           >
             <Text style={{ fontSize: 32 }}>📄</Text>
-            <Text style={{ fontSize: 14, fontWeight: 500, color: theme.pageText }}>
+            <Text
+              style={{ fontSize: 14, fontWeight: 500, color: theme.pageText }}
+            >
               <Trans>Drop CSV file here or click to browse</Trans>
             </Text>
             <Text style={{ fontSize: 12, color: theme.pageTextSubdued }}>
@@ -206,7 +231,9 @@ export function CsvImportWizard() {
       {/* ── Step 2: Column mapping (bank format + delimiter) ── */}
       {step === 2 && (
         <View style={{ gap: 16 }}>
-          <Text style={{ fontSize: 15, fontWeight: 600, color: theme.pageText }}>
+          <Text
+            style={{ fontSize: 15, fontWeight: 600, color: theme.pageText }}
+          >
             <Trans>Configure Import</Trans>
           </Text>
 
@@ -220,14 +247,18 @@ export function CsvImportWizard() {
               }}
             >
               <Text style={{ fontSize: 13, color: '#10b981' }}>
-                {t('Detected bank format: {{name}}', { name: detectedFormat.name })}
+                {t('Detected bank format: {{name}}', {
+                  name: detectedFormat.name,
+                })}
               </Text>
             </View>
           )}
 
           {/* Bank format selector */}
           <View style={{ gap: 6 }}>
-            <Text style={{ fontSize: 13, fontWeight: 500, color: theme.pageText }}>
+            <Text
+              style={{ fontSize: 13, fontWeight: 500, color: theme.pageText }}
+            >
               <Trans>Bank Format</Trans>
             </Text>
             <select
@@ -257,7 +288,9 @@ export function CsvImportWizard() {
 
           {/* Delimiter */}
           <View style={{ gap: 6 }}>
-            <Text style={{ fontSize: 13, fontWeight: 500, color: theme.pageText }}>
+            <Text
+              style={{ fontSize: 13, fontWeight: 500, color: theme.pageText }}
+            >
               <Trans>Delimiter</Trans>
             </Text>
             <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -270,8 +303,14 @@ export function CsvImportWizard() {
                     fontSize: 13,
                     borderRadius: 4,
                     border: `1px solid ${delimiter === d ? theme.buttonPrimaryBackground : theme.tableBorder}`,
-                    backgroundColor: delimiter === d ? `${theme.buttonPrimaryBackground}20` : theme.tableBackground,
-                    color: delimiter === d ? theme.buttonPrimaryBackground : theme.pageText,
+                    backgroundColor:
+                      delimiter === d
+                        ? `${theme.buttonPrimaryBackground}20`
+                        : theme.tableBackground,
+                    color:
+                      delimiter === d
+                        ? theme.buttonPrimaryBackground
+                        : theme.pageText,
                     cursor: 'pointer',
                     fontFamily: 'monospace',
                   }}
@@ -282,12 +321,26 @@ export function CsvImportWizard() {
             </View>
           </View>
 
-          <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'flex-end' }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              gap: 10,
+              justifyContent: 'flex-end',
+            }}
+          >
             <Button variant="bare" onPress={handleReset}>
               <Trans>Start over</Trans>
             </Button>
-            <Button variant="primary" onPress={handlePreview} isDisabled={loading}>
-              {loading ? <Trans>Analyzing…</Trans> : <Trans>Next: Preview</Trans>}
+            <Button
+              variant="primary"
+              onPress={handlePreview}
+              isDisabled={loading}
+            >
+              {loading ? (
+                <Trans>Analyzing…</Trans>
+              ) : (
+                <Trans>Next: Preview</Trans>
+              )}
             </Button>
           </View>
           {error && (
@@ -301,7 +354,9 @@ export function CsvImportWizard() {
       {/* ── Step 3: Category mapping ── */}
       {step === 3 && (
         <View style={{ gap: 16 }}>
-          <Text style={{ fontSize: 15, fontWeight: 600, color: theme.pageText }}>
+          <Text
+            style={{ fontSize: 15, fontWeight: 600, color: theme.pageText }}
+          >
             <Trans>Map Categories</Trans>
           </Text>
           {preview?.warnings.map((w, i) => (
@@ -316,7 +371,13 @@ export function CsvImportWizard() {
             onUpdate={updateMapping}
             onAutoMatch={autoMatch}
           />
-          <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'flex-end' }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              gap: 10,
+              justifyContent: 'flex-end',
+            }}
+          >
             <Button variant="bare" onPress={() => setStep(2)}>
               <Trans>Back</Trans>
             </Button>
@@ -330,16 +391,32 @@ export function CsvImportWizard() {
       {/* ── Step 4: Preview & confirm ── */}
       {step === 4 && preview && (
         <View style={{ gap: 16 }}>
-          <Text style={{ fontSize: 15, fontWeight: 600, color: theme.pageText }}>
+          <Text
+            style={{ fontSize: 15, fontWeight: 600, color: theme.pageText }}
+          >
             <Trans>Review & Confirm</Trans>
           </Text>
           <ImportPreview rows={preview.rows} total={preview.total} />
-          <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'flex-end' }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              gap: 10,
+              justifyContent: 'flex-end',
+            }}
+          >
             <Button variant="bare" onPress={() => setStep(3)}>
               <Trans>Back</Trans>
             </Button>
-            <Button variant="primary" onPress={handleCommit} isDisabled={loading}>
-              {loading ? <Trans>Importing…</Trans> : <Trans>Import Transactions</Trans>}
+            <Button
+              variant="primary"
+              onPress={handleCommit}
+              isDisabled={loading}
+            >
+              {loading ? (
+                <Trans>Importing…</Trans>
+              ) : (
+                <Trans>Import Transactions</Trans>
+              )}
             </Button>
           </View>
           {error && (

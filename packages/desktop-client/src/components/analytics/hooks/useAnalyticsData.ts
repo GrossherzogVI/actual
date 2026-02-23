@@ -2,8 +2,8 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { send } from 'loot-core/platform/client/connection';
-import { q } from 'loot-core/shared/query';
 import * as monthUtils from 'loot-core/shared/months';
+import { q } from 'loot-core/shared/query';
 import type { CategoryEntity } from 'loot-core/types/models';
 
 import { aqlQuery } from '@desktop-client/queries/aqlQuery';
@@ -86,8 +86,18 @@ function colorForIndex(i: number): string {
 function formatMonthLabel(month: string): string {
   const [y, m] = month.split('-');
   const months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
   return `${months[parseInt(m, 10) - 1]} ${y.slice(2)}`;
 }
@@ -97,7 +107,9 @@ function formatMonthLabel(month: string): string {
 export function useAnalyticsData(): AnalyticsData {
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<CategoryEntity[]>([]);
-  const [spendingByCategory, setSpendingByCategory] = useState<CategorySpending[]>([]);
+  const [spendingByCategory, setSpendingByCategory] = useState<
+    CategorySpending[]
+  >([]);
   const [monthlyTotals, setMonthlyTotals] = useState<MonthlyTotals[]>([]);
   const [fixedVsVariable, setFixedVsVariable] = useState<FixedVsVariable>({
     fixed: 0,
@@ -191,18 +203,13 @@ export function useAnalyticsData(): AnalyticsData {
       for (const month of months) {
         const start = monthUtils.firstDayOfMonth(month);
         const end =
-          month === currentMonth
-            ? today
-            : monthUtils.lastDayOfMonth(month);
+          month === currentMonth ? today : monthUtils.lastDayOfMonth(month);
 
         const [incomeResult, expenseResult] = await Promise.all([
           aqlQuery(
             q('transactions')
               .filter({
-                $and: [
-                  { date: { $gte: start } },
-                  { date: { $lte: end } },
-                ],
+                $and: [{ date: { $gte: start } }, { date: { $lte: end } }],
                 'account.offbudget': false,
                 'payee.transfer_acct': null,
               })
@@ -212,10 +219,7 @@ export function useAnalyticsData(): AnalyticsData {
           aqlQuery(
             q('transactions')
               .filter({
-                $and: [
-                  { date: { $gte: start } },
-                  { date: { $lte: end } },
-                ],
+                $and: [{ date: { $gte: start } }, { date: { $lte: end } }],
                 'account.offbudget': false,
                 'payee.transfer_acct': null,
               })
@@ -284,9 +288,7 @@ export function useAnalyticsData(): AnalyticsData {
         for (const month of months) {
           const start = monthUtils.firstDayOfMonth(month);
           const end =
-            month === currentMonth
-              ? today
-              : monthUtils.lastDayOfMonth(month);
+            month === currentMonth ? today : monthUtils.lastDayOfMonth(month);
 
           const { data: sum } = await aqlQuery(
             q('transactions')

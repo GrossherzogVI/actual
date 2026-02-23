@@ -8,7 +8,6 @@ import { View } from '@actual-app/components/view';
 
 import { BUNDESLAND_LABELS } from 'loot-core/shared/german-holidays';
 import type { Bundesland } from 'loot-core/shared/german-holidays';
-
 import type { FeatureFlag, ServerPrefs } from 'loot-core/types/prefs';
 
 import { Setting } from './UI';
@@ -193,7 +192,8 @@ function DeadlineSettings() {
         </Text>
         <Text style={{ fontSize: 12, color: theme.pageTextSubdued }}>
           <Trans>
-            Bestimmt welche Feiertage bei der Berechnung von Werktagen berücksichtigt werden.
+            Bestimmt welche Feiertage bei der Berechnung von Werktagen
+            berücksichtigt werden.
           </Trans>
         </Text>
         <select
@@ -220,7 +220,14 @@ function DeadlineSettings() {
       </View>
 
       {/* Show hard deadlines toggle */}
-      <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
+      <label
+        style={{
+          display: 'flex',
+          gap: 8,
+          alignItems: 'flex-start',
+          cursor: 'pointer',
+        }}
+      >
         <input
           type="checkbox"
           checked={showHard === 'true'}
@@ -233,7 +240,8 @@ function DeadlineSettings() {
           </Text>
           <Text style={{ fontSize: 12, color: theme.pageTextSubdued }}>
             <Trans>
-              Zeigt das letzte Datum vor Konsequenzen zusätzlich zum Fälligkeitsdatum an.
+              Zeigt das letzte Datum vor Konsequenzen zusätzlich zum
+              Fälligkeitsdatum an.
             </Trans>
           </Text>
         </View>

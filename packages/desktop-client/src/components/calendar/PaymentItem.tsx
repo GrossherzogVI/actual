@@ -2,20 +2,21 @@
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { theme } from '@actual-app/components/theme';
-import { Text } from '@actual-app/components/text';
-import { View } from '@actual-app/components/view';
 import { SvgCalendar } from '@actual-app/components/icons/v2';
+import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
+import { View } from '@actual-app/components/view';
+
+import type { CalendarEntry } from './types';
 
 import { useNavigate } from '@desktop-client/hooks/useNavigate';
 
-import { DeadlineBadge } from '../contracts/DeadlineBadge';
-import type { CalendarEntry } from './types';
+import { DeadlineBadge } from '@/components/contracts/DeadlineBadge';
 
-interface Props {
+type Props = {
   entry: CalendarEntry;
   isLast?: boolean;
-}
+};
 
 const CONTRACT_TYPE_COLORS: Record<string, string> = {
   insurance: '#6366f1',
@@ -126,7 +127,9 @@ export function PaymentItem({ entry, isLast = false }: Props) {
           {entry.name}
         </Text>
         {(entry.accountName || entry.contractType) && (
-          <Text style={{ fontSize: 11, color: theme.pageTextSubdued, marginTop: 1 }}>
+          <Text
+            style={{ fontSize: 11, color: theme.pageTextSubdued, marginTop: 1 }}
+          >
             {entry.accountName ?? ''}
             {entry.accountName && entry.contractType ? ' · ' : ''}
             {entry.contractType ?? ''}

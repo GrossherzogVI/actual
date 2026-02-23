@@ -1,9 +1,9 @@
 // @ts-strict-ignore
 import React from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
 import type { AnalyticsData } from './hooks/useAnalyticsData';
@@ -62,17 +62,21 @@ export function BudgetAlerts({
         >
           <View style={{ alignItems: 'center', minWidth: 100 }}>
             <Text style={{ fontSize: 11, color: theme.pageTextSubdued }}>
-              {t('Budgeted')}
+              <Trans>Budgeted</Trans>
             </Text>
-            <Text style={{ fontSize: 18, fontWeight: 700, color: theme.pageText }}>
+            <Text
+              style={{ fontSize: 18, fontWeight: 700, color: theme.pageText }}
+            >
               {formatCents(totalBudgeted)}
             </Text>
           </View>
           <View style={{ alignItems: 'center', minWidth: 100 }}>
             <Text style={{ fontSize: 11, color: theme.pageTextSubdued }}>
-              {t('Spent')}
+              {<Trans>Spent</Trans>}
             </Text>
-            <Text style={{ fontSize: 18, fontWeight: 700, color: theme.errorText }}>
+            <Text
+              style={{ fontSize: 18, fontWeight: 700, color: theme.errorText }}
+            >
               {formatCents(totalSpent)}
             </Text>
           </View>
@@ -84,7 +88,10 @@ export function BudgetAlerts({
               style={{
                 fontSize: 18,
                 fontWeight: 700,
-                color: leftToSpend >= 0 ? theme.reportsNumberPositive : theme.reportsNumberNegative,
+                color:
+                  leftToSpend >= 0
+                    ? theme.reportsNumberPositive
+                    : theme.reportsNumberNegative,
               }}
             >
               {formatCents(leftToSpend)}
@@ -96,7 +103,9 @@ export function BudgetAlerts({
       {!hasAnyBudget && (
         <View style={{ padding: 20, alignItems: 'center' }}>
           <Text style={{ color: theme.pageTextSubdued, textAlign: 'center' }}>
-            {t('Set up budgets in the Budget page to see alerts and left-to-spend tracking.')}
+            {t(
+              'Set up budgets in the Budget page to see alerts and left-to-spend tracking.',
+            )}
           </Text>
         </View>
       )}
@@ -144,7 +153,13 @@ export function BudgetAlerts({
                     marginBottom: 6,
                   }}
                 >
-                  <Text style={{ fontWeight: 600, fontSize: 13, color: theme.pageText }}>
+                  <Text
+                    style={{
+                      fontWeight: 600,
+                      fontSize: 13,
+                      color: theme.pageText,
+                    }}
+                  >
                     {alert.categoryName}
                   </Text>
                   <Text
@@ -185,10 +200,10 @@ export function BudgetAlerts({
                   }}
                 >
                   <Text style={{ fontSize: 11, color: theme.pageTextSubdued }}>
-                    {t('Budget')}: {formatCents(alert.budgeted)}
+                    {<Trans>Budget</Trans>}: {formatCents(alert.budgeted)}
                   </Text>
                   <Text style={{ fontSize: 11, color: theme.pageTextSubdued }}>
-                    {t('Spent')}: {formatCents(alert.spent)}
+                    {<Trans>Spent</Trans>}: {formatCents(alert.spent)}
                   </Text>
                   <Text
                     style={{
@@ -197,7 +212,7 @@ export function BudgetAlerts({
                       color: alertColor(alert.overagePercent),
                     }}
                   >
-                    {t('Over')}: {formatCents(alert.overage)}
+                    {<Trans>Over</Trans>}: {formatCents(alert.overage)}
                   </Text>
                 </View>
               </View>

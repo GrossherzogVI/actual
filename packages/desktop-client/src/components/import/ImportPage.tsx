@@ -4,17 +4,20 @@ import { Trans, useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
 
 import { Button } from '@actual-app/components/button';
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
 import { send } from 'loot-core/platform/client/connection';
 
+import { CsvImportWizard } from './CsvImportWizard';
+import { FinanzguruWizard } from './FinanzguruWizard';
+
 import { Page } from '@desktop-client/components/Page';
 import { useNavigate } from '@desktop-client/hooks/useNavigate';
 
-import { CsvImportWizard } from './CsvImportWizard';
-import { FinanzguruWizard } from './FinanzguruWizard';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 type SubRoute = 'finanzguru' | 'csv' | undefined;
 
@@ -29,31 +32,20 @@ type ImportCardProps = {
 
 function ImportCard({ icon, title, description, onStart }: ImportCardProps) {
   return (
-    <View
-      style={{
-        flex: 1,
-        minWidth: 220,
-        maxWidth: 300,
-        padding: 24,
-        backgroundColor: theme.tableBackground,
-        border: `1px solid ${theme.tableBorder}`,
-        borderRadius: 10,
-        gap: 12,
-        alignItems: 'center',
-        textAlign: 'center',
-      }}
-    >
-      <Text style={{ fontSize: 36 }}>{icon}</Text>
-      <Text style={{ fontSize: 15, fontWeight: 600, color: theme.pageText }}>
-        {title}
-      </Text>
-      <Text style={{ fontSize: 13, color: theme.pageTextSubdued, lineHeight: '1.5', flex: 1 }}>
-        {description}
-      </Text>
-      <Button variant="primary" onPress={onStart}>
-        <Trans>Start Import</Trans>
-      </Button>
-    </View>
+    <Card className="flex min-w-[220px] max-w-[300px] flex-1 items-center text-center transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+      <CardHeader className="items-center pb-2">
+        <span className="text-4xl">{icon}</span>
+        <CardTitle className="text-[15px]">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-1 flex-col items-center gap-3">
+        <CardDescription className="flex-1 leading-relaxed">
+          {description}
+        </CardDescription>
+        <Button variant="primary" onPress={onStart}>
+          <Trans>Start Import</Trans>
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -78,50 +70,44 @@ function CategorySetupCard() {
   }, []);
 
   return (
-    <View
-      style={{
-        flex: 1,
-        minWidth: 220,
-        maxWidth: 300,
-        padding: 24,
-        backgroundColor: done ? '#10b98108' : theme.tableBackground,
-        border: `1px solid ${done ? '#10b981' : theme.tableBorder}`,
-        borderRadius: 10,
-        gap: 12,
-        alignItems: 'center',
-        textAlign: 'center',
-      }}
+    <Card
+      className={`flex min-w-[220px] max-w-[300px] flex-1 items-center text-center transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${done ? 'border-emerald-500/50 bg-emerald-500/5' : ''}`}
     >
-      <Text style={{ fontSize: 36 }}>{done ? '✅' : '🏷️'}</Text>
-      <Text style={{ fontSize: 15, fontWeight: 600, color: theme.pageText }}>
-        <Trans>German Category Tree</Trans>
-      </Text>
-      <Text style={{ fontSize: 13, color: theme.pageTextSubdued, lineHeight: '1.5', flex: 1 }}>
-        {done
-          ? t('Category tree installed successfully.')
-          : t(
-              'Install a German household budget category tree. Includes 60+ categories for income, housing, groceries, mobility, and more.',
-            )}
-      </Text>
-      {error && (
-        <Text style={{ fontSize: 12, color: '#ef4444' }}>
-          {t('Error: {{error}}', { error })}
-        </Text>
-      )}
-      <Button
-        variant={done ? 'bare' : 'normal'}
-        onPress={handleSetup}
-        isDisabled={loading || done}
-      >
-        {loading ? (
-          <Trans>Installing…</Trans>
-        ) : done ? (
-          <Trans>Installed</Trans>
-        ) : (
-          <Trans>Install Categories</Trans>
+      <CardHeader className="items-center pb-2">
+        <span className="text-4xl">{done ? '\u2705' : '\uD83C\uDFF7\uFE0F'}</span>
+        <CardTitle className="text-[15px]">
+          <Trans>German Category Tree</Trans>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-1 flex-col items-center gap-3">
+        <CardDescription className="flex-1 leading-relaxed">
+          {done
+            ? t('Category tree installed successfully.')
+            : t(
+                'Install a German household budget category tree. Includes 60+ categories for income, housing, groceries, mobility, and more.',
+              )}
+        </CardDescription>
+        {error && (
+          <Alert variant="destructive" className="py-2 text-left">
+            <AlertTitle>{t('Error')}</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
-      </Button>
-    </View>
+        <Button
+          variant={done ? 'bare' : 'normal'}
+          onPress={handleSetup}
+          isDisabled={loading || done}
+        >
+          {loading ? (
+            <Trans>Installing…</Trans>
+          ) : done ? (
+            <Trans>Installed</Trans>
+          ) : (
+            <Trans>Install Categories</Trans>
+          )}
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -132,40 +118,24 @@ function CreateAccountCard() {
   const navigate = useNavigate();
 
   return (
-    <View
-      style={{
-        flex: 1,
-        minWidth: 220,
-        maxWidth: 300,
-        padding: 24,
-        backgroundColor: theme.tableBackground,
-        border: `1px solid ${theme.tableBorder}`,
-        borderRadius: 10,
-        gap: 12,
-        alignItems: 'center',
-        textAlign: 'center',
-      }}
-    >
-      <Text style={{ fontSize: 36 }}>💰</Text>
-      <Text style={{ fontSize: 15, fontWeight: 600, color: theme.pageText }}>
-        <Trans>Create Cash Account</Trans>
-      </Text>
-      <Text
-        style={{
-          fontSize: 13,
-          color: theme.pageTextSubdued,
-          lineHeight: '1.5',
-          flex: 1,
-        }}
-      >
-        {t(
-          'Add a local cash or manual account to track spending that isn\'t connected to a bank.',
-        )}
-      </Text>
-      <Button variant="normal" onPress={() => void navigate('/accounts')}>
-        <Trans>Add Account</Trans>
-      </Button>
-    </View>
+    <Card className="flex min-w-[220px] max-w-[300px] flex-1 items-center text-center transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+      <CardHeader className="items-center pb-2">
+        <span className="text-4xl">{'\uD83D\uDCB0'}</span>
+        <CardTitle className="text-[15px]">
+          <Trans>Create Cash Account</Trans>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-1 flex-col items-center gap-3">
+        <CardDescription className="flex-1 leading-relaxed">
+          {t(
+            "Add a local cash or manual account to track spending that isn't connected to a bank.",
+          )}
+        </CardDescription>
+        <Button variant="normal" onPress={() => void navigate('/accounts')}>
+          <Trans>Add Account</Trans>
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -174,11 +144,9 @@ function CreateAccountCard() {
 export function ImportPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  // Sub-route from URL: /import/finanzguru or /import/csv
   const params = useParams<{ type?: string }>();
   const subRoute = params.type as SubRoute;
 
-  // Show sub-wizard when navigating to /import/finanzguru or /import/csv
   if (subRoute === 'finanzguru') {
     return (
       <Page header={t('Import — Finanzguru')}>
@@ -195,7 +163,6 @@ export function ImportPage() {
     );
   }
 
-  // Hub page
   return (
     <Page header={t('Import')}>
       <View style={{ gap: 24 }}>
@@ -207,15 +174,9 @@ export function ImportPage() {
         </Text>
 
         {/* Import cards */}
-        <View
-          style={{
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            gap: 16,
-          }}
-        >
+        <div className="flex flex-wrap gap-4">
           <ImportCard
-            icon="🏦"
+            icon={'\uD83C\uDFE6'}
             title={t('Finanzguru Export')}
             description={t(
               'Import transactions from the Finanzguru banking app. Supports XLSX export with automatic column detection.',
@@ -223,7 +184,7 @@ export function ImportPage() {
             onStart={() => void navigate('/import/finanzguru')}
           />
           <ImportCard
-            icon="📄"
+            icon={'\uD83D\uDCC4'}
             title={t('Bank CSV')}
             description={t(
               'Import CSV exports from German banks (Sparkasse, DKB, ING, Comdirect, and more). Auto-detects bank format.',
@@ -232,36 +193,25 @@ export function ImportPage() {
           />
           <CreateAccountCard />
           <CategorySetupCard />
-        </View>
+        </div>
 
         {/* Tips section */}
-        <View
-          style={{
-            padding: '16px 20px',
-            backgroundColor: theme.tableBackground,
-            border: `1px solid ${theme.tableBorder}`,
-            borderRadius: 8,
-            gap: 8,
-          }}
-        >
-          <Text style={{ fontSize: 13, fontWeight: 600, color: theme.pageText }}>
-            <Trans>Tips</Trans>
-          </Text>
-          <View style={{ gap: 6 }}>
-            {[
-              t('Install the German category tree first for best auto-categorization results.'),
-              t('After importing, visit the Review Queue to accept AI category suggestions.'),
-              t('Duplicate transactions are automatically detected and skipped.'),
-            ].map((tip, i) => (
-              <View key={i} style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-start' }}>
-                <Text style={{ fontSize: 12, color: theme.pageTextSubdued }}>•</Text>
-                <Text style={{ fontSize: 12, color: theme.pageTextSubdued, flex: 1 }}>
-                  {tip}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
+        <Alert>
+          <AlertTitle>{t('Tips')}</AlertTitle>
+          <AlertDescription>
+            <ul className="mt-1 list-inside list-disc space-y-1 text-xs">
+              <li>
+                {t('Install the German category tree first for best auto-categorization results.')}
+              </li>
+              <li>
+                {t('After importing, visit the Review Queue to accept AI category suggestions.')}
+              </li>
+              <li>
+                {t('Duplicate transactions are automatically detected and skipped.')}
+              </li>
+            </ul>
+          </AlertDescription>
+        </Alert>
       </View>
     </Page>
   );

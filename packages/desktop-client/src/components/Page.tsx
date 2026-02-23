@@ -26,10 +26,11 @@ export function PageHeader({ title, style }: PageHeaderProps) {
       }}
     >
       <View
+        className="flex flex-row items-center"
         style={{
-          flexDirection: 'row',
           fontSize: 25,
-          fontWeight: 500,
+          fontWeight: 600,
+          letterSpacing: '-0.02em',
         }}
       >
         {typeof title === 'string' ? <Text>{title}</Text> : title}

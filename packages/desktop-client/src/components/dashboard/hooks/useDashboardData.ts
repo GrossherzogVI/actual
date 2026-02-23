@@ -3,12 +3,22 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { send } from 'loot-core/platform/client/connection';
 
-import type { ContractEntity, ContractSummary, DashboardData, ReviewCounts } from '../types';
+import type {
+  ContractEntity,
+  ContractSummary,
+  DashboardData,
+  ReviewCounts,
+} from '@/components/dashboard/types';
 
-export function useDashboardData(): DashboardData & { reload: () => Promise<void> } {
-  const [contractSummary, setContractSummary] = useState<ContractSummary | null>(null);
+export function useDashboardData(): DashboardData & {
+  reload: () => Promise<void>;
+} {
+  const [contractSummary, setContractSummary] =
+    useState<ContractSummary | null>(null);
   const [reviewCounts, setReviewCounts] = useState<ReviewCounts | null>(null);
-  const [expiringContracts, setExpiringContracts] = useState<ContractEntity[]>([]);
+  const [expiringContracts, setExpiringContracts] = useState<ContractEntity[]>(
+    [],
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,5 +57,12 @@ export function useDashboardData(): DashboardData & { reload: () => Promise<void
     void reload();
   }, [reload]);
 
-  return { contractSummary, reviewCounts, expiringContracts, loading, error, reload };
+  return {
+    contractSummary,
+    reviewCounts,
+    expiringContracts,
+    loading,
+    error,
+    reload,
+  };
 }

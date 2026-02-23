@@ -1,26 +1,32 @@
 // @ts-strict-ignore
 import React from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
+
+import type { UpcomingPayment } from '@/components/dashboard/types';
+
+import { WidgetCard } from './WidgetCard';
 
 import { useNavigate } from '@desktop-client/hooks/useNavigate';
 
-import type { UpcomingPayment } from '../types';
-import { WidgetCard } from './WidgetCard';
-
 function formatEur(cents: number | null): string {
-  if (cents == null) return '—';
-  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(
-    cents / 100,
-  );
+  if (cents == null) return '\u2014';
+  return new Intl.NumberFormat('de-DE', {
+    style: 'currency',
+    currency: 'EUR',
+  }).format(cents / 100);
 }
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('de-DE', { weekday: 'short', month: 'short', day: 'numeric' });
+  return d.toLocaleDateString('de-DE', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
 }
 
 type Props = {
@@ -34,11 +40,15 @@ export function UpcomingPaymentsWidget({ grouped, loading, error }: Props) {
   const navigate = useNavigate();
 
   return (
-    <WidgetCard title={t('Upcoming Payments')} style={{ gridColumn: '1 / -1' }}>
+    <WidgetCard title={t('Upcoming Payments')}>
       {loading ? (
-        <Text style={{ color: theme.pageTextSubdued, fontSize: 13 }}>{t('Loading…')}</Text>
+        <Text style={{ color: theme.pageTextSubdued, fontSize: 13 }}>
+          <Trans>Loading…</Trans>
+        </Text>
       ) : error ? (
-        <Text style={{ color: theme.errorText ?? '#ef4444', fontSize: 13 }}>{error}</Text>
+        <Text style={{ color: theme.errorText ?? '#ef4444', fontSize: 13 }}>
+          {error}
+        </Text>
       ) : grouped.size === 0 ? (
         <Text style={{ color: theme.pageTextSubdued, fontSize: 13 }}>
           {t('No upcoming payments in the next 14 days.')}
@@ -69,9 +79,10 @@ export function UpcomingPaymentsWidget({ grouped, loading, error }: Props) {
                     borderRadius: 4,
                     cursor: 'pointer',
                   }}
-                  // Hover styling handled via CSS; inline only for base state
                 >
-                  <Text style={{ color: theme.pageText, fontSize: 13 }}>{p.name}</Text>
+                  <Text style={{ color: theme.pageText, fontSize: 13 }}>
+                    {p.name}
+                  </Text>
                   <Text style={{ color: theme.pageTextSubdued, fontSize: 13 }}>
                     -{formatEur(p.amount)}
                   </Text>

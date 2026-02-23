@@ -1,6 +1,6 @@
 // @ts-strict-ignore
 import React, { useCallback, useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 
 import { Button } from '@actual-app/components/button';
 import { Text } from '@actual-app/components/text';
@@ -118,10 +118,10 @@ export function AIRuleSuggestions() {
           <View style={{ flex: 1 }}>{t('Match Field')}</View>
           <View style={{ flex: 2 }}>{t('Proposed Category')}</View>
           <View style={{ width: 80, textAlign: 'center' }}>
-            {t('Hits')}
+            <Trans>Hits</Trans>
           </View>
           <View style={{ width: 120, textAlign: 'center' }}>
-            {t('Actions')}
+            {<Trans>Actions</Trans>}
           </View>
         </View>
 
@@ -173,7 +173,7 @@ export function AIRuleSuggestions() {
                   onPress={() => handleAccept(suggestion.id)}
                   style={{ fontSize: 12, padding: '3px 10px' }}
                 >
-                  {t('Accept')}
+                  {<Trans>Accept</Trans>}
                 </Button>
                 <Button
                   variant="bare"
@@ -185,7 +185,7 @@ export function AIRuleSuggestions() {
                     color: theme.pageTextSubdued,
                   }}
                 >
-                  {t('Dismiss')}
+                  {<Trans>Dismiss</Trans>}
                 </Button>
               </View>
             </View>

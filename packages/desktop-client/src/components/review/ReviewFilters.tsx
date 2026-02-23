@@ -1,17 +1,13 @@
 // @ts-strict-ignore
 import React from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 
 import { Select } from '@actual-app/components/select';
 import { Text } from '@actual-app/components/text';
 import { View } from '@actual-app/components/view';
 
-import {
-  TYPE_FILTER_OPTIONS,
-  PRIORITY_FILTER_OPTIONS,
-  type TypeFilter,
-  type PriorityFilter,
-} from './types';
+import { TYPE_FILTER_OPTIONS, PRIORITY_FILTER_OPTIONS } from './types';
+import type { TypeFilter, PriorityFilter } from './types';
 
 type ReviewFiltersProps = {
   typeFilter: TypeFilter;
@@ -45,7 +41,7 @@ export function ReviewFilters({
           whiteSpace: 'nowrap',
         }}
       >
-        {t('Filter:')}
+        <Trans>Filter:</Trans>
       </Text>
       <Select<TypeFilter>
         options={TYPE_FILTER_OPTIONS}

@@ -1,17 +1,11 @@
 // @ts-strict-ignore
 import React from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 
-import { theme } from '@actual-app/components/theme';
 import { Text } from '@actual-app/components/text';
+import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
-import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-} from 'recharts';
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 
 import type { AnalyticsData } from './hooks/useAnalyticsData';
 
@@ -38,18 +32,23 @@ export function FixedVsVariable({ data }: Props) {
     return (
       <View style={{ padding: 20, alignItems: 'center' }}>
         <Text style={{ color: theme.pageTextSubdued }}>
-          {t('No spending data available.')}
+          <Trans>No spending data available.</Trans>
         </Text>
       </View>
     );
   }
 
   const chartData = [
-    { name: t('Fixed (Contracts)'), value: data.fixed / 100, color: FIXED_COLOR },
+    {
+      name: t('Fixed (Contracts)'),
+      value: data.fixed / 100,
+      color: FIXED_COLOR,
+    },
     { name: t('Variable'), value: data.variable / 100, color: VARIABLE_COLOR },
   ];
 
-  const fixedPercent = data.total > 0 ? Math.round((data.fixed / data.total) * 100) : 0;
+  const fixedPercent =
+    data.total > 0 ? Math.round((data.fixed / data.total) * 100) : 0;
   const variablePercent = 100 - fixedPercent;
 
   return (
@@ -107,8 +106,10 @@ export function FixedVsVariable({ data }: Props) {
             }}
           />
           <View>
-            <Text style={{ fontSize: 12, color: theme.pageText, fontWeight: 600 }}>
-              {t('Fixed')} ({fixedPercent}%)
+            <Text
+              style={{ fontSize: 12, color: theme.pageText, fontWeight: 600 }}
+            >
+              {<Trans>Fixed</Trans>} ({fixedPercent}%)
             </Text>
             <Text style={{ fontSize: 11, color: theme.pageTextSubdued }}>
               {formatCents(data.fixed)}
@@ -126,8 +127,10 @@ export function FixedVsVariable({ data }: Props) {
             }}
           />
           <View>
-            <Text style={{ fontSize: 12, color: theme.pageText, fontWeight: 600 }}>
-              {t('Variable')} ({variablePercent}%)
+            <Text
+              style={{ fontSize: 12, color: theme.pageText, fontWeight: 600 }}
+            >
+              {<Trans>Variable</Trans>} ({variablePercent}%)
             </Text>
             <Text style={{ fontSize: 11, color: theme.pageTextSubdued }}>
               {formatCents(data.variable)}
