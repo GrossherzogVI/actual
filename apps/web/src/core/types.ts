@@ -48,6 +48,17 @@ export type ScenarioComparison = {
   diff: { amountDelta: number; riskDelta: number };
 };
 
+export type ScenarioBranch = {
+  id: string;
+  name: string;
+  status: 'draft' | 'adopted';
+  baseBranchId?: string;
+  notes?: string;
+  createdAtMs: number;
+  updatedAtMs: number;
+  adoptedAtMs?: number;
+};
+
 export type AppRecommendation = Recommendation;
 
 export type WorkflowCommandExecutionStep = {

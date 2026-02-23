@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import {
@@ -19,6 +19,7 @@ export function App() {
   const [status, setStatus] = useState('System ready.');
   const [lastRoute, setLastRoute] = useState('/ops');
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [activeLoop, setActiveLoop] = useState('morning');
 
   const moneyPulse = useQuery({
     queryKey: ['money-pulse'],
@@ -43,11 +44,52 @@ export function App() {
     [],
   );
 
+  const loops = useMemo(
+    () => [
+      { id: 'morning', label: 'Morning Loop', route: '/ops', hint: '1' },
+      { id: 'capture', label: 'Capture Loop', route: '/quick-add', hint: '2' },
+      { id: 'triage', label: 'Triage Loop', route: '/review?priority=urgent', hint: '3' },
+      { id: 'execution', label: 'Execution Loop', route: '/contracts?filter=expiring', hint: '4' },
+      { id: 'close', label: 'Close Loop', route: '/ops', hint: '5' },
+      { id: 'simulation', label: 'Simulation Loop', route: '/ops#spatial-twin', hint: '6' },
+    ],
+    [],
+  );
+
+  const handleRoute = useCallback((route: string) => {
+    setLastRoute(route);
+    setStatus(`Navigated to ${route}`);
+    if (route.includes('/quick-add')) {
+      setActiveLoop('capture');
+      return;
+    }
+    if (route.includes('/review')) {
+      setActiveLoop('triage');
+      return;
+    }
+    if (route.includes('/contracts')) {
+      setActiveLoop('execution');
+      return;
+    }
+    if (route.includes('#spatial-twin')) {
+      setActiveLoop('simulation');
+      return;
+    }
+    setActiveLoop('morning');
+  }, []);
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
         setPaletteOpen(open => !open);
+      }
+      if (event.altKey && /^[1-6]$/.test(event.key)) {
+        const loop = loops[Number(event.key) - 1];
+        if (loop) {
+          event.preventDefault();
+          handleRoute(loop.route);
+        }
       }
       if (event.key === 'Escape') {
         setPaletteOpen(false);
@@ -56,12 +98,7 @@ export function App() {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
-
-  const handleRoute = (route: string) => {
-    setLastRoute(route);
-    setStatus(`Navigated to ${route}`);
-  };
+  }, [handleRoute, loops]);
 
   const handlePaletteSelection = async (entry: { id: string; label: string }) => {
     setPaletteOpen(false);
@@ -124,6 +161,20 @@ export function App() {
         </div>
       </header>
 
+      <nav className="fo-loop-strip">
+        {loops.map(loop => (
+          <button
+            key={loop.id}
+            className={`fo-loop-chip ${activeLoop === loop.id ? 'fo-loop-chip-active' : ''}`}
+            type="button"
+            onClick={() => handleRoute(loop.route)}
+          >
+            <span>{loop.label}</span>
+            <kbd className="fo-kbd">{loop.hint}</kbd>
+          </button>
+        ))}
+      </nav>
+
       <main className="fo-main-grid">
         <aside className="fo-column fo-left-column">
           <CloseLoopPanel onStatus={setStatus} />
@@ -150,7 +201,7 @@ export function App() {
           <CommandMeshPanel onRoute={handleRoute} onStatus={setStatus} />
           <PlaybooksPanel onStatus={setStatus} />
           <SpatialTwinPanel />
-          <DecisionGraphPanel />
+          <DecisionGraphPanel recommendations={recommendations.data || []} />
         </section>
 
         <aside className="fo-column fo-right-column">

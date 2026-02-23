@@ -15,13 +15,6 @@ export async function createGatewayQueue(config: GatewayConfig): Promise<Gateway
   }
 
   if (!config.FINANCE_GATEWAY_REDIS_URL) {
-    if (config.FINANCE_GATEWAY_ALLOW_FALLBACK) {
-      console.warn(
-        '[gateway] FINANCE_GATEWAY_REDIS_URL is missing for redis queue; using in-memory queue fallback.',
-      );
-      return createInMemoryQueue();
-    }
-
     throw new Error(
       '[gateway] FINANCE_GATEWAY_REDIS_URL is required when FINANCE_GATEWAY_QUEUE=redis',
     );
@@ -37,14 +30,6 @@ export async function createGatewayQueue(config: GatewayConfig): Promise<Gateway
     await redisQueue.init();
     return redisQueue;
   } catch (error) {
-    if (config.FINANCE_GATEWAY_ALLOW_FALLBACK) {
-      console.warn(
-        '[gateway] Unable to initialize redis queue; using in-memory queue fallback.',
-        error,
-      );
-      return createInMemoryQueue();
-    }
-
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(`[gateway] Failed to initialize redis queue: ${message}`);
   }

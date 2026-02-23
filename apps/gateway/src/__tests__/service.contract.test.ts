@@ -71,6 +71,65 @@ describe('gateway service contract behavior', () => {
     expect(queued.filter(job => job.name === 'workflow.close.run')).toHaveLength(1);
   });
 
+  it('stores command chain runs for audit retrieval', async () => {
+    const { service } = await createHarness();
+
+    const firstRun = await service.executeWorkflowCommandChain({
+      chain: 'triage -> open-review',
+    });
+    const secondRun = await service.executeWorkflowCommandChain({
+      chain: 'close -> monthly',
+    });
+
+    const recentRuns = await service.listWorkflowCommandRuns(10);
+    expect(recentRuns.length).toBeGreaterThanOrEqual(2);
+    expect(recentRuns[0]?.executedAtMs).toBeGreaterThanOrEqual(
+      recentRuns[1]?.executedAtMs || 0,
+    );
+    expect(recentRuns.some(run => run.id === firstRun.id)).toBe(true);
+    expect(recentRuns.some(run => run.id === secondRun.id)).toBe(true);
+  });
+
+  it('supports dry-run command chains without mutating queue state', async () => {
+    const { service, queue } = await createHarness();
+
+    const run = await service.executeWorkflowCommandChain({
+      chain: 'close -> weekly -> batch-renegotiate',
+      assignee: 'delegate',
+      dryRun: true,
+    });
+
+    expect(run.errorCount).toBe(0);
+    expect(run.steps.every(step => step.detail.toLowerCase().includes('dry-run'))).toBe(
+      true,
+    );
+
+    const queued = await queue.dequeue(20);
+    expect(queued.some(job => job.name === 'workflow.close.run')).toBe(false);
+    expect(queued.some(job => job.name === 'delegate.lane.assigned')).toBe(false);
+  });
+
+  it('blocks privileged chain steps for delegate actors', async () => {
+    const { service, queue } = await createHarness();
+
+    const run = await service.executeWorkflowCommandChain({
+      chain: 'close -> weekly -> open-review',
+      actorId: 'delegate',
+    });
+
+    expect(run.errorCount).toBeGreaterThanOrEqual(1);
+    expect(run.steps[0]).toMatchObject({
+      status: 'error',
+    });
+    expect(run.steps[1]).toMatchObject({
+      status: 'ok',
+      route: '/review?priority=urgent',
+    });
+
+    const queued = await queue.dequeue(20);
+    expect(queued.some(job => job.name === 'workflow.close.run')).toBe(false);
+  });
+
   it('submits and streams ledger events', async () => {
     const { service } = await createHarness();
 

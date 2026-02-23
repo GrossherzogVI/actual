@@ -6,6 +6,7 @@ import type {
   FocusPanel,
   MoneyPulse,
   Playbook,
+  ScenarioBranch,
   ScenarioComparison,
   WorkflowCommandExecution,
 } from '../types';
@@ -109,15 +110,23 @@ export const apiClient = {
     );
   },
 
-  executeCommandChain(chain: string, assignee = 'delegate') {
+  executeCommandChain(chain: string, assignee = 'delegate', dryRun = false) {
     return request<WorkflowCommandExecution>('/workflow/v1/execute-chain', {
       method: 'POST',
       body: JSON.stringify({
         envelope: commandEnvelope('execute-chain'),
         chain,
         assignee,
+        dryRun,
       }),
     });
+  },
+
+  listCommandRuns(limit = 20) {
+    const clamped = Math.max(1, Math.min(limit, 200));
+    return request<WorkflowCommandExecution[]>(
+      `/workflow/v1/command-runs?limit=${clamped}`,
+    );
   },
 
   listDelegateLanes() {
@@ -145,6 +154,51 @@ export const apiClient = {
       body: JSON.stringify({
         branchId: primaryBranchId,
         againstBranchId,
+      }),
+    });
+  },
+
+  listScenarioBranches() {
+    return request<ScenarioBranch[]>('/scenario/v1/branches');
+  },
+
+  createScenarioBranch(name: string, baseBranchId?: string, notes?: string) {
+    return request<ScenarioBranch>('/scenario/v1/create-branch', {
+      method: 'POST',
+      body: JSON.stringify({
+        envelope: commandEnvelope('create-scenario-branch'),
+        name,
+        baseBranchId,
+        notes,
+      }),
+    });
+  },
+
+  applyScenarioMutation(
+    branchId: string,
+    mutationKind: string,
+    payload: Record<string, unknown>,
+  ) {
+    return request<{ id: string; branchId: string; kind: string }>(
+      '/scenario/v1/apply-mutation',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          envelope: commandEnvelope('apply-scenario-mutation'),
+          branchId,
+          mutationKind,
+          payload,
+        }),
+      },
+    );
+  },
+
+  adoptScenarioBranch(branchId: string) {
+    return request<ScenarioBranch>('/scenario/v1/adopt-branch', {
+      method: 'POST',
+      body: JSON.stringify({
+        envelope: commandEnvelope('adopt-scenario-branch'),
+        branchId,
       }),
     });
   },

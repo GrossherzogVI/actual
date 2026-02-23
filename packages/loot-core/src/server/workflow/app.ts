@@ -18,6 +18,7 @@ export type WorkflowMoneyPulse = {
 
 export type WorkflowHandlers = {
   'workflow-money-pulse': typeof workflowMoneyPulse;
+  'workflow-command-runs': typeof workflowCommandRuns;
   'workflow-resolve-next-action': typeof workflowResolveNextAction;
   'workflow-playbook-list': typeof workflowPlaybookList;
   'workflow-playbook-create': typeof workflowPlaybookCreate;
@@ -30,6 +31,7 @@ export type WorkflowHandlers = {
 export const app = createApp<WorkflowHandlers>();
 
 app.method('workflow-money-pulse', workflowMoneyPulse);
+app.method('workflow-command-runs', workflowCommandRuns);
 app.method('workflow-resolve-next-action', workflowResolveNextAction);
 app.method('workflow-playbook-list', workflowPlaybookList);
 app.method('workflow-playbook-create', workflowPlaybookCreate);
@@ -54,6 +56,25 @@ async function workflowMoneyPulse(): Promise<WorkflowMoneyPulse | HandlerError> 
 
   try {
     return await gatewayGet<WorkflowMoneyPulse>('/workflow/v1/money-pulse', userToken);
+  } catch (err) {
+    return { error: readError(err, 'network-failure') };
+  }
+}
+
+async function workflowCommandRuns(args: {
+  limit?: number;
+}): Promise<Array<Record<string, unknown>> | HandlerError> {
+  const userToken = await asyncStorage.getItem('user-token');
+  if (!userToken) {
+    return { error: 'not-logged-in' };
+  }
+
+  try {
+    const limit = Math.max(1, Math.min(Number(args.limit ?? 20), 200));
+    return await gatewayGet<Array<Record<string, unknown>>>(
+      `/workflow/v1/command-runs?limit=${limit}`,
+      userToken,
+    );
   } catch (err) {
     return { error: readError(err, 'network-failure') };
   }
@@ -189,6 +210,7 @@ async function workflowApplyBatchPolicy(args: {
 async function workflowExecuteChain(args: {
   chain: string;
   assignee?: string;
+  dryRun?: boolean;
 }): Promise<Record<string, unknown> | HandlerError> {
   const userToken = await asyncStorage.getItem('user-token');
   if (!userToken) {
@@ -202,6 +224,7 @@ async function workflowExecuteChain(args: {
         envelope: createGatewayEnvelope('execute-chain'),
         chain: args.chain,
         assignee: args.assignee,
+        dryRun: args.dryRun ?? false,
       },
       userToken,
     );

@@ -11,6 +11,7 @@ import type {
   PlaybookRun,
   ScenarioBranch,
   ScenarioMutation,
+  WorkflowCommandExecution,
   WorkflowPlaybook,
 } from '../types';
 
@@ -228,6 +229,45 @@ export class PostgresGatewayRepository implements GatewayRepository {
       [run.id, run.period, run.exceptionCount, JSON.stringify(run.summary), run.createdAtMs],
     );
     return run;
+  }
+
+  async createWorkflowCommandRun(
+    run: WorkflowCommandExecution,
+  ): Promise<WorkflowCommandExecution> {
+    await this.pool.query(
+      `INSERT INTO workflow_command_runs
+         (id, chain, steps_json, error_count, executed_at_ms)
+       VALUES ($1, $2, $3::jsonb, $4, $5)`,
+      [
+        run.id,
+        run.chain,
+        JSON.stringify(run.steps),
+        run.errorCount,
+        run.executedAtMs,
+      ],
+    );
+
+    return run;
+  }
+
+  async listWorkflowCommandRuns(limit: number): Promise<WorkflowCommandExecution[]> {
+    const result = await this.pool.query(
+      `SELECT id, chain, steps_json, error_count, executed_at_ms
+       FROM workflow_command_runs
+       ORDER BY executed_at_ms DESC
+       LIMIT $1`,
+      [limit],
+    );
+
+    return result.rows.map(row => ({
+      id: String(row.id),
+      chain: String(row.chain),
+      steps: Array.isArray(row.steps_json)
+        ? (row.steps_json as WorkflowCommandExecution['steps'])
+        : [],
+      errorCount: Number(row.error_count),
+      executedAtMs: Number(row.executed_at_ms),
+    }));
   }
 
   async listScenarioBranches(): Promise<ScenarioBranch[]> {

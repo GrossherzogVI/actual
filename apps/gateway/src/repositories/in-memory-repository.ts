@@ -11,6 +11,7 @@ import type {
   PlaybookRun,
   ScenarioBranch,
   ScenarioMutation,
+  WorkflowCommandExecution,
   WorkflowPlaybook,
 } from '../types';
 
@@ -33,6 +34,7 @@ export class InMemoryGatewayRepository implements GatewayRepository {
   private readonly playbooks = new Map<string, WorkflowPlaybook>();
   private readonly playbookRuns = new Map<string, PlaybookRun>();
   private readonly closeRuns = new Map<string, CloseRun>();
+  private readonly commandRuns = new Map<string, WorkflowCommandExecution>();
 
   private readonly scenarioBranches = new Map<string, ScenarioBranch>();
   private readonly scenarioMutations = new Map<string, ScenarioMutation[]>();
@@ -140,6 +142,19 @@ export class InMemoryGatewayRepository implements GatewayRepository {
   async createCloseRun(run: CloseRun): Promise<CloseRun> {
     this.closeRuns.set(run.id, run);
     return run;
+  }
+
+  async createWorkflowCommandRun(
+    run: WorkflowCommandExecution,
+  ): Promise<WorkflowCommandExecution> {
+    this.commandRuns.set(run.id, run);
+    return run;
+  }
+
+  async listWorkflowCommandRuns(limit: number): Promise<WorkflowCommandExecution[]> {
+    return [...this.commandRuns.values()]
+      .sort((a, b) => b.executedAtMs - a.executedAtMs)
+      .slice(0, limit);
   }
 
   async listScenarioBranches(): Promise<ScenarioBranch[]> {

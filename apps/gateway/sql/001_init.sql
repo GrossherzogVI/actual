@@ -32,6 +32,17 @@ CREATE TABLE IF NOT EXISTS workflow_close_runs (
   created_at_ms BIGINT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS workflow_command_runs (
+  id TEXT PRIMARY KEY,
+  chain TEXT NOT NULL,
+  steps_json JSONB NOT NULL,
+  error_count INTEGER NOT NULL,
+  executed_at_ms BIGINT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_workflow_command_runs_executed
+  ON workflow_command_runs(executed_at_ms DESC);
+
 CREATE TABLE IF NOT EXISTS scenario_branches (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,

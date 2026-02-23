@@ -51,7 +51,7 @@ pre {
 
 .fo-app-shell {
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto auto 1fr auto;
   width: 100%;
   height: 100%;
 }
@@ -75,6 +75,49 @@ pre {
 
 .fo-topbar small {
   color: var(--fo-muted);
+}
+
+.fo-loop-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--fo-border);
+  background: rgba(10, 19, 30, 0.78);
+}
+
+.fo-loop-chip {
+  border: 1px solid var(--fo-border);
+  background: rgba(23, 40, 62, 0.72);
+  color: var(--fo-text);
+  border-radius: 999px;
+  padding: 6px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: border-color 180ms ease, transform 180ms ease, background 180ms ease;
+  white-space: nowrap;
+}
+
+.fo-loop-chip:hover {
+  border-color: var(--fo-info);
+  transform: translateY(-1px);
+}
+
+.fo-loop-chip-active {
+  border-color: var(--fo-ok);
+  background: rgba(19, 54, 46, 0.72);
+}
+
+.fo-kbd {
+  border: 1px solid var(--fo-border);
+  border-radius: 5px;
+  padding: 1px 5px;
+  font-size: 11px;
+  color: var(--fo-info);
+  background: rgba(9, 16, 25, 0.7);
 }
 
 .fo-main-grid {
@@ -101,6 +144,7 @@ pre {
   padding: 12px;
   display: grid;
   gap: 10px;
+  animation: fo-panel-enter 180ms ease;
 }
 
 .fo-panel-header {
@@ -234,6 +278,17 @@ pre {
 
 .fo-status-bar code {
   color: var(--fo-info);
+}
+
+@keyframes fo-panel-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .fo-palette-overlay {

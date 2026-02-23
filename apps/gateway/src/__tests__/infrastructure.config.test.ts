@@ -7,11 +7,9 @@ import { createGatewayRepository } from '../repositories/factory';
 describe('gateway infrastructure defaults', () => {
   it('defaults to strict postgres + redis modes', () => {
     const config = loadGatewayConfig({});
-    const view = config as unknown as Record<string, unknown>;
 
     expect(config.FINANCE_GATEWAY_STORE).toBe('postgres');
-    expect(view.FINANCE_GATEWAY_QUEUE).toBe('redis');
-    expect(view.FINANCE_GATEWAY_ALLOW_FALLBACK).toBe(false);
+    expect(config.FINANCE_GATEWAY_QUEUE).toBe('redis');
   });
 });
 

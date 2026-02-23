@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { COMMAND_MESH_HINTS } from '@finance-os/domain-kernel';
 
@@ -25,6 +25,12 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
   const queryClient = useQueryClient();
   const [command, setCommand] = useState('triage -> close-weekly');
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [dryRunMode, setDryRunMode] = useState(true);
+  const history = useQuery({
+    queryKey: ['command-runs'],
+    queryFn: () => apiClient.listCommandRuns(10),
+    refetchInterval: 15_000,
+  });
 
   const addLog = (entry: Omit<LogEntry, 'id'>) => {
     setLogs(prev => [{ ...entry, id: nextId() }, ...prev].slice(0, 16));
@@ -32,7 +38,7 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
 
   const execute = useMutation({
     mutationFn: async (chain: string) => {
-      const run = await apiClient.executeCommandChain(chain);
+      const run = await apiClient.executeCommandChain(chain, 'delegate', dryRunMode);
 
       for (const step of run.steps) {
         addLog({
@@ -49,7 +55,9 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
       onStatus(
         run.errorCount > 0
           ? `Command chain executed with ${run.errorCount} error(s)`
-          : 'Command chain executed',
+          : dryRunMode
+            ? 'Dry-run command chain executed'
+            : 'Command chain executed',
       );
       await queryClient.invalidateQueries();
     },
@@ -69,6 +77,14 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
           placeholder="triage -> close-weekly"
           className="fo-input"
         />
+        <button
+          className="fo-btn-secondary"
+          type="button"
+          disabled={execute.isPending}
+          onClick={() => setDryRunMode(current => !current)}
+        >
+          {dryRunMode ? 'Dry-run' : 'Live'}
+        </button>
         <button
           className="fo-btn"
           type="button"
@@ -94,6 +110,18 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
           >
             <strong>{log.step}</strong>
             <span>{log.detail}</span>
+          </article>
+        ))}
+      </div>
+
+      <div className="fo-log-list">
+        <small>Recent command runs</small>
+        {history.data?.slice(0, 5).map(run => (
+          <article key={run.id} className="fo-log">
+            <strong>{run.chain}</strong>
+            <span>
+              {new Date(run.executedAtMs).toLocaleTimeString()} - {run.errorCount} errors
+            </span>
           </article>
         ))}
       </div>

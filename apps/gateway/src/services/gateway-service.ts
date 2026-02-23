@@ -38,6 +38,13 @@ function queueJob(name: string, payload: Record<string, unknown>): QueueJob {
   };
 }
 
+const DELEGATE_BLOCKED_STEPS = new Set([
+  'run-close-weekly',
+  'run-close-monthly',
+  'create-default-playbook',
+  'assign-expiring-contracts-lane',
+]);
+
 export function createGatewayService(
   repository: GatewayRepository,
   queue: GatewayQueue,
@@ -83,6 +90,10 @@ export function createGatewayService(
 
   async function listPlaybooks(): Promise<WorkflowPlaybook[]> {
     return repository.listPlaybooks();
+  }
+
+  async function listWorkflowCommandRuns(limit = 20) {
+    return repository.listWorkflowCommandRuns(Math.max(1, Math.min(limit, 200)));
   }
 
   async function createPlaybook(input: {
@@ -193,9 +204,13 @@ export function createGatewayService(
   async function executeWorkflowCommandChain(input: {
     chain: string;
     assignee?: string;
+    dryRun?: boolean;
+    actorId?: string;
   }): Promise<WorkflowCommandExecution> {
     const parsed = parseCommandChain(input.chain);
     const steps: WorkflowCommandExecutionStep[] = [];
+    const dryRun = input.dryRun === true;
+    const prefix = dryRun ? '[dry-run] ' : '';
 
     for (const error of parsed.errors) {
       steps.push({
@@ -211,6 +226,21 @@ export function createGatewayService(
     }
 
     for (const step of parsed.steps) {
+      if (
+        !dryRun &&
+        input.actorId === 'delegate' &&
+        DELEGATE_BLOCKED_STEPS.has(step.id)
+      ) {
+        steps.push({
+          id: step.id,
+          raw: step.raw,
+          canonical: step.canonical,
+          status: 'error',
+          detail: 'Blocked by command policy for delegate actors.',
+        });
+        continue;
+      }
+
       if (step.id === 'resolve-next-action') {
         const action = await resolveNextAction();
         steps.push({
@@ -218,37 +248,70 @@ export function createGatewayService(
           raw: step.raw,
           canonical: step.canonical,
           status: 'ok',
-          detail: action.title,
+          detail: `${prefix}${action.title}`,
           route: action.route,
         });
         continue;
       }
 
       if (step.id === 'run-close-weekly') {
+        if (dryRun) {
+          steps.push({
+            id: step.id,
+            raw: step.raw,
+            canonical: step.canonical,
+            status: 'ok',
+            detail: `${prefix}Would run weekly close routine.`,
+          });
+          continue;
+        }
+
         const run = await runCloseRoutine('weekly');
         steps.push({
           id: step.id,
           raw: step.raw,
           canonical: step.canonical,
           status: 'ok',
-          detail: `Weekly close run ${run.id} (${run.exceptionCount} exceptions).`,
+          detail: `${prefix}Weekly close run ${run.id} (${run.exceptionCount} exceptions).`,
         });
         continue;
       }
 
       if (step.id === 'run-close-monthly') {
+        if (dryRun) {
+          steps.push({
+            id: step.id,
+            raw: step.raw,
+            canonical: step.canonical,
+            status: 'ok',
+            detail: `${prefix}Would run monthly close routine.`,
+          });
+          continue;
+        }
+
         const run = await runCloseRoutine('monthly');
         steps.push({
           id: step.id,
           raw: step.raw,
           canonical: step.canonical,
           status: 'ok',
-          detail: `Monthly close run ${run.id} (${run.exceptionCount} exceptions).`,
+          detail: `${prefix}Monthly close run ${run.id} (${run.exceptionCount} exceptions).`,
         });
         continue;
       }
 
       if (step.id === 'create-default-playbook') {
+        if (dryRun) {
+          steps.push({
+            id: step.id,
+            raw: step.raw,
+            canonical: step.canonical,
+            status: 'ok',
+            detail: `${prefix}Would create default weekly triage playbook.`,
+          });
+          continue;
+        }
+
         const playbook = await createPlaybook({
           name: 'Weekly Triage Autopilot',
           description: 'Created from command chain executor.',
@@ -263,7 +326,7 @@ export function createGatewayService(
           raw: step.raw,
           canonical: step.canonical,
           status: 'ok',
-          detail: `Created playbook ${playbook.name}.`,
+          detail: `${prefix}Created playbook ${playbook.name}.`,
         });
         continue;
       }
@@ -276,7 +339,18 @@ export function createGatewayService(
             raw: step.raw,
             canonical: step.canonical,
             status: 'error',
-            detail: 'No playbook available to run.',
+            detail: `${prefix}No playbook available to run.`,
+          });
+          continue;
+        }
+
+        if (dryRun) {
+          steps.push({
+            id: step.id,
+            raw: step.raw,
+            canonical: step.canonical,
+            status: 'ok',
+            detail: `${prefix}Would run playbook ${first.name}.`,
           });
           continue;
         }
@@ -288,7 +362,7 @@ export function createGatewayService(
             raw: step.raw,
             canonical: step.canonical,
             status: 'error',
-            detail: `Playbook ${first.id} not found.`,
+            detail: `${prefix}Playbook ${first.id} not found.`,
           });
           continue;
         }
@@ -298,7 +372,7 @@ export function createGatewayService(
           raw: step.raw,
           canonical: step.canonical,
           status: 'ok',
-          detail: `Playbook run ${run.id} (${run.executedSteps} steps).`,
+          detail: `${prefix}Playbook run ${run.id} (${run.executedSteps} steps).`,
         });
         continue;
       }
@@ -309,13 +383,24 @@ export function createGatewayService(
           raw: step.raw,
           canonical: step.canonical,
           status: 'ok',
-          detail: 'Opened expiring contracts lane.',
+          detail: `${prefix}Opened expiring contracts lane.`,
           route: '/contracts?filter=expiring',
         });
         continue;
       }
 
       if (step.id === 'assign-expiring-contracts-lane') {
+        if (dryRun) {
+          steps.push({
+            id: step.id,
+            raw: step.raw,
+            canonical: step.canonical,
+            status: 'ok',
+            detail: `${prefix}Would assign expiring-contract renegotiation lane.`,
+          });
+          continue;
+        }
+
         const lane = await assignDelegateLane({
           title: 'Renegotiate expiring contracts',
           assignee: input.assignee || 'delegate',
@@ -329,7 +414,7 @@ export function createGatewayService(
           raw: step.raw,
           canonical: step.canonical,
           status: 'ok',
-          detail: `Assigned lane ${lane.title}.`,
+          detail: `${prefix}Assigned lane ${lane.title}.`,
         });
         continue;
       }
@@ -340,7 +425,7 @@ export function createGatewayService(
           raw: step.raw,
           canonical: step.canonical,
           status: 'ok',
-          detail: 'Opened urgent review lane.',
+          detail: `${prefix}Opened urgent review lane.`,
           route: '/review?priority=urgent',
         });
         continue;
@@ -353,18 +438,21 @@ export function createGatewayService(
           raw: step.raw,
           canonical: step.canonical,
           status: 'ok',
-          detail: 'Refreshed command center data.',
+          detail: `${prefix}Refreshed command center data.`,
         });
       }
     }
 
-    return {
+    const run: WorkflowCommandExecution = {
       id: nanoid(),
       chain: input.chain,
       steps,
       errorCount: steps.filter(step => step.status === 'error').length,
       executedAtMs: Date.now(),
     };
+
+    await repository.createWorkflowCommandRun(run);
+    return run;
   }
 
   async function getAdaptiveFocusPanel(): Promise<FocusPanel> {
@@ -819,6 +907,7 @@ export function createGatewayService(
     resolveNextAction,
     getMoneyPulse,
     listPlaybooks,
+    listWorkflowCommandRuns,
     createPlaybook,
     runPlaybook,
     runCloseRoutine,

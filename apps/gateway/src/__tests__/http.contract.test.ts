@@ -303,4 +303,20 @@ describe('gateway HTTP contract/runtime', () => {
     });
     expect(acceptLane.statusCode).toBe(404);
   });
+
+  it('returns command run history after execute-chain calls', async () => {
+    const { app } = await createHarness();
+
+    const execute = await invoke(app, 'POST', '/workflow/v1/execute-chain', {
+      envelope: envelope(),
+      chain: 'triage -> open-review',
+      assignee: 'delegate',
+    });
+    expect(execute.statusCode).toBe(200);
+
+    const history = await invoke(app, 'GET', '/workflow/v1/command-runs');
+    expect(history.statusCode).toBe(200);
+    expect(Array.isArray(history.body)).toBe(true);
+    expect((history.body as Array<{ chain: string }>)[0]?.chain).toBeTruthy();
+  });
 });

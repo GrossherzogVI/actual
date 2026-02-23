@@ -10,6 +10,8 @@ service WorkflowService {
   rpc GetMoneyPulse(GetMoneyPulseRequest) returns (GetMoneyPulseResponse);
   rpc RunCloseRoutine(RunCloseRoutineRequest) returns (RunCloseRoutineResponse);
   rpc ApplyBatchPolicy(ApplyBatchPolicyRequest) returns (ApplyBatchPolicyResponse);
+  rpc ExecuteChain(ExecuteChainRequest) returns (ExecuteChainResponse);
+  rpc ListCommandRuns(ListCommandRunsRequest) returns (ListCommandRunsResponse);
 }
 
 message ResolveNextActionRequest {
@@ -65,4 +67,44 @@ message ApplyBatchPolicyRequest {
 
 message ApplyBatchPolicyResponse {
   int32 updated_count = 1;
+}
+
+message ExecuteChainRequest {
+  financeos.common.v1.CommandEnvelope envelope = 1;
+  string chain = 2;
+  string assignee = 3;
+  bool dry_run = 4;
+}
+
+message ExecuteChainResponse {
+  string run_id = 1;
+  string chain = 2;
+  repeated CommandExecutionStep steps = 3;
+  int32 error_count = 4;
+  int64 executed_at_ms = 5;
+}
+
+message ListCommandRunsRequest {
+  int32 limit = 1;
+}
+
+message ListCommandRunsResponse {
+  repeated CommandRun runs = 1;
+}
+
+message CommandRun {
+  string run_id = 1;
+  string chain = 2;
+  repeated CommandExecutionStep steps = 3;
+  int32 error_count = 4;
+  int64 executed_at_ms = 5;
+}
+
+message CommandExecutionStep {
+  string id = 1;
+  string raw = 2;
+  string canonical = 3;
+  string status = 4;
+  string detail = 5;
+  string route = 6;
 }

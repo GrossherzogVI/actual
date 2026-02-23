@@ -7,6 +7,7 @@ import { parseRequestBody, sendNotFound } from '../http/route-utils';
 import type { GatewayService } from '../services/gateway-service';
 
 type RequestLike = { body?: unknown };
+type QueryLike = { query?: Record<string, unknown> };
 
 export const workflowSchemas = {
   createPlaybook: z.object({
@@ -36,6 +37,10 @@ export const workflowSchemas = {
     envelope: commandEnvelopeSchema,
     chain: z.string().min(1),
     assignee: z.string().min(1).optional(),
+    dryRun: z.boolean().default(false),
+  }),
+  listCommandRuns: z.object({
+    limit: z.number().int().min(1).max(200).default(20),
   }),
 };
 
@@ -60,6 +65,28 @@ export async function registerWorkflowRoutes(
 
   app.get('/playbooks', async () => {
     return service.listPlaybooks();
+  });
+
+  app.get('/command-runs', async request => {
+    const query = ((request as QueryLike).query || {}) as Record<string, unknown>;
+    const limitRaw = query.limit;
+    const limit =
+      typeof limitRaw === 'string'
+        ? Number(limitRaw)
+        : typeof limitRaw === 'number'
+          ? limitRaw
+          : 20;
+    return service.listWorkflowCommandRuns(Number.isFinite(limit) ? limit : 20);
+  });
+
+  app.post('/list-command-runs', async (request, reply) => {
+    const payload = parseRequestBody(
+      workflowSchemas.listCommandRuns,
+      (request as RequestLike).body,
+      reply,
+    );
+    if (!payload) return;
+    return service.listWorkflowCommandRuns(payload.limit);
   });
 
   app.post('/playbooks', async (request, reply) => {
@@ -124,6 +151,8 @@ export async function registerWorkflowRoutes(
     return service.executeWorkflowCommandChain({
       chain: payload.chain,
       assignee: payload.assignee,
+      dryRun: payload.dryRun,
+      actorId: payload.envelope.actorId,
     });
   });
 }

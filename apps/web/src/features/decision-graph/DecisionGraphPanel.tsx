@@ -1,4 +1,24 @@
-export function DecisionGraphPanel() {
+import type { AppRecommendation } from '../../core/types';
+
+type DecisionGraphPanelProps = {
+  recommendations: AppRecommendation[];
+};
+
+function short(text: string, max = 16) {
+  if (text.length <= max) return text;
+  return `${text.slice(0, max - 1)}…`;
+}
+
+export function DecisionGraphPanel({ recommendations }: DecisionGraphPanelProps) {
+  const first = recommendations[0];
+  const second = recommendations[1];
+  const primaryTitle = first ? short(first.title, 14) : 'Renewal';
+  const impactTitle = first ? short(first.expectedImpact, 14) : 'Cashflow';
+  const rationaleTitle = second ? short(second.rationale, 14) : 'Deadline';
+  const actionTitle = first
+    ? `${Math.round(first.confidence * 100)}% conf`
+    : 'Action';
+
   return (
     <section className="fo-panel">
       <header className="fo-panel-header">
@@ -22,28 +42,28 @@ export function DecisionGraphPanel() {
           <g className="fo-graph-node" transform="translate(70 115)">
             <rect width="110" height="50" rx="10" />
             <text x="55" y="30" textAnchor="middle">
-              Renewal
+              {primaryTitle}
             </text>
           </g>
 
           <g className="fo-graph-node fo-graph-node-info" transform="translate(260 45)">
             <rect width="120" height="50" rx="10" />
             <text x="60" y="30" textAnchor="middle">
-              Cashflow
+              {impactTitle}
             </text>
           </g>
 
           <g className="fo-graph-node fo-graph-node-warn" transform="translate(260 185)">
             <rect width="120" height="50" rx="10" />
             <text x="60" y="30" textAnchor="middle">
-              Deadline
+              {rationaleTitle}
             </text>
           </g>
 
           <g className="fo-graph-node fo-graph-node-ok" transform="translate(450 115)">
             <rect width="90" height="50" rx="10" />
             <text x="45" y="30" textAnchor="middle">
-              Action
+              {actionTitle}
             </text>
           </g>
         </svg>

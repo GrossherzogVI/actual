@@ -90,6 +90,14 @@ export const rpcRegistry: RpcRegistryEntry[] = [
     requestSchema: workflowSchemas.executeChain,
   },
   {
+    service: 'workflow.v1',
+    rpc: 'ListCommandRuns',
+    method: 'POST',
+    path: '/workflow/v1/list-command-runs',
+    requiresEnvelope: false,
+    requestSchema: workflowSchemas.listCommandRuns,
+  },
+  {
     service: 'scenario.v1',
     rpc: 'CreateBranch',
     method: 'POST',

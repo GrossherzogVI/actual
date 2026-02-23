@@ -10,6 +10,7 @@ import type {
   ScenarioBranch,
   ScenarioBranchWithMutations,
   ScenarioMutation,
+  WorkflowCommandExecution,
   WorkflowPlaybook,
 } from '../types';
 
@@ -34,6 +35,10 @@ export interface GatewayRepository {
   createPlaybookRun(run: PlaybookRun): Promise<PlaybookRun>;
 
   createCloseRun(run: CloseRun): Promise<CloseRun>;
+  createWorkflowCommandRun(
+    run: WorkflowCommandExecution,
+  ): Promise<WorkflowCommandExecution>;
+  listWorkflowCommandRuns(limit: number): Promise<WorkflowCommandExecution[]>;
 
   listScenarioBranches(): Promise<ScenarioBranch[]>;
   getScenarioBranchById(branchId: string): Promise<ScenarioBranch | null>;

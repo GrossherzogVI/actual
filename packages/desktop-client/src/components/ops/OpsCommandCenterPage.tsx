@@ -1,5 +1,5 @@
 // @ts-strict-ignore
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
 import {
@@ -121,6 +121,7 @@ export function OpsCommandCenterPage() {
     adaptiveFocus,
     playbooks,
     lanes,
+    commandRuns,
     refresh,
     runCloseRoutine,
     runPlaybook,
@@ -133,6 +134,19 @@ export function OpsCommandCenterPage() {
   const [commandLogs, setCommandLogs] = useState<CommandLog[]>([]);
   const [executing, setExecuting] = useState(false);
   const [operatorName, setOperatorName] = useState('');
+  const [dryRunMode, setDryRunMode] = useState(true);
+
+  const loopShortcuts = useMemo(
+    () => [
+      { id: '1', label: t('Morning'), route: '/ops' },
+      { id: '2', label: t('Capture'), route: '/quick-add' },
+      { id: '3', label: t('Triage'), route: '/review?priority=urgent' },
+      { id: '4', label: t('Execution'), route: '/contracts?filter=expiring' },
+      { id: '5', label: t('Close'), route: '/ops' },
+      { id: '6', label: t('Simulation'), route: '/ops' },
+    ],
+    [t],
+  );
 
   const commandHints = useMemo(
     () => [
@@ -167,6 +181,7 @@ export function OpsCommandCenterPage() {
         const run = await executeCommandChain(
           chain,
           operatorName.trim() || undefined,
+          dryRunMode,
         );
 
         if (isErrorResult(run)) {
@@ -196,8 +211,25 @@ export function OpsCommandCenterPage() {
         setExecuting(false);
       }
     },
-    [appendLog, executeCommandChain, navigate, operatorName, t],
+    [appendLog, dryRunMode, executeCommandChain, navigate, operatorName, t],
   );
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!event.altKey || !/^[1-6]$/.test(event.key)) {
+        return;
+      }
+      const target = loopShortcuts.find(loop => loop.id === event.key);
+      if (!target) {
+        return;
+      }
+      event.preventDefault();
+      void navigate(target.route);
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [loopShortcuts, navigate]);
 
   if (!commandMesh && !adaptiveFocusEnabled && !opsPlaybooks) {
     return (
@@ -243,6 +275,19 @@ export function OpsCommandCenterPage() {
           <Text style={{ fontSize: 12, color: theme.pageTextSubdued }}>
             {t('Keyboard-first operating loops. Build and execute chainable actions.')}
           </Text>
+
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+            {loopShortcuts.map(loop => (
+              <Button
+                key={loop.id}
+                variant="bare"
+                style={{ fontSize: 11 }}
+                onPress={() => navigate(loop.route)}
+              >
+                {t('{{label}} (Alt+{{key}})', { label: loop.label, key: loop.id })}
+              </Button>
+            ))}
+          </View>
 
           {commandHints.map(hint => (
             <CommandHint
@@ -293,6 +338,12 @@ export function OpsCommandCenterPage() {
                 placeholder={t('triage -> expiring<30d -> batch-renegotiate')}
                 style={{ flex: 1 }}
               />
+              <Button
+                variant="bare"
+                onPress={() => setDryRunMode(current => !current)}
+              >
+                {dryRunMode ? t('Dry-run') : t('Live')}
+              </Button>
               <Button
                 isDisabled={executing || loading}
                 onPress={() => executeChain(commandInput)}
@@ -489,6 +540,42 @@ export function OpsCommandCenterPage() {
               )}
             </View>
           )}
+
+          <View
+            style={{
+              border: `1px solid ${theme.tableBorder}`,
+              borderRadius: 8,
+              backgroundColor: theme.tableBackground,
+              padding: 12,
+              gap: 8,
+            }}
+          >
+            <Text style={{ fontWeight: 600 }}>{t('Recent Command Runs')}</Text>
+            {(commandRuns ?? []).slice(0, 5).map(run => (
+              <View
+                key={String(run.id)}
+                style={{
+                  border: `1px solid ${theme.tableBorder}`,
+                  borderRadius: 6,
+                  padding: 8,
+                  gap: 4,
+                }}
+              >
+                <Text style={{ fontFamily: 'monospace', fontSize: 12 }}>
+                  {String(run.chain || '')}
+                </Text>
+                <Text style={{ fontSize: 12, color: theme.pageTextSubdued }}>
+                  {new Date(Number(run.executedAtMs || 0)).toLocaleTimeString()} ·{' '}
+                  {t('Errors: {{count}}', { count: Number(run.errorCount || 0) })}
+                </Text>
+              </View>
+            ))}
+            {commandRuns.length === 0 && (
+              <Text style={{ fontSize: 12, color: theme.pageTextSubdued }}>
+                {t('No command runs yet.')}
+              </Text>
+            )}
+          </View>
 
           {closeLoopEnabled && (
             <View style={{ flexDirection: 'row', gap: 8 }}>

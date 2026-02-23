@@ -61,24 +61,27 @@ export function useOpsCommandCenter() {
   const [adaptiveFocus, setAdaptiveFocus] = useState<AdaptiveFocus | null>(null);
   const [playbooks, setPlaybooks] = useState<Array<Record<string, unknown>>>([]);
   const [lanes, setLanes] = useState<Array<Record<string, unknown>>>([]);
+  const [commandRuns, setCommandRuns] = useState<CommandChainRun[]>([]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const [pulse, focus, workflowPlaybooks, delegateLanes] = await Promise.all([
+      const [pulse, focus, workflowPlaybooks, delegateLanes, runs] = await Promise.all([
         callHandler<MoneyPulse>('workflow-money-pulse'),
         callHandler<AdaptiveFocus>('focus-adaptive-panel'),
         callHandler<Array<Record<string, unknown>>>('workflow-playbook-list'),
         callHandler<Array<Record<string, unknown>>>('delegate-list-lanes'),
+        callHandler<CommandChainRun[]>('workflow-command-runs', { limit: 20 }),
       ]);
 
       if (
         hasError(pulse) ||
         hasError(focus) ||
         hasError(workflowPlaybooks) ||
-        hasError(delegateLanes)
+        hasError(delegateLanes) ||
+        hasError(runs)
       ) {
         const firstError = hasError(pulse)
           ? pulse.error
@@ -88,6 +91,8 @@ export function useOpsCommandCenter() {
               ? workflowPlaybooks.error
               : hasError(delegateLanes)
                 ? delegateLanes.error
+                : hasError(runs)
+                  ? runs.error
                 : 'unknown-error';
         setError(String(firstError));
       } else {
@@ -95,6 +100,7 @@ export function useOpsCommandCenter() {
         setAdaptiveFocus(focus);
         setPlaybooks(Array.isArray(workflowPlaybooks) ? workflowPlaybooks : []);
         setLanes(Array.isArray(delegateLanes) ? delegateLanes : []);
+        setCommandRuns(Array.isArray(runs) ? runs : []);
       }
     } catch (err) {
       setError((err as Error).message || 'unknown-error');
@@ -170,10 +176,11 @@ export function useOpsCommandCenter() {
   );
 
   const executeCommandChain = useCallback(
-    async (chain: string, assignee?: string) => {
+    async (chain: string, assignee?: string, dryRun = false) => {
       const result = await callHandler<CommandChainRun>('workflow-execute-chain', {
         chain,
         assignee,
+        dryRun,
       });
       await refresh();
       return result;
@@ -192,6 +199,7 @@ export function useOpsCommandCenter() {
     adaptiveFocus,
     playbooks,
     lanes,
+    commandRuns,
     refresh,
     resolveNextAction,
     runCloseRoutine,

@@ -166,4 +166,78 @@ describe('command envelope enforcement', () => {
       expect(result.success).toBe(false);
     }
   });
+
+  it('rejects envelopes missing required command fields', () => {
+    const requiredFields = [
+      'commandId',
+      'actorId',
+      'tenantId',
+      'workspaceId',
+      'intent',
+      'workflowId',
+      'sourceSurface',
+      'latencyBudgetMs',
+      'clientTimestampMs',
+    ] as const;
+
+    for (const entry of rpcRegistry.filter(item => item.requiresEnvelope)) {
+      const schema = entry.requestSchema;
+      expect(schema).toBeDefined();
+      if (!schema) {
+        continue;
+      }
+
+      for (const field of requiredFields) {
+        const envelope = { ...mockEnvelope() } as Record<string, unknown>;
+        delete envelope[field];
+
+        const candidate = {
+          envelope,
+          commandType: 'generic-command',
+          aggregateId: 'agg-1',
+          aggregateType: 'workflow',
+          payload: {},
+          name: 'x',
+          description: '',
+          commands: [],
+          playbookId: 'playbook-1',
+          dryRun: true,
+          period: 'weekly',
+          ids: ['id-1'],
+          status: 'accepted',
+          resolvedAction: 'batch-policy',
+          chain: 'triage -> close-weekly',
+          actionId: 'action-1',
+          outcome: 'done',
+          branchId: 'branch-1',
+          mutationKind: 'update',
+          assignedBy: 'owner',
+          assignee: 'delegate',
+          title: 'lane',
+          laneId: 'lane-1',
+          policy: {
+            allowCloud: false,
+            allowedProviders: [],
+            redactionMode: 'strict',
+          },
+          recommendation: {
+            id: 'rec-1',
+            title: 'x',
+            confidence: 0.8,
+            provenance: 'engine',
+            expectedImpact: 'impact',
+            reversible: true,
+            rationale: 'why',
+          },
+          payee: 'Rewe',
+          months: 6,
+          input: {},
+          correctOutput: {},
+        };
+
+        const result = schema.safeParse(candidate);
+        expect(result.success).toBe(false);
+      }
+    }
+  });
 });
