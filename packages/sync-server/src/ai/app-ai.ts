@@ -269,85 +269,131 @@ app.post('/classify-batch', async (req, res) => {
   }
 
   const db = getAccountDb();
-  const results: unknown[] = [];
+  const results: unknown[] = new Array(transactions.length);
   let ruleMatched = 0;
   let ollamaHigh = 0;
   let ollamaLow = 0;
   let failed = 0;
 
-  for (const transaction of transactions) {
+  // Phase 1: Rule matching (fast, synchronous) — separate from Ollama work
+  type OllamaWork = { index: number; transaction: typeof transactions[0] };
+  const ollamaQueue: OllamaWork[] = [];
+
+  for (let i = 0; i < transactions.length; i++) {
+    const transaction = transactions[i];
     const ruleMatch = matchSmartRule(transaction.payee ?? '', transaction.iban);
     if (ruleMatch) {
-      results.push({
+      results[i] = {
         ...ruleMatch,
         transactionId: transaction.id,
         source: 'rule',
-      });
+      };
       ruleMatched++;
       continue;
     }
 
     if (!isOllamaEnabled()) {
-      results.push({
+      results[i] = {
         transactionId: transaction.id,
         category_id: null,
         confidence: 0,
         source: 'none',
-      });
+      };
       continue;
     }
 
-    try {
-      const result = await classifyTransaction(transaction, categories);
-      const tier =
-        result.confidence >= HIGH_CONFIDENCE_THRESHOLD ? 'ai_high' : 'ai_low';
-      results.push({ ...result, tier, source: 'ollama' });
+    ollamaQueue.push({ index: i, transaction });
+  }
 
-      // Store in ai_classifications for learning + auto-pin tracking
-      const classificationId = uuidv4();
-      const normalizedPayee = (transaction.payee ?? '').toLowerCase().trim();
+  // Phase 2: Ollama classification with bounded concurrency
+  const AI_CONCURRENCY = 3;
+  type ClassifiedItem = OllamaWork & {
+    result?: Awaited<ReturnType<typeof classifyTransaction>>;
+    tier?: string;
+    error?: boolean;
+  };
+  const classified: ClassifiedItem[] = [];
+
+  if (ollamaQueue.length > 0) {
+    const pending = [...ollamaQueue];
+
+    async function worker() {
+      while (pending.length > 0) {
+        const item = pending.shift()!;
+        try {
+          const result = await classifyTransaction(
+            item.transaction,
+            categories,
+          );
+          const tier =
+            result.confidence >= HIGH_CONFIDENCE_THRESHOLD
+              ? 'ai_high'
+              : 'ai_low';
+          results[item.index] = { ...result, tier, source: 'ollama' };
+          classified.push({ ...item, result, tier });
+        } catch {
+          results[item.index] = {
+            transactionId: item.transaction.id,
+            category_id: null,
+            confidence: 0,
+            source: 'error',
+          };
+          classified.push({ ...item, error: true });
+        }
+      }
+    }
+
+    const workers = Array.from(
+      { length: Math.min(AI_CONCURRENCY, ollamaQueue.length) },
+      () => worker(),
+    );
+    await Promise.all(workers);
+  }
+
+  // Phase 3: DB writes (sequential, SQLite-safe)
+  for (const item of classified) {
+    if (item.error) {
+      failed++;
+      continue;
+    }
+    const result = item.result!;
+    const transaction = item.transaction;
+
+    const classificationId = uuidv4();
+    const normalizedPayee = (transaction.payee ?? '').toLowerCase().trim();
+    db.mutate(
+      `INSERT INTO ai_classifications
+         (id, transaction_id, original_payee, normalized_payee, suggested_category_id, confidence, model_version, classified_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+      [
+        classificationId,
+        transaction.id,
+        transaction.payee ?? '',
+        normalizedPayee,
+        result.categoryId,
+        result.confidence,
+        'ollama',
+      ],
+    );
+
+    if (result.confidence < HIGH_CONFIDENCE_THRESHOLD) {
+      const reviewId = uuidv4();
       db.mutate(
-        `INSERT INTO ai_classifications
-           (id, transaction_id, original_payee, normalized_payee, suggested_category_id, confidence, model_version, classified_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+        `INSERT INTO review_queue (id, type, priority, transaction_id, ai_suggestion, ai_confidence)
+         VALUES (?, 'low_confidence', 'review', ?, ?, ?)`,
         [
-          classificationId,
+          reviewId,
           transaction.id,
-          transaction.payee ?? '',
-          normalizedPayee,
-          result.categoryId,
+          JSON.stringify({
+            category_id: result.categoryId,
+            confidence: result.confidence,
+          }),
           result.confidence,
-          'ollama',
         ],
       );
-
-      if (result.confidence < HIGH_CONFIDENCE_THRESHOLD) {
-        const reviewId = uuidv4();
-        db.mutate(
-          `INSERT INTO review_queue (id, type, priority, transaction_id, ai_suggestion, ai_confidence)
-           VALUES (?, 'low_confidence', 'review', ?, ?, ?)`,
-          [
-            reviewId,
-            transaction.id,
-            JSON.stringify({
-              category_id: result.categoryId,
-              confidence: result.confidence,
-            }),
-            result.confidence,
-          ],
-        );
-        ollamaLow++;
-      } else {
-        ollamaHigh++;
-      }
-    } catch {
-      results.push({
-        transactionId: transaction.id,
-        category_id: null,
-        confidence: 0,
-        source: 'error',
-      });
-      failed++;
+      ollamaLow++;
+    } else {
+      ollamaHigh++;
     }
   }
 

@@ -21,15 +21,21 @@ export function useContractSummary(): UseContractSummaryReturn {
     setLoading(true);
     setError(null);
 
-    const result = await (send as Function)('contract-summary', {});
+    try {
+      const result = await (send as Function)('contract-summary', {});
 
-    if (result && 'error' in result) {
-      setError(result.error as string);
+      if (result && 'error' in result) {
+        setError(result.error as string);
+        setSummary(null);
+      } else {
+        setSummary(result as ContractSummary);
+      }
+    } catch (err) {
+      setError(String(err));
       setSummary(null);
-    } else {
-      setSummary(result as ContractSummary);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {

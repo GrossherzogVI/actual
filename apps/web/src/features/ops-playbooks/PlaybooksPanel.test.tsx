@@ -193,7 +193,7 @@ describe('PlaybooksPanel', () => {
   it('sends execution controls to live playbook runs', async () => {
     renderPanel();
 
-    await screen.findByText('Morning Loop');
+    await screen.findAllByText('Morning Loop');
 
     fireEvent.change(
       screen.getByLabelText('playbook rollback window minutes'),
@@ -311,7 +311,7 @@ describe('PlaybooksPanel', () => {
 
   it('simulates drafted playbook chain into spatial twin', async () => {
     renderPanel();
-    await screen.findByText('Morning Loop');
+    await screen.findAllByText('Morning Loop');
 
     fireEvent.click(screen.getByRole('button', { name: 'Simulate Chain' }));
 

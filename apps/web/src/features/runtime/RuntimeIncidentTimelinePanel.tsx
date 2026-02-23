@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { Trans } from 'react-i18next';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -327,7 +326,7 @@ export function RuntimeIncidentTimelinePanel({
     <section className="fo-panel" id="runtime-incidents">
       <header className="fo-panel-header">
         <h2>
-          <Trans>Runtime Incident Timeline</Trans>
+          Runtime Incident Timeline
         </h2>
         <small>
           Correlates dead letters, queue pressure, contention spikes, and
@@ -381,21 +380,15 @@ export function RuntimeIncidentTimelinePanel({
         <Button
           variant="secondary"
           onClick={() => runTimelineCommand('stabilize')}
-        ><Trans>
-          Stabilize
-        </Trans></Button>
+        >Stabilize</Button>
         <Button
           variant="secondary"
           onClick={() => runTimelineCommand('requeue-expired')}
-        ><Trans>
-          Requeue Expired
-        </Trans></Button>
+        >Requeue Expired</Button>
         <Button
           variant="secondary"
           onClick={() => runTimelineCommand('replay-dead-letters')}
-        ><Trans>
-          Replay Dead Letters
-        </Trans></Button>
+        >Replay Dead Letters</Button>
       </div>
 
       <div className="fo-incident-list">
@@ -428,7 +421,7 @@ export function RuntimeIncidentTimelinePanel({
                 }
                 onClick={() => handleIncidentAction(incident)}
               >
-                {incident.actionLabel || t('Execute')}
+                {incident.actionLabel || 'Execute'}
               </Button>
             </div>
           </article>

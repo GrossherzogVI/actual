@@ -48,6 +48,19 @@ export type ContractEntity = {
   price_history: unknown[];
   additional_events: unknown[];
   documents: unknown[];
+  // Payment deadline fields (added in migration 1773)
+  payment_method:
+    | 'lastschrift'
+    | 'dauerauftrag'
+    | 'manual_sepa'
+    | 'international'
+    | 'other'
+    | null;
+  grace_period_days: number | null;
+  soft_deadline_shift: 'before' | 'after' | null;
+  hard_deadline_shift: 'before' | 'after' | null;
+  lead_time_override: number | null;
+  show_hard_deadline: boolean | null;
   created_at: string;
   updated_at: string;
 };
@@ -125,7 +138,7 @@ async function listContracts(args: {
   const params = new URLSearchParams();
   if (args.status) params.set('status', args.status);
   if (args.type) params.set('type', args.type);
-  if (args.category) params.set('category', args.category);
+  if (args.category) params.set('category_id', args.category);
   if (args.search) params.set('search', args.search);
 
   try {
@@ -296,7 +309,7 @@ async function contractExpiring(args?: {
   if (!userToken) return { error: 'not-logged-in' };
 
   const params = new URLSearchParams();
-  if (args?.withinDays) params.set('withinDays', String(args.withinDays));
+  if (args?.withinDays) params.set('days', String(args.withinDays));
 
   try {
     const res = await get(

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Trans } from 'react-i18next';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -474,7 +473,7 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
     <section className="fo-panel">
       <header className="fo-panel-header">
         <h2>
-          <Trans>Runtime Control</Trans>
+          Runtime Control
         </h2>
         <small>
           Ops activity backfill, queue resilience, and worker reliability.
@@ -486,7 +485,7 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
           className={`fo-card fo-runtime-signal fo-runtime-signal-${runtimeSignal.level}`}
         >
           <div className="fo-space-between">
-            <small><Trans>Runtime signal</Trans></small>
+            <small>Runtime signal</small>
             <span
               className={`fo-runtime-badge fo-runtime-badge-${runtimeSignal.level}`}
             >
@@ -506,7 +505,7 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
             >
               {stabilizeRuntime.isPending
                 ? 'Stabilizing...'
-                : t('Stabilize Runtime')}
+                : 'Stabilize Runtime'}
             </Button>
             <Button
               variant="secondary"
@@ -516,7 +515,7 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
               }
               onClick={() => startPipeline.mutate()}
             >
-              {startPipeline.isPending ? 'Starting...' : t('Start Pipeline')}
+              {startPipeline.isPending ? 'Starting...' : 'Start Pipeline'}
             </Button>
           </div>
           <div className="fo-hints">
@@ -529,61 +528,61 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
 
         <article className="fo-card">
           <div className="fo-space-between">
-            <small><Trans>Repository</Trans></small>
+            <small>Repository</small>
             <strong>{metrics.data?.repositoryKind || '-'}</strong>
           </div>
           <div className="fo-space-between">
-            <small><Trans>Queue</Trans></small>
+            <small>Queue</small>
             <strong>{metrics.data?.queueKind || '-'}</strong>
           </div>
           <div className="fo-space-between">
-            <small><Trans>Queue size</Trans></small>
+            <small>Queue size</small>
             <strong>{metrics.data?.queueSize ?? '-'}</strong>
           </div>
           <div className="fo-space-between">
-            <small><Trans>In flight</Trans></small>
+            <small>In flight</small>
             <strong>{metrics.data?.queueInFlight ?? '-'}</strong>
           </div>
           <div className="fo-space-between">
-            <small><Trans>Open dead letters</Trans></small>
+            <small>Open dead letters</small>
             <strong>{openDeadLetters.data?.length ?? '-'}</strong>
           </div>
           <div className="fo-space-between">
-            <small><Trans>Ops activity events</Trans></small>
+            <small>Ops activity events</small>
             <strong>{metrics.data?.opsActivityEvents ?? '-'}</strong>
           </div>
           <div className="fo-space-between">
-            <small><Trans>Worker attempts</Trans></small>
+            <small>Worker attempts</small>
             <strong>{metrics.data?.workerJobAttempts ?? '-'}</strong>
           </div>
           <div className="fo-space-between">
-            <small><Trans>Worker dead letters</Trans></small>
+            <small>Worker dead letters</small>
             <strong>{metrics.data?.workerDeadLetters ?? '-'}</strong>
           </div>
           <div className="fo-space-between">
-            <small><Trans>Fingerprint claims</Trans></small>
+            <small>Fingerprint claims</small>
             <strong>{metrics.data?.workerFingerprintClaimEvents ?? '-'}</strong>
           </div>
           <div className="fo-space-between">
-            <small><Trans>Fingerprint contended</Trans></small>
+            <small>Fingerprint contended</small>
             <strong>
               {metrics.data?.workerFingerprintClaimAlreadyClaimed ?? '-'}
             </strong>
           </div>
           <div className="fo-space-between">
-            <small><Trans>Duplicate skips</Trans></small>
+            <small>Duplicate skips</small>
             <strong>
               {metrics.data?.workerFingerprintClaimAlreadyProcessed ?? '-'}
             </strong>
           </div>
           <div className="fo-space-between">
-            <small><Trans>Stale lock recoveries</Trans></small>
+            <small>Stale lock recoveries</small>
             <strong>
               {metrics.data?.workerFingerprintStaleRecoveries ?? '-'}
             </strong>
           </div>
           <div className="fo-space-between">
-            <small><Trans>Duplicate skip rate</Trans></small>
+            <small>Duplicate skip rate</small>
             <strong>
               {metrics.data
                 ? `${(metrics.data.workerFingerprintDuplicateSkipRate * 100).toFixed(2)}%`
@@ -591,7 +590,7 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
             </strong>
           </div>
           <div className="fo-space-between">
-            <small><Trans>Fingerprint contention rate</Trans></small>
+            <small>Fingerprint contention rate</small>
             <strong>
               {metrics.data
                 ? `${(metrics.data.workerFingerprintContentionRate * 100).toFixed(2)}%`
@@ -599,14 +598,14 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
             </strong>
           </div>
           <div className="fo-space-between">
-            <small><Trans>Stale recovery rate</Trans></small>
+            <small>Stale recovery rate</small>
             <strong>
               {metrics.data
                 ? `${(metrics.data.workerFingerprintStaleRecoveryRate * 100).toFixed(2)}%`
                 : '-'}
             </strong>
           </div>
-          <small><Trans>Expired claim requeue limit</Trans></small>
+          <small>Expired claim requeue limit</small>
           <Input
             value={requeueLimit}
             onChange={event => setRequeueLimit(event.target.value)}
@@ -619,14 +618,14 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
           >
             {requeueExpired.isPending
               ? 'Requeueing...'
-              : t('Requeue Expired Claims')}
+              : 'Requeue Expired Claims'}
           </Button>
           <div className="fo-space-between">
-            <small><Trans>Queue throughput/min</Trans></small>
+            <small>Queue throughput/min</small>
             <strong>{queueHealth.data?.throughputPerMinute ?? '-'}</strong>
           </div>
           <div className="fo-space-between">
-            <small><Trans>Queue failure rate</Trans></small>
+            <small>Queue failure rate</small>
             <strong>
               {queueHealth.data
                 ? `${(queueHealth.data.failureRate * 100).toFixed(2)}%`
@@ -634,28 +633,28 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
             </strong>
           </div>
           <div className="fo-space-between">
-            <small><Trans>Queue p95 ms</Trans></small>
+            <small>Queue p95 ms</small>
             <strong>{queueHealth.data?.processingMs.p95 ?? '-'}</strong>
           </div>
         </article>
 
         <article className="fo-card">
           <div className="fo-space-between">
-            <small><Trans>Pipeline</Trans></small>
+            <small>Pipeline</small>
             <strong>
               {pipelineStatus.data?.orchestrator.running ? 'running' : 'idle'}
             </strong>
           </div>
           <div className="fo-space-between">
-            <small><Trans>Backfill runs</Trans></small>
+            <small>Backfill runs</small>
             <strong>{pipelineStatus.data?.backfill.runCount ?? '-'}</strong>
           </div>
           <div className="fo-space-between">
-            <small><Trans>Maintenance runs</Trans></small>
+            <small>Maintenance runs</small>
             <strong>{pipelineStatus.data?.maintenance.runCount ?? '-'}</strong>
           </div>
           <div className="fo-space-between">
-            <small><Trans>Last pipeline error</Trans></small>
+            <small>Last pipeline error</small>
             <strong>
               {pipelineStatus.data?.orchestrator.lastError || 'none'}
             </strong>
@@ -670,12 +669,12 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
           >
             {startPipeline.isPending
               ? 'Starting...'
-              : t('Start Async Pipeline')}
+              : 'Start Async Pipeline'}
           </Button>
         </article>
 
         <article className="fo-card">
-          <small><Trans>Backfill limit per plane</Trans></small>
+          <small>Backfill limit per plane</small>
           <Input
             value={limitPerPlane}
             onChange={event => setLimitPerPlane(event.target.value)}
@@ -689,18 +688,18 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
             }
             onClick={() => backfill.mutate()}
           >
-            {backfill.isPending ? 'Backfilling...' : t('Run Backfill')}
+            {backfill.isPending ? 'Backfilling...' : 'Run Backfill'}
           </Button>
         </article>
 
         <article className="fo-card">
-          <small><Trans>Retention days</Trans></small>
+          <small>Retention days</small>
           <Input
             value={retentionDays}
             onChange={event => setRetentionDays(event.target.value)}
             inputMode="decimal"
           />
-          <small><Trans>Max rows</Trans></small>
+          <small>Max rows</small>
           <Input
             value={maxRows}
             onChange={event => setMaxRows(event.target.value)}
@@ -714,16 +713,16 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
             }
             onClick={() => maintenance.mutate()}
           >
-            {maintenance.isPending ? 'Running...' : t('Run Maintenance')}
+            {maintenance.isPending ? 'Running...' : 'Run Maintenance'}
           </Button>
         </article>
 
         <article className="fo-card">
           <div className="fo-space-between">
-            <small><Trans>Dead letter queue</Trans></small>
+            <small>Dead letter queue</small>
             <strong>{deadLetters.data?.length ?? 0}</strong>
           </div>
-          <small><Trans>Status filter</Trans></small>
+          <small>Status filter</small>
           <Select
             value={deadLetterStatus}
             onValueChange={value =>
@@ -731,7 +730,7 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
             }
           >
             <SelectTrigger className="w-full">
-              <SelectValue placeholder={t('Status')} />
+              <SelectValue placeholder={'Status'} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="open">open</SelectItem>
@@ -759,27 +758,21 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
                       variant="secondary"
                       disabled={replaySingleDeadLetter.isPending}
                       onClick={() => replaySingleDeadLetter.mutate(entry.id)}
-                    ><Trans>
-                      Replay
-                    </Trans></Button>
+                    >Replay</Button>
                     {entry.status === 'resolved' ? (
                       <Button
                         size="sm"
                         variant="secondary"
                         disabled={reopenDeadLetter.isPending}
                         onClick={() => reopenDeadLetter.mutate(entry.id)}
-                      ><Trans>
-                        Reopen
-                      </Trans></Button>
+                      >Reopen</Button>
                     ) : (
                       <Button
                         size="sm"
                         variant="secondary"
                         disabled={resolveDeadLetter.isPending}
                         onClick={() => resolveDeadLetter.mutate(entry.id)}
-                      ><Trans>
-                        Resolve
-                      </Trans></Button>
+                      >Resolve</Button>
                     )}
                   </div>
                 </div>
@@ -788,13 +781,13 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
           ) : (
             <small>No worker dead letters.</small>
           )}
-          <small><Trans>Replay limit</Trans></small>
+          <small>Replay limit</small>
           <Input
             value={replayLimit}
             onChange={event => setReplayLimit(event.target.value)}
             inputMode="numeric"
           />
-          <small><Trans>Replay max attempt</Trans></small>
+          <small>Replay max attempt</small>
           <Input
             value={replayMaxAttempt}
             onChange={event => setReplayMaxAttempt(event.target.value)}
@@ -807,7 +800,7 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
           >
             {replayDeadLetters.isPending
               ? 'Replaying...'
-              : t('Replay Dead Letters')}
+              : 'Replay Dead Letters'}
           </Button>
         </article>
       </div>

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Trans } from 'react-i18next';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { PanelSkeleton } from '../../components/PanelSkeleton';
 import { apiClient } from '../../core/api/client';
 import type {
   ActionOutcome,
@@ -13,6 +13,13 @@ import type {
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 type AdaptiveFocusRailProps = {
   onRoute: (route: string) => void;
@@ -372,11 +379,13 @@ export function AdaptiveFocusRail({
     });
   };
 
+  if (focus.isLoading) return <PanelSkeleton rows={5} />;
+
   return (
     <section className="fo-panel">
       <header className="fo-panel-header">
         <h2>
-          <Trans>Adaptive Focus Workbench</Trans>
+          Adaptive Focus Workbench
         </h2>
         <small>
           Ranked action lane with single-action depth and batch execution
@@ -393,7 +402,7 @@ export function AdaptiveFocusRail({
           disabled={runResolveNext.isPending}
           onClick={() => runResolveNext.mutate()}
         >
-          {runResolveNext.isPending ? 'Resolving...' : t('Resolve Next + Open')}
+          {runResolveNext.isPending ? 'Resolving...' : 'Resolve Next + Open'}
         </Button>
         <Button
           variant="secondary"
@@ -405,29 +414,33 @@ export function AdaptiveFocusRail({
       </div>
 
       <div className="fo-row">
-        <select
-          aria-label="focus execution mode"
-          className="fo-input"
+        <Select
           value={executionMode}
-          onChange={event =>
-            setExecutionMode(event.target.value as ExecutionMode)
-          }
+          onValueChange={value => setExecutionMode(value as ExecutionMode)}
         >
-          <option value="dry-run">dry-run</option>
-          <option value="live">live</option>
-        </select>
-        <select
-          aria-label="focus guardrail profile"
-          className="fo-input"
+          <SelectTrigger aria-label="focus execution mode">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="dry-run">dry-run</SelectItem>
+            <SelectItem value="live">live</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select
           value={guardrailProfile}
-          onChange={event =>
-            setGuardrailProfile(event.target.value as GuardrailProfile)
+          onValueChange={value =>
+            setGuardrailProfile(value as GuardrailProfile)
           }
         >
-          <option value="strict">strict</option>
-          <option value="balanced">balanced</option>
-          <option value="off">off</option>
-        </select>
+          <SelectTrigger aria-label="focus guardrail profile">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="strict">strict</SelectItem>
+            <SelectItem value="balanced">balanced</SelectItem>
+            <SelectItem value="off">off</SelectItem>
+          </SelectContent>
+        </Select>
         <Input
           aria-label="focus rollback window minutes"
           className="w-[130px]"
@@ -448,8 +461,8 @@ export function AdaptiveFocusRail({
           {executeSelectedAction.isPending
             ? 'Executing...'
             : executionMode === 'live'
-              ? t('Execute selected live')
-              : t('Dry-run selected action')}
+              ? 'Execute selected live'
+              : 'Dry-run selected action'}
         </Button>
         <Button
           variant="secondary"
@@ -458,7 +471,7 @@ export function AdaptiveFocusRail({
         >
           {simulateSelectedAction.isPending
             ? 'Simulating...'
-            : t('Simulate selected in twin')}
+            : 'Simulate selected in twin'}
         </Button>
       </div>
 
@@ -524,30 +537,22 @@ export function AdaptiveFocusRail({
                 <Button
                   variant="secondary"
                   onClick={() => onRoute(selectedAction.route)}
-                ><Trans>
-                  Open
-                </Trans></Button>
+                >Open</Button>
                 <Button
                   variant="secondary"
                   disabled={recordOutcome.isPending}
                   onClick={() => applyOutcome('accepted')}
-                ><Trans>
-                  Accept
-                </Trans></Button>
+                >Accept</Button>
                 <Button
                   variant="secondary"
                   disabled={recordOutcome.isPending}
                   onClick={() => applyOutcome('deferred')}
-                ><Trans>
-                  Defer
-                </Trans></Button>
+                >Defer</Button>
                 <Button
                   variant="secondary"
                   disabled={recordOutcome.isPending}
                   onClick={() => applyOutcome('rejected')}
-                ><Trans>
-                  Reject
-                </Trans></Button>
+                >Reject</Button>
               </div>
 
               <div className="fo-focus-outcomes">

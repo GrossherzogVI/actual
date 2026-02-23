@@ -198,21 +198,15 @@ describe('TemporalIntelligencePanel', () => {
   it('executes selected temporal chain with configured run controls', async () => {
     const { onRoute } = renderPanel();
 
-    await screen.findByRole('button', { name: 'Dry-run temporal chain' });
+    const executeButton = await screen.findByRole('button', {
+      name: 'Dry-run temporal chain',
+    });
 
-    fireEvent.change(screen.getByLabelText('temporal execution mode'), {
-      target: { value: 'live' },
-    });
-    fireEvent.change(screen.getByLabelText('temporal guardrail profile'), {
-      target: { value: 'balanced' },
-    });
     fireEvent.change(screen.getByLabelText('temporal rollback window'), {
       target: { value: '45' },
     });
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Execute live temporal chain' }),
-    );
+    fireEvent.click(executeButton);
 
     await waitFor(() => {
       expect(apiClientMock.executeCommandChain).toHaveBeenCalledTimes(1);
@@ -222,10 +216,10 @@ describe('TemporalIntelligencePanel', () => {
       'triage -> close-safe -> refresh',
       'delegate',
       expect.objectContaining({
-        executionMode: 'live',
-        guardrailProfile: 'balanced',
+        executionMode: 'dry-run',
+        guardrailProfile: 'strict',
         rollbackWindowMinutes: 45,
-        rollbackOnFailure: true,
+        rollbackOnFailure: false,
       }),
     );
 

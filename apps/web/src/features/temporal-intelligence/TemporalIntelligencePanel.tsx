@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Trans } from 'react-i18next';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -11,6 +10,16 @@ import type {
   TemporalRecommendedChain,
   TemporalSignalSeverity,
 } from '../../core/types';
+
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 type TemporalIntelligencePanelProps = {
   onStatus: (status: string) => void;
@@ -186,7 +195,7 @@ export function TemporalIntelligencePanel({
     <section className="fo-panel" id="temporal-intelligence">
       <header className="fo-panel-header">
         <h2>
-          <Trans>Temporal Intelligence</Trans>
+          Temporal Intelligence
         </h2>
         <small>
           Business-day aware deadline pressure with direct command mesh
@@ -195,25 +204,25 @@ export function TemporalIntelligencePanel({
       </header>
 
       <div className="fo-row">
-        <select
-          aria-label="temporal bundesland"
-          className="fo-input"
+        <Select
           value={bundesland}
-          onChange={event =>
-            setBundesland(
-              event.target.value as (typeof BUNDESLAND_OPTIONS)[number],
-            )
+          onValueChange={value =>
+            setBundesland(value as (typeof BUNDESLAND_OPTIONS)[number])
           }
         >
-          {BUNDESLAND_OPTIONS.map(code => (
-            <option key={code} value={code}>
-              {code}
-            </option>
-          ))}
-        </select>
-        <input
+          <SelectTrigger aria-label="temporal bundesland">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {BUNDESLAND_OPTIONS.map(code => (
+              <SelectItem key={code} value={code}>
+                {code}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Input
           aria-label="temporal horizon days"
-          className="fo-input"
           type="number"
           min={7}
           max={45}
@@ -224,35 +233,38 @@ export function TemporalIntelligencePanel({
             )
           }
         />
-        <select
-          aria-label="temporal execution mode"
-          className="fo-input"
+        <Select
           value={executionMode}
-          onChange={event =>
-            setExecutionMode(event.target.value as ExecutionMode)
-          }
+          onValueChange={value => setExecutionMode(value as ExecutionMode)}
         >
-          <option value="dry-run">dry-run</option>
-          <option value="live">live</option>
-        </select>
+          <SelectTrigger aria-label="temporal execution mode">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="dry-run">dry-run</SelectItem>
+            <SelectItem value="live">live</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="fo-row">
-        <select
-          aria-label="temporal guardrail profile"
-          className="fo-input"
+        <Select
           value={guardrailProfile}
-          onChange={event =>
-            setGuardrailProfile(event.target.value as GuardrailProfile)
+          onValueChange={value =>
+            setGuardrailProfile(value as GuardrailProfile)
           }
         >
-          <option value="strict">strict</option>
-          <option value="balanced">balanced</option>
-          <option value="off">off</option>
-        </select>
-        <input
+          <SelectTrigger aria-label="temporal guardrail profile">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="strict">strict</SelectItem>
+            <SelectItem value="balanced">balanced</SelectItem>
+            <SelectItem value="off">off</SelectItem>
+          </SelectContent>
+        </Select>
+        <Input
           aria-label="temporal rollback window"
-          className="fo-input"
           type="number"
           min={1}
           max={1440}
@@ -263,13 +275,12 @@ export function TemporalIntelligencePanel({
             )
           }
         />
-        <button
-          className="fo-btn-secondary"
-          type="button"
+        <Button
+          variant="secondary"
           onClick={() => onRoute('/ops#delegate-lanes')}
-        ><Trans>
+        >
           Open lanes
-        </Trans></button>
+        </Button>
       </div>
 
       {temporalSignals.isLoading ? (
@@ -313,19 +324,22 @@ export function TemporalIntelligencePanel({
           </div>
 
           <div className="fo-stack">
-            <small className="fo-muted-line"><Trans>Recommended chains</Trans></small>
-            <select
-              className="fo-input"
-              aria-label="temporal recommended chain"
+            <small className="fo-muted-line">Recommended chains</small>
+            <Select
               value={selectedChain?.id || ''}
-              onChange={event => setSelectedChainId(event.target.value)}
+              onValueChange={value => setSelectedChainId(value)}
             >
-              {recommendedChains.map(chain => (
-                <option key={chain.id} value={chain.id}>
-                  {chain.label}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger aria-label="temporal recommended chain">
+                <SelectValue placeholder="Select chain" />
+              </SelectTrigger>
+              <SelectContent>
+                {recommendedChains.map(chain => (
+                  <SelectItem key={chain.id} value={chain.id}>
+                    {chain.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             {selectedChain ? (
               <article className="fo-card">
                 <strong>{selectedChain.label}</strong>
@@ -340,9 +354,7 @@ export function TemporalIntelligencePanel({
               <small>No temporal recommendation chain available.</small>
             )}
             <div className="fo-row">
-              <button
-                className="fo-btn"
-                type="button"
+              <Button
                 disabled={!selectedChain || executeChain.isPending}
                 onClick={() => {
                   if (!selectedChain) return;
@@ -352,12 +364,11 @@ export function TemporalIntelligencePanel({
                 {executeChain.isPending
                   ? 'Executing...'
                   : executionMode === 'live'
-                    ? t('Execute live temporal chain')
-                    : t('Dry-run temporal chain')}
-              </button>
-              <button
-                className="fo-btn-secondary"
-                type="button"
+                    ? 'Execute live temporal chain'
+                    : 'Dry-run temporal chain'}
+              </Button>
+              <Button
+                variant="secondary"
                 disabled={!selectedChain || simulateChain.isPending}
                 onClick={() => {
                   if (!selectedChain) return;
@@ -366,8 +377,8 @@ export function TemporalIntelligencePanel({
               >
                 {simulateChain.isPending
                   ? 'Simulating...'
-                  : t('Simulate chain in spatial twin')}
-              </button>
+                  : 'Simulate chain in spatial twin'}
+              </Button>
             </div>
           </div>
 
@@ -389,23 +400,23 @@ export function TemporalIntelligencePanel({
                   <small>{signal.reason}</small>
                   <code>{signal.recommendedChain}</code>
                   <div className="fo-row">
-                    <button
-                      className="fo-btn-secondary"
-                      type="button"
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       onClick={() => onRoute('/ops#delegate-lanes')}
-                    ><Trans>
+                    >
                       Open lane board
-                    </Trans></button>
-                    <button
-                      className="fo-btn-secondary"
-                      type="button"
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       disabled={executeChain.isPending}
                       onClick={() =>
                         executeChain.mutate(signal.recommendedChain)
                       }
-                    ><Trans>
+                    >
                       Run lane chain
-                    </Trans></button>
+                    </Button>
                   </div>
                 </article>
               ))}

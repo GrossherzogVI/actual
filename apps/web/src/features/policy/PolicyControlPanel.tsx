@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Trans } from 'react-i18next';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -82,7 +81,7 @@ export function PolicyControlPanel({ onStatus }: PolicyControlPanelProps) {
     <section className="fo-panel">
       <header className="fo-panel-header">
         <h2>
-          <Trans>Policy Plane</Trans>
+          Policy Plane
         </h2>
         <small>
           Sovereignty-first model routing and auditable egress controls.
@@ -96,7 +95,7 @@ export function PolicyControlPanel({ onStatus }: PolicyControlPanelProps) {
             checked={allowCloud}
             onChange={event => setAllowCloud(event.target.checked)}
           />
-          <span><Trans>Allow cloud model egress</Trans></span>
+          <span>Allow cloud model egress</span>
         </label>
 
         <label className="fo-stack">
@@ -109,7 +108,7 @@ export function PolicyControlPanel({ onStatus }: PolicyControlPanelProps) {
         </label>
 
         <label className="fo-stack">
-          <small><Trans>Redaction mode</Trans></small>
+          <small>Redaction mode</small>
           <Select
             value={redactionMode}
             onValueChange={value =>
@@ -117,7 +116,7 @@ export function PolicyControlPanel({ onStatus }: PolicyControlPanelProps) {
             }
           >
             <SelectTrigger className="w-full">
-              <SelectValue placeholder={t('Redaction Mode')} />
+              <SelectValue placeholder="Redaction Mode" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="strict">strict</SelectItem>
@@ -131,12 +130,12 @@ export function PolicyControlPanel({ onStatus }: PolicyControlPanelProps) {
           disabled={savePolicy.isPending || policy.isLoading}
           onClick={() => savePolicy.mutate()}
         >
-          {savePolicy.isPending ? 'Saving...' : t('Save policy')}
+          {savePolicy.isPending ? 'Saving...' : 'Save policy'}
         </Button>
       </div>
 
       <div className="fo-stack">
-        <strong><Trans>Egress audit timeline</Trans></strong>
+        <strong>Egress audit timeline</strong>
         {audit.isLoading ? <small>Loading audit entries...</small> : null}
         {audit.isError ? (
           <small>Unable to load policy audit entries.</small>

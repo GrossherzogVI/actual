@@ -1,6 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Trans } from 'react-i18next';
-
 import { COMMAND_MESH_HINTS } from '@finance-os/domain-kernel';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -354,7 +352,7 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
     <section className="fo-panel">
       <header className="fo-panel-header">
         <h2>
-          <Trans>Command Mesh</Trans>
+          Command Mesh
         </h2>
         <small>
           Guardrail-aware chain execution with rollback window controls.
@@ -373,14 +371,14 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
             disabled={execute.isPending}
             onClick={() => execute.mutate(command)}
           >
-            {execute.isPending ? t('Running') : t('Execute')}
+            {execute.isPending ? 'Running' : 'Execute'}
           </Button>
           <Button
             variant="secondary"
             disabled={simulateChain.isPending}
             onClick={() => simulateChain.mutate(command)}
           >
-            {simulateChain.isPending ? 'Simulating...' : t('Simulate in twin')}
+            {simulateChain.isPending ? 'Simulating...' : 'Simulate in twin'}
           </Button>
           <Button
             variant="secondary"
@@ -389,7 +387,7 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
           >
             {rollbackRun.isPending
               ? 'Rolling back...'
-              : t('Rollback latest live chain')}
+              : 'Rollback latest live chain'}
           </Button>
         </div>
 
@@ -399,7 +397,7 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
             onValueChange={value => setExecutionMode(value as ExecutionMode)}
           >
             <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder={t('Mode')} />
+              <SelectValue placeholder="Mode" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="dry-run">dry-run</SelectItem>
@@ -413,7 +411,7 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
             }
           >
             <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder={t('Guardrail')} />
+              <SelectValue placeholder="Guardrail" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="strict">strict</SelectItem>
@@ -433,7 +431,7 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
                 Math.max(1, Math.min(1440, Number(event.target.value) || 60)),
               )
             }
-            title={t('Rollback window minutes')}
+            title="Rollback window minutes"
           />
           <label className="fo-row">
             <input
@@ -461,7 +459,7 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
 
       {guardrailBlocks.length > 0 ? (
         <section className="fo-log-list">
-          <small><Trans>Guardrail blocks</Trans></small>
+          <small>Guardrail blocks</small>
           {guardrailBlocks.map(block => (
             <article key={block.ruleId} className="fo-log fo-log-error">
               <strong>{block.ruleId}</strong>
@@ -485,29 +483,29 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
       </div>
 
       <div className="fo-log-list">
-        <small><Trans>Recent command runs</Trans></small>
+        <small>Recent command runs</small>
         <div className="fo-row">
           <Button
             size="sm"
             variant={historyErrorFilter === 'all' ? 'default' : 'secondary'}
             onClick={() => setHistoryErrorFilter('all')}
-          ><Trans>
+          >
             All
-          </Trans></Button>
+          </Button>
           <Button
             size="sm"
             variant={historyErrorFilter === 'errors' ? 'default' : 'secondary'}
             onClick={() => setHistoryErrorFilter('errors')}
-          ><Trans>
+          >
             Errors
-          </Trans></Button>
+          </Button>
           <Button
             size="sm"
             variant={historyErrorFilter === 'clean' ? 'default' : 'secondary'}
             onClick={() => setHistoryErrorFilter('clean')}
-          ><Trans>
+          >
             Clean
-          </Trans></Button>
+          </Button>
           <Button
             size="sm"
             variant="secondary"
@@ -530,7 +528,7 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
             }
           >
             <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder={t('Status')} />
+              <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">status:all</SelectItem>
@@ -596,25 +594,25 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
                 size="sm"
                 variant="secondary"
                 onClick={() => setSelectedRunId(run.id)}
-              ><Trans>
+              >
                 Details
-              </Trans></Button>
+              </Button>
               <Button
                 size="sm"
                 variant="secondary"
                 onClick={() => simulateChain.mutate(run.chain)}
                 disabled={simulateChain.isPending}
               >
-                {simulateChain.isPending ? 'Simulating...' : t('Simulate')}
+                {simulateChain.isPending ? 'Simulating...' : 'Simulate'}
               </Button>
               <Button
                 size="sm"
                 variant="secondary"
                 onClick={() => execute.mutate(run.chain)}
                 disabled={execute.isPending}
-              ><Trans>
+              >
                 Replay
-              </Trans></Button>
+              </Button>
               <Button
                 size="sm"
                 variant="secondary"
@@ -633,9 +631,9 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
                     )
                 }
                 disabled={execute.isPending}
-              ><Trans>
+              >
                 Replay Live
-              </Trans></Button>
+              </Button>
             </div>
           </article>
         ))}

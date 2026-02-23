@@ -14,6 +14,12 @@ import type {
   UpcomingPayment,
 } from '@/components/dashboard/types';
 
+/** Clamp day to the last valid day of the given month. */
+function clampDay(year: number, month: number, day: number): number {
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  return Math.min(day, lastDay);
+}
+
 function getNextPaymentDate(contract: ContractEntity, from: Date): Date | null {
   if (!contract.start_date) return null;
   const start = new Date(contract.start_date);
@@ -21,9 +27,13 @@ function getNextPaymentDate(contract: ContractEntity, from: Date): Date | null {
 
   // For monthly contracts, find the next occurrence on or after `from`
   const dayOfMonth = start.getDate();
-  const candidate = new Date(from.getFullYear(), from.getMonth(), dayOfMonth);
+  const clampedDay = clampDay(from.getFullYear(), from.getMonth(), dayOfMonth);
+  const candidate = new Date(from.getFullYear(), from.getMonth(), clampedDay);
   if (candidate < from) {
-    candidate.setMonth(candidate.getMonth() + 1);
+    const nextMonth = from.getMonth() + 1;
+    const nextYear = from.getFullYear();
+    const nextClampedDay = clampDay(nextYear, nextMonth, dayOfMonth);
+    return new Date(nextYear, nextMonth, nextClampedDay);
   }
   return candidate;
 }
@@ -63,19 +73,62 @@ function getPaymentDatesWithinDays(
       dates.push(new Date(current));
       current.setDate(current.getDate() + 7);
     }
-  } else if (contract.interval === 'annual') {
+  } else if (
+    contract.interval === 'annual' ||
+    contract.interval === 'yearly'
+  ) {
     if (!contract.start_date) return [];
     const start = new Date(contract.start_date);
-    const candidate = new Date(
-      from.getFullYear(),
-      start.getMonth(),
-      start.getDate(),
-    );
-    if (candidate >= from && candidate <= until) {
+    const day = clampDay(from.getFullYear(), start.getMonth(), start.getDate());
+    const candidate = new Date(from.getFullYear(), start.getMonth(), day);
+    if (candidate < from) {
+      const nextDay = clampDay(
+        from.getFullYear() + 1,
+        start.getMonth(),
+        start.getDate(),
+      );
+      const nextCandidate = new Date(
+        from.getFullYear() + 1,
+        start.getMonth(),
+        nextDay,
+      );
+      if (nextCandidate <= until) {
+        dates.push(nextCandidate);
+      }
+    } else if (candidate <= until) {
       dates.push(candidate);
     }
+  } else if (contract.interval === 'quarterly') {
+    if (!contract.start_date) return [];
+    const start = new Date(contract.start_date);
+    const current = new Date(start);
+    while (current < from) {
+      const nextMonth = current.getMonth() + 3;
+      const day = clampDay(current.getFullYear(), nextMonth, start.getDate());
+      current.setFullYear(current.getFullYear(), nextMonth, day);
+    }
+    while (current <= until) {
+      dates.push(new Date(current));
+      const nextMonth = current.getMonth() + 3;
+      const day = clampDay(current.getFullYear(), nextMonth, start.getDate());
+      current.setFullYear(current.getFullYear(), nextMonth, day);
+    }
+  } else if (contract.interval === 'semi-annual') {
+    if (!contract.start_date) return [];
+    const start = new Date(contract.start_date);
+    const current = new Date(start);
+    while (current < from) {
+      const nextMonth = current.getMonth() + 6;
+      const day = clampDay(current.getFullYear(), nextMonth, start.getDate());
+      current.setFullYear(current.getFullYear(), nextMonth, day);
+    }
+    while (current <= until) {
+      dates.push(new Date(current));
+      const nextMonth = current.getMonth() + 6;
+      const day = clampDay(current.getFullYear(), nextMonth, start.getDate());
+      current.setFullYear(current.getFullYear(), nextMonth, day);
+    }
   }
-  // quarterly, semi-annual, custom: skip for brevity — monthly/weekly cover most cases
 
   return dates;
 }

@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Trans } from 'react-i18next';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -300,9 +299,7 @@ export function DecisionGraphPanel({
     return (
       <section className="fo-panel">
         <header className="fo-panel-header">
-          <h2>
-            <Trans>Decision Graph</Trans>
-          </h2>
+          <h2>Decision Graph</h2>
           <small>
             Causal explainability, confidence, and reversible outcomes.
           </small>
@@ -315,7 +312,7 @@ export function DecisionGraphPanel({
   return (
     <section className="fo-panel">
       <header className="fo-panel-header">
-        <h2><Trans>Decision Graph</Trans></h2>
+        <h2>Decision Graph</h2>
         <small>
           Explainable intelligence with direct execution, simulation, and
           outcome capture.
@@ -328,7 +325,7 @@ export function DecisionGraphPanel({
           onValueChange={value => setSelectedRecommendationId(value)}
         >
           <SelectTrigger className="w-[240px]">
-            <SelectValue placeholder={t('Recommendation')} />
+            <SelectValue placeholder={'Recommendation'} />
           </SelectTrigger>
           <SelectContent>
             {(recommendations || []).map(recommendation => (
@@ -343,7 +340,7 @@ export function DecisionGraphPanel({
           onValueChange={value => setExecutionMode(value as ExecutionMode)}
         >
           <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder={t('Mode')} />
+            <SelectValue placeholder={'Mode'} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="dry-run">dry-run</SelectItem>
@@ -357,7 +354,7 @@ export function DecisionGraphPanel({
           }
         >
           <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder={t('Guardrail')} />
+            <SelectValue placeholder={'Guardrail'} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="strict">strict</SelectItem>
@@ -381,9 +378,9 @@ export function DecisionGraphPanel({
             )
           }
         />
-        <Button variant="secondary" onClick={() => onRoute(blueprint.route)}><Trans>
+        <Button variant="secondary" onClick={() => onRoute(blueprint.route)}>
           Open impacted surface
-        </Trans></Button>
+        </Button>
         <Button
           variant="secondary"
           disabled={simulateRecommendation.isPending}
@@ -391,7 +388,7 @@ export function DecisionGraphPanel({
         >
           {simulateRecommendation.isPending
             ? 'Simulating...'
-            : t('Simulate recommendation branch')}
+            : 'Simulate recommendation branch'}
         </Button>
       </div>
 
@@ -537,15 +534,15 @@ export function DecisionGraphPanel({
           {executeRecommendation.isPending
             ? 'Executing...'
             : executionMode === 'live'
-              ? t('Execute live recommendation')
-              : t('Dry-run recommendation')}
+              ? 'Execute live recommendation'
+              : 'Dry-run recommendation'}
         </Button>
         <Button
           variant="secondary"
           disabled={createPlaybook.isPending}
           onClick={() => createPlaybook.mutate()}
         >
-          {createPlaybook.isPending ? 'Creating...' : t('Generate playbook')}
+          {createPlaybook.isPending ? 'Creating...' : 'Generate playbook'}
         </Button>
         <Button
           variant="secondary"
@@ -556,9 +553,9 @@ export function DecisionGraphPanel({
               notes: 'Accepted from decision graph',
             })
           }
-        ><Trans>
+        >
           Mark accepted
-        </Trans></Button>
+        </Button>
         <Button
           variant="secondary"
           disabled={captureOutcome.isPending}
@@ -568,9 +565,9 @@ export function DecisionGraphPanel({
               notes: 'Deferred from decision graph',
             })
           }
-        ><Trans>
+        >
           Mark deferred
-        </Trans></Button>
+        </Button>
       </div>
     </section>
   );

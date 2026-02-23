@@ -47,19 +47,25 @@ export function useContracts({
     setLoading(true);
     setError(null);
 
-    const args: Record<string, string> = {};
-    if (status) args.status = status;
-    if (type) args.type = type;
+    try {
+      const args: Record<string, string> = {};
+      if (status) args.status = status;
+      if (type) args.type = type;
 
-    const result = await (send as Function)('contract-list', args);
+      const result = await (send as Function)('contract-list', args);
 
-    if (result && 'error' in result) {
-      setError(result.error as string);
+      if (result && 'error' in result) {
+        setError(result.error as string);
+        setContracts([]);
+      } else {
+        setContracts((result as ContractEntity[]) ?? []);
+      }
+    } catch (err) {
+      setError(String(err));
       setContracts([]);
-    } else {
-      setContracts((result as ContractEntity[]) ?? []);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [status, type]);
 
   useEffect(() => {

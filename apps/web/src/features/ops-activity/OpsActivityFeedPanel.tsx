@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { Trans } from 'react-i18next';
 
 import { useInfiniteQuery } from '@tanstack/react-query';
 
@@ -62,7 +61,7 @@ export function OpsActivityFeedPanel({ onRoute }: OpsActivityFeedPanelProps) {
     <section className="fo-panel">
       <header className="fo-panel-header">
         <h2>
-          <Trans>Ops Activity Feed</Trans>
+          Ops Activity Feed
         </h2>
         <small>
           Cross-plane timeline for commands, playbooks, delegates, focus, and
@@ -74,27 +73,29 @@ export function OpsActivityFeedPanel({ onRoute }: OpsActivityFeedPanelProps) {
         <div className="fo-activity-filters">
           <div className="fo-row">
             {kindOptions.map(option => (
-              <button
+              <Button
                 key={option.id}
-                className={`fo-chip ${kindFilter === option.id ? 'fo-chip-active' : ''}`}
-                type="button"
+                variant={kindFilter === option.id ? 'default' : 'secondary'}
+                className="fo-chip"
+                size="sm"
                 onClick={() => setKindFilter(option.id)}
               >
                 {option.label}
-              </button>
+              </Button>
             ))}
           </div>
 
           <div className="fo-row">
             {severityOptions.map(option => (
-              <button
+              <Button
                 key={option.id}
-                className={`fo-chip ${severityFilter === option.id ? 'fo-chip-active' : ''}`}
-                type="button"
+                variant={severityFilter === option.id ? 'default' : 'secondary'}
+                className="fo-chip"
+                size="sm"
                 onClick={() => setSeverityFilter(option.id)}
               >
                 {option.label}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -131,9 +132,7 @@ export function OpsActivityFeedPanel({ onRoute }: OpsActivityFeedPanelProps) {
                     size="sm"
                     variant="secondary"
                     onClick={() => onRoute(event.route || '/ops')}
-                  ><Trans>
-                    Open
-                  </Trans></Button>
+                  >Open</Button>
                 ) : null}
               </div>
             </article>
@@ -148,7 +147,7 @@ export function OpsActivityFeedPanel({ onRoute }: OpsActivityFeedPanelProps) {
               void activity.fetchNextPage();
             }}
           >
-            {activity.isFetchingNextPage ? 'Loading more...' : t('Load More')}
+            {activity.isFetchingNextPage ? 'Loading more...' : 'Load More'}
           </Button>
         ) : null}
       </div>

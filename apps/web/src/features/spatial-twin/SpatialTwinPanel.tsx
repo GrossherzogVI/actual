@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Trans } from 'react-i18next';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -663,7 +662,7 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
     <section className="fo-panel fo-twin-panel" id="spatial-twin">
       <header className="fo-panel-header">
         <h2>
-          <Trans>Spatial Finance Twin</Trans>
+          Spatial Finance Twin
         </h2>
         <small>
           Branch, mutate, compare, and adopt through checkpointed decision flow.
@@ -681,7 +680,7 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
 
         <div className="fo-spatial-metric-grid">
           <article className={`fo-card ${metricClass(diffAmount)}`}>
-            <small><Trans>Amount Delta</Trans></small>
+            <small>Amount Delta</small>
             <strong>
               {diffAmount >= 0 ? '+' : ''}
               {diffAmount.toFixed(2)}
@@ -697,7 +696,7 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
           </article>
 
           <article className={`fo-card ${metricClass(diffRisk)}`}>
-            <small><Trans>Risk Delta</Trans></small>
+            <small>Risk Delta</small>
             <strong>
               {diffRisk >= 0 ? '+' : ''}
               {diffRisk.toFixed(2)}
@@ -715,7 +714,7 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
           <article
             className={`fo-card ${riskScore >= 85 ? 'fo-spatial-metric-negative' : riskScore >= 60 ? 'fo-spatial-metric-neutral' : 'fo-spatial-metric-positive'}`}
           >
-            <small><Trans>Adoption Risk Score</Trans></small>
+            <small>Adoption Risk Score</small>
             <strong>{riskScore || '-'}</strong>
             <small>
               {adoptionCheckQuery.data?.summary || 'Run adoption check.'}
@@ -748,9 +747,7 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
               }
               adoptBranch.mutate({ branchId: selectedBranch.id, force: false });
             }}
-          ><Trans>
-            Adopt Selected
-          </Trans></Button>
+          >Adopt Selected</Button>
           <Button
             variant="secondary"
             disabled={forceAdoptDisabled}
@@ -760,9 +757,7 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
               }
               adoptBranch.mutate({ branchId: selectedBranch.id, force: true });
             }}
-          ><Trans>
-            Force Adopt
-          </Trans></Button>
+          >Force Adopt</Button>
         </div>
       </article>
 
@@ -770,19 +765,19 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
         <Input
           value={branchName}
           onChange={event => setBranchName(event.target.value)}
-          placeholder={t('Create scenario branch')}
+          placeholder="Create scenario branch"
         />
         <Button
           disabled={createBranch.isPending}
           onClick={() => createBranch.mutate()}
         >
-          {createBranch.isPending ? t('Creating') : t('Branch')}
+          {createBranch.isPending ? 'Creating' : 'Branch'}
         </Button>
       </div>
 
       <div className="fo-row">
         <label className="fo-space-between fo-spatial-compare-select w-full max-w-[300px]">
-          <small className="mr-4"><Trans>Compare target</Trans></small>
+          <small className="mr-4">Compare target</small>
           <Select
             value={compareTargetId || 'baseline'}
             onValueChange={value =>
@@ -790,7 +785,7 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
             }
           >
             <SelectTrigger className="flex-1">
-              <SelectValue placeholder={t('Compare target')} />
+              <SelectValue placeholder="Compare target" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="baseline">baseline</SelectItem>
@@ -863,9 +858,7 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
                 size="sm"
                 variant="secondary"
                 onClick={() => setSelectedBranchId(node.branch.id)}
-              ><Trans>
-                Select
-              </Trans></Button>
+              >Select</Button>
               <Button
                 size="sm"
                 variant="secondary"
@@ -886,8 +879,8 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
                 }
               >
                 {selectedBranchId === node.branch.id && forceAdopt
-                  ? t('Force Adopt')
-                  : t('Adopt')}
+                  ? 'Force Adopt'
+                  : 'Adopt'}
               </Button>
             </div>
           </article>
@@ -895,7 +888,7 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
 
         {positioned.length === 0 ? (
           <article className="fo-twin-node" style={{ top: 110, left: 160 }}>
-            <strong><Trans>No branches yet</Trans></strong>
+            <strong>No branches yet</strong>
             <small>Create a scenario branch to start simulation.</small>
           </article>
         ) : null}
@@ -905,23 +898,23 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
         <Input
           value={amountDelta}
           onChange={event => setAmountDelta(event.target.value)}
-          placeholder={t('Amount delta')}
+          placeholder="Amount delta"
         />
         <Input
           value={riskDelta}
           onChange={event => setRiskDelta(event.target.value)}
-          placeholder={t('Risk delta')}
+          placeholder="Risk delta"
         />
         <Button
           disabled={!selectedBranch || applyMutation.isPending}
           onClick={() => applyMutation.mutate()}
         >
-          {applyMutation.isPending ? t('Applying') : t('Apply Mutation')}
+          {applyMutation.isPending ? 'Applying' : 'Apply Mutation'}
         </Button>
       </div>
 
       <article className="fo-card">
-        <strong><Trans>Adoption Guardrail</Trans></strong>
+        <strong>Adoption Guardrail</strong>
         <small>
           {adoptionCheckQuery.data?.summary ||
             'Select a branch to evaluate adoption risk.'}
@@ -943,15 +936,14 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
             checked={forceAdopt}
             onChange={event => setForceAdopt(event.target.checked)}
           />
-          <small><Trans>
-            Arm force-adopt override</Trans>{' '}
+          <small>Arm force-adopt override{' '}
             {hasCriticalBlockers ? '(blockers detected)' : '(optional)'}
           </small>
         </label>
       </article>
 
       <article className="fo-card">
-        <strong><Trans>Branch Lineage</Trans></strong>
+        <strong>Branch Lineage</strong>
         {(lineageQuery.data?.nodes || []).map((node, index) => (
           <small key={node.branchId}>
             {index + 1}. {node.name} · {node.status}
@@ -969,9 +961,9 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
       </article>
 
       <article className="fo-card">
-        <strong><Trans>Mutation Timeline</Trans></strong>
+        <strong>Mutation Timeline</strong>
         <small>
-          {selectedBranch?.name || t('No selected branch')} ·{' '}
+          {selectedBranch?.name || 'No selected branch'} ·{' '}
           {mutationsQuery.data?.length || 0} mutation(s)
         </small>
         {(mutationsQuery.data || []).slice(0, 8).map(mutation => (
@@ -993,7 +985,7 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
       </article>
 
       <article className="fo-card">
-        <strong><Trans>Promote Simulation</Trans></strong>
+        <strong>Promote Simulation</strong>
         <small>
           Promote a simulated chain into autopilot execution while keeping
           source mutation and run linkage.
@@ -1001,13 +993,13 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
 
         <div className="fo-row mt-2">
           <label className="fo-space-between fo-spatial-compare-select w-full max-w-[340px]">
-            <small className="mr-4"><Trans>Simulation source</Trans></small>
+            <small className="mr-4">Simulation source</small>
             <Select
               value={promotionMutationId || 'unavailable'}
               onValueChange={value => setPromotionMutationId(value)}
             >
               <SelectTrigger className="flex-1">
-                <SelectValue placeholder={t('Pick simulation mutation')} />
+                <SelectValue placeholder="Pick simulation mutation" />
               </SelectTrigger>
               <SelectContent>
                 {promotableMutations.length === 0 ? (
@@ -1034,7 +1026,7 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
             }
           >
             <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder={t('Mode')} />
+              <SelectValue placeholder="Mode" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="dry-run">dry-run</SelectItem>
@@ -1048,7 +1040,7 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
             }
           >
             <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder={t('Guardrail')} />
+              <SelectValue placeholder="Guardrail" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="strict">strict</SelectItem>
@@ -1068,7 +1060,7 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
                 Math.max(1, Math.min(1440, Number(event.target.value) || 60)),
               )
             }
-            title={t('Rollback window minutes')}
+            title="Rollback window minutes"
           />
           <label className="fo-row">
             <input
@@ -1103,8 +1095,8 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
             {promoteBranchRun.isPending
               ? 'Promoting...'
               : promotionExecutionMode === 'live'
-                ? t('Promote to live run')
-                : t('Promote to dry-run')}
+                ? 'Promote to live run'
+                : 'Promote to dry-run'}
           </Button>
         </div>
 
@@ -1116,7 +1108,7 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
       </article>
 
       <article className="fo-card">
-        <strong><Trans>Run Provenance</Trans></strong>
+        <strong>Run Provenance</strong>
         <small>
           Trace promoted simulations to command runs and rollback from this
           lane.
@@ -1173,9 +1165,7 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
                       source: 'provenance',
                     });
                   }}
-                ><Trans>
-                  Open run details
-                </Trans></Button>
+                >Open run details</Button>
                 <Button
                   size="sm"
                   variant="secondary"
@@ -1194,7 +1184,7 @@ export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
                 >
                   {rollbackPromotedRun.isPending
                     ? 'Rolling back...'
-                    : t('Rollback promoted run')}
+                    : 'Rollback promoted run'}
                 </Button>
               </div>
             </article>

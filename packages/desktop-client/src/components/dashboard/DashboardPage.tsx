@@ -13,8 +13,6 @@ import { View } from '@actual-app/components/view';
 import { send } from 'loot-core/platform/client/connection';
 import * as monthUtils from 'loot-core/shared/months';
 
-import { QuickAddOverlay } from '@/components/quick-add/QuickAddOverlay';
-
 import { useDashboardData } from './hooks/useDashboardData';
 import { useUpcomingPayments } from './hooks/useUpcomingPayments';
 import { MoneyPulse } from './MoneyPulse';
@@ -126,9 +124,10 @@ export function DashboardPage() {
   const accountsQuery = useAccounts();
   const accounts = accountsQuery.data ?? [];
 
-  const [quickAddOpen, setQuickAddOpen] = useState(false);
-  const handleOpenQuickAdd = useCallback(() => setQuickAddOpen(true), []);
-  const handleCloseQuickAdd = useCallback(() => setQuickAddOpen(false), []);
+  // Dispatch CustomEvent so the global QuickAddOverlay in FinancesApp handles it
+  const handleOpenQuickAdd = useCallback(() => {
+    document.dispatchEvent(new CustomEvent('quick-add-open'));
+  }, []);
 
   // Edit mode
   const [isEditing, setIsEditing] = useState(false);
@@ -439,7 +438,6 @@ export function DashboardPage() {
         </View>
       )}
 
-      <QuickAddOverlay isOpen={quickAddOpen} onClose={handleCloseQuickAdd} />
     </Page>
   );
 }

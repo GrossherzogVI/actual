@@ -59,52 +59,61 @@ export function useReviewQueue({
     setError(null);
     setOffset(0);
 
-    const args: Record<string, unknown> = {
-      limit: PAGE_SIZE,
-      offset: 0,
-    };
-    if (typeFilter !== 'all') args.type = typeFilter;
-    if (priorityFilter !== 'all') args.priority = priorityFilter;
+    try {
+      const args: Record<string, unknown> = {
+        limit: PAGE_SIZE,
+        offset: 0,
+      };
+      if (typeFilter !== 'all') args.type = typeFilter;
+      if (priorityFilter !== 'all') args.priority = priorityFilter;
 
-    const [listResult] = await Promise.all([
-      (send as Function)('review-list', args),
-      fetchCounts(),
-    ]);
+      const [listResult] = await Promise.all([
+        (send as Function)('review-list', args),
+        fetchCounts(),
+      ]);
 
-    if (listResult && 'error' in listResult) {
-      setError(listResult.error as string);
+      if (listResult && 'error' in listResult) {
+        setError(listResult.error as string);
+        setItems([]);
+      } else {
+        const fetched = (listResult as ReviewItem[]) ?? [];
+        setItems(fetched);
+        setHasMore(fetched.length === PAGE_SIZE);
+        setOffset(fetched.length);
+      }
+    } catch (err) {
+      setError(String(err));
       setItems([]);
-    } else {
-      const fetched = (listResult as ReviewItem[]) ?? [];
-      setItems(fetched);
-      setHasMore(fetched.length === PAGE_SIZE);
-      setOffset(fetched.length);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }, [typeFilter, priorityFilter, fetchCounts]);
 
   const loadMore = useCallback(async () => {
     if (loading || !hasMore) return;
     setLoading(true);
 
-    const args: Record<string, unknown> = {
-      limit: PAGE_SIZE,
-      offset,
-    };
-    if (typeFilter !== 'all') args.type = typeFilter;
-    if (priorityFilter !== 'all') args.priority = priorityFilter;
+    try {
+      const args: Record<string, unknown> = {
+        limit: PAGE_SIZE,
+        offset,
+      };
+      if (typeFilter !== 'all') args.type = typeFilter;
+      if (priorityFilter !== 'all') args.priority = priorityFilter;
 
-    const result = await (send as Function)('review-list', args);
+      const result = await (send as Function)('review-list', args);
 
-    if (result && !('error' in result)) {
-      const fetched = (result as ReviewItem[]) ?? [];
-      setItems(prev => [...prev, ...fetched]);
-      setHasMore(fetched.length === PAGE_SIZE);
-      setOffset(prev => prev + fetched.length);
+      if (result && !('error' in result)) {
+        const fetched = (result as ReviewItem[]) ?? [];
+        setItems(prev => [...prev, ...fetched]);
+        setHasMore(fetched.length === PAGE_SIZE);
+        setOffset(prev => prev + fetched.length);
+      }
+    } catch {
+      // Silently fail on load-more — existing items remain visible
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }, [loading, hasMore, offset, typeFilter, priorityFilter]);
 
   useEffect(() => {

@@ -85,22 +85,39 @@ function getContractDates(
 
 function advanceByInterval(d: Date, interval: ContractInterval): Date {
   const next = new Date(d);
+  const origDay = d.getDate();
+
+  function setMonthClamped(months: number) {
+    const targetMonth = next.getMonth() + months;
+    next.setMonth(targetMonth, 1); // set to 1st to avoid overflow
+    const lastDay = new Date(
+      next.getFullYear(),
+      next.getMonth() + 1,
+      0,
+    ).getDate();
+    next.setDate(Math.min(origDay, lastDay));
+  }
+
   switch (interval) {
     case 'weekly':
       next.setDate(next.getDate() + 7);
       break;
     case 'monthly':
-      next.setMonth(next.getMonth() + 1);
+      setMonthClamped(1);
       break;
     case 'quarterly':
-      next.setMonth(next.getMonth() + 3);
+      setMonthClamped(3);
+      break;
+    case 'semi-annual':
+      setMonthClamped(6);
       break;
     case 'yearly':
+    case 'annual':
       next.setFullYear(next.getFullYear() + 1);
       break;
     default:
       // Treat unknown intervals as monthly
-      next.setMonth(next.getMonth() + 1);
+      setMonthClamped(1);
   }
   return next;
 }

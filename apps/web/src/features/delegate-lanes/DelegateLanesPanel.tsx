@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Trans } from 'react-i18next';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { PanelSkeleton } from '../../components/PanelSkeleton';
 import { apiClient } from '../../core/api/client';
 import type { DelegateLane } from '../../core/types';
 
@@ -397,11 +397,13 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
     setSelectedLaneIds([]);
   }, []);
 
+  if (lanes.isLoading) return <PanelSkeleton rows={6} />;
+
   return (
     <section className="fo-panel" id="delegate-lanes">
       <header className="fo-panel-header">
         <h2>
-          <Trans>Delegate Mission Lanes</Trans>
+          Delegate Mission Lanes
         </h2>
         <small>
           Batch-capable lane board with SLA risk shaping and lifecycle
@@ -433,7 +435,7 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
           <Input
             value={title}
             onChange={event => setTitle(event.target.value)}
-            placeholder={t('Mission title')}
+            placeholder={'Mission title'}
           />
         </div>
 
@@ -441,7 +443,7 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
           <Input
             value={assignee}
             onChange={event => setAssignee(event.target.value)}
-            placeholder={t('Assignee')}
+            placeholder={'Assignee'}
           />
           <Select
             value={priority}
@@ -450,7 +452,7 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
             }
           >
             <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder={t('Priority')} />
+              <SelectValue placeholder={'Priority'} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="low">low</SelectItem>
@@ -472,7 +474,7 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
             disabled={!title.trim() || !assignee.trim() || assign.isPending}
             onClick={() => assign.mutate()}
           >
-            {assign.isPending ? 'Assigning...' : t('Assign lane')}
+            {assign.isPending ? 'Assigning...' : 'Assign lane'}
           </Button>
         </div>
       </div>
@@ -481,7 +483,7 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
         <Input
           value={searchFilter}
           onChange={event => setSearchFilter(event.target.value)}
-          placeholder={t('Search title/assignee')}
+          placeholder={'Search title/assignee'}
           className="w-[200px]"
         />
         <Select
@@ -489,7 +491,7 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
           onValueChange={value => setStatusFilter(value as LaneStatusFilter)}
         >
           <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder={t('Status')} />
+            <SelectValue placeholder={'Status'} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">all statuses</SelectItem>
@@ -507,7 +509,7 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
           }
         >
           <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder={t('Priority')} />
+            <SelectValue placeholder={'Priority'} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">all priorities</SelectItem>
@@ -522,7 +524,7 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
           onValueChange={value => setRiskFilter(value as LaneRiskFilter)}
         >
           <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder={t('Risk')} />
+            <SelectValue placeholder={'Risk'} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">all risk</SelectItem>
@@ -540,15 +542,11 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
         <Input
           value={assigneeFilter}
           onChange={event => setAssigneeFilter(event.target.value)}
-          placeholder={t('Filter assignee')}
+          placeholder={'Filter assignee'}
           className="w-[200px]"
         />
-        <Button variant="secondary" onClick={selectAllVisible}><Trans>
-          Select all visible
-        </Trans></Button>
-        <Button variant="secondary" onClick={clearSelection}><Trans>
-          Clear
-        </Trans></Button>
+        <Button variant="secondary" onClick={selectAllVisible}>Select all visible</Button>
+        <Button variant="secondary" onClick={clearSelection}>Clear</Button>
       </div>
 
       <div className="fo-mission-toolbar">
@@ -681,9 +679,7 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
                         });
                       }}
                       disabled={transition.isPending}
-                    ><Trans>
-                      Accept
-                    </Trans></Button>
+                    >Accept</Button>
                     <Button
                       size="sm"
                       variant="secondary"
@@ -696,9 +692,7 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
                         });
                       }}
                       disabled={transition.isPending}
-                    ><Trans>
-                      Reject
-                    </Trans></Button>
+                    >Reject</Button>
                   </>
                 ) : null}
 
@@ -716,9 +710,7 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
                         });
                       }}
                       disabled={transition.isPending}
-                    ><Trans>
-                      Complete
-                    </Trans></Button>
+                    >Complete</Button>
                     <Button
                       size="sm"
                       variant="secondary"
@@ -731,9 +723,7 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
                         });
                       }}
                       disabled={transition.isPending}
-                    ><Trans>
-                      Reject
-                    </Trans></Button>
+                    >Reject</Button>
                   </>
                 ) : null}
 
@@ -750,9 +740,7 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
                       });
                     }}
                     disabled={transition.isPending}
-                  ><Trans>
-                    Reopen
-                  </Trans></Button>
+                  >Reopen</Button>
                 ) : null}
               </div>
             </article>
@@ -814,7 +802,7 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
               </div>
 
               <div className="fo-stack">
-                <strong><Trans>Lane timeline</Trans></strong>
+                <strong>Lane timeline</strong>
                 {laneEvents.isLoading ? (
                   <small>Loading lane timeline...</small>
                 ) : null}
@@ -859,9 +847,7 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
                 <Button
                   disabled={!comment.trim() || addComment.isPending}
                   onClick={() => addComment.mutate(selectedLane.id)}
-                ><Trans>
-                  Add note
-                </Trans></Button>
+                >Add note</Button>
               </div>
             </>
           ) : (

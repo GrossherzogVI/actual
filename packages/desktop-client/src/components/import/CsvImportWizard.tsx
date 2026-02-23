@@ -7,6 +7,8 @@ import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
+import { useCategories } from '@desktop-client/hooks/useCategories';
+
 import { CategoryMapper } from './CategoryMapper';
 import { useBankFormatDetection } from './hooks/useBankFormatDetection';
 import { useCategoryMapping } from './hooks/useCategoryMapping';
@@ -93,6 +95,7 @@ export function CsvImportWizard() {
   const [accountId, setAccountId] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const { data: categoryData } = useCategories();
   const { formats, detectedFormat, detectFromHeader } =
     useBankFormatDetection();
   const {
@@ -367,7 +370,9 @@ export function CsvImportWizard() {
           <CategoryMapper
             mappings={mappings}
             matchedCount={matchedCount}
-            internalCategories={[]}
+            internalCategories={(categoryData?.list ?? [])
+              .filter(c => !c.tombstone && !c.hidden)
+              .map(c => ({ id: c.id, name: c.name }))}
             onUpdate={updateMapping}
             onAutoMatch={autoMatch}
           />

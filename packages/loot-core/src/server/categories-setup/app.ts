@@ -136,6 +136,7 @@ async function categoriesSetupTemplates(): Promise<
 
 async function categoriesSetupMap(args: {
   mappings: CategoryMapEntry[];
+  source?: string;
 }): Promise<{ mapped: number; created: number } | { error: string }> {
   const userToken = await asyncStorage.getItem('user-token');
   if (!userToken) return { error: 'not-logged-in' };
@@ -143,7 +144,10 @@ async function categoriesSetupMap(args: {
   try {
     const result = await post(
       getServer().BASE_SERVER + '/categories-setup/map',
-      args,
+      {
+        external_categories: args.mappings.map(m => m.external_name),
+        source: args.source ?? 'finanzguru',
+      },
       { 'X-ACTUAL-TOKEN': userToken },
     );
     return result as { mapped: number; created: number };

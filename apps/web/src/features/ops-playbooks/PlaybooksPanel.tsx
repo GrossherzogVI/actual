@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Trans } from 'react-i18next';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { PanelSkeleton } from '../../components/PanelSkeleton';
 import { apiClient } from '../../core/api/client';
 import type {
   ExecutionMode,
@@ -545,6 +545,8 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
     playbookRuns.isFetching,
   ]);
 
+  if (playbooks.isLoading) return <PanelSkeleton rows={5} />;
+
   return (
     <section className="fo-panel">
       <header className="fo-panel-header">
@@ -559,7 +561,7 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
         <Input
           value={playbookName}
           onChange={event => setPlaybookName(event.target.value)}
-          placeholder={t("Playbook name")}
+          placeholder="Playbook name"
         />
 
         <div className="fo-row fo-playbook-templates">
@@ -646,7 +648,7 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
             onValueChange={value => setExecutionMode(value as ExecutionMode)}
           >
             <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder={t("Mode")} />
+              <SelectValue placeholder="Mode" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="dry-run">dry-run</SelectItem>
@@ -660,7 +662,7 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
             }
           >
             <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder={t("Guardrail")} />
+              <SelectValue placeholder="Guardrail" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="strict">strict</SelectItem>
@@ -680,7 +682,7 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
                 Math.max(1, Math.min(1440, Number(event.target.value) || 60)),
               )
             }
-            title={t("Rollback window minutes")}
+            title="Rollback window minutes"
           />
           <label className="fo-row">
             <input
@@ -706,7 +708,7 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
             disabled={!canPreview || preview.isPending}
             onClick={() => preview.mutate(normalizedChain)}
           >
-            {preview.isPending ? 'Previewing...' : t('Run Dry-run Preview')}
+            {preview.isPending ? 'Previewing...' : 'Run Dry-run Preview'}
           </Button>
           <Button
             variant="secondary"
@@ -719,7 +721,7 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
               })
             }
           >
-            {simulate.isPending ? 'Simulating...' : t('Simulate Chain')}
+            {simulate.isPending ? 'Simulating...' : 'Simulate Chain'}
           </Button>
 
           <Button
@@ -736,7 +738,7 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
               })
             }
           >
-            {create.isPending ? 'Creating...' : t('Create Playbook')}
+            {create.isPending ? 'Creating...' : 'Create Playbook'}
           </Button>
         </div>
       </div>
@@ -745,7 +747,7 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
         <section className="fo-preview-panel">
           <div className="fo-space-between">
             <strong>
-              <Trans>Dry-run Step Diff Preview</Trans>
+              Dry-run Step Diff Preview
             </strong>
             <small>
               steps: {previewResult.steps.length} | errors:{' '}
@@ -787,9 +789,7 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
                 size="sm"
                 variant="secondary"
                 onClick={() => setSelectedPlaybookId(playbook.id)}
-              ><Trans>
-                History
-              </Trans></Button>
+              >History</Button>
               <Button
                 size="sm"
                 variant="secondary"
@@ -799,9 +799,7 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
                     executionMode: 'dry-run',
                   })
                 }
-              ><Trans>
-                Dry-run
-              </Trans></Button>
+              >Dry-run</Button>
               <Button
                 size="sm"
                 variant="secondary"
@@ -814,30 +812,28 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
                   })
                 }
               >
-                {simulate.isPending ? 'Simulating...' : t('Simulate')}
+                {simulate.isPending ? 'Simulating...' : 'Simulate'}
               </Button>
               <Button
                 size="sm"
                 onClick={() =>
                   run.mutate({ playbookId: playbook.id, executionMode: 'live' })
                 }
-              ><Trans>
-                Execute Live
-              </Trans></Button>
+              >Execute Live</Button>
             </div>
           </article>
         ))}
       </div>
 
       <div className="fo-space-between">
-        <strong><Trans>Playbook run timeline</Trans></strong>
+        <strong>Playbook run timeline</strong>
         <div className="fo-row">
           <Select
             value={runModeFilter}
             onValueChange={value => setRunModeFilter(value as RunModeFilter)}
           >
             <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder={t('Mode')} />
+              <SelectValue placeholder="Mode" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">all</SelectItem>
@@ -917,18 +913,14 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
                 size="sm"
                 variant="secondary"
                 onClick={() => setSelectedRunId(runItem.id)}
-              ><Trans>
-                Details
-              </Trans></Button>
+              >Details</Button>
               <Button
                 size="sm"
                 variant="secondary"
                 onClick={() =>
                   replay.mutate({ runId: runItem.id, executionMode: 'dry-run' })
                 }
-              ><Trans>
-                Replay dry-run
-              </Trans></Button>
+              >Replay dry-run</Button>
               <Button
                 size="sm"
                 variant="secondary"
@@ -941,7 +933,7 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
                   })
                 }
               >
-                {simulate.isPending ? 'Simulating...' : t('Simulate')}
+                {simulate.isPending ? 'Simulating...' : 'Simulate'}
               </Button>
               <Button
                 size="sm"
@@ -949,9 +941,7 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
                 onClick={() =>
                   replay.mutate({ runId: runItem.id, executionMode: 'live' })
                 }
-              ><Trans>
-                Replay live
-              </Trans></Button>
+              >Replay live</Button>
               <Button
                 size="sm"
                 variant="secondary"
@@ -968,7 +958,7 @@ export function PlaybooksPanel({ onStatus, onRoute }: PlaybooksPanelProps) {
                 }
                 onClick={() => rollback.mutate(runItem.id)}
               >
-                {rollback.isPending ? 'Rolling back...' : t('Rollback')}
+                {rollback.isPending ? 'Rolling back...' : 'Rollback'}
               </Button>
             </div>
           </article>

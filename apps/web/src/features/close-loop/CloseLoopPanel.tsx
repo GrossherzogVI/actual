@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Trans } from 'react-i18next';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -265,7 +264,7 @@ export function CloseLoopPanel({ onStatus }: CloseLoopPanelProps) {
     <section className="fo-panel" id="close-loop">
       <header className="fo-panel-header">
         <h2>
-          <Trans>Close Loop</Trans>
+          Close Loop
         </h2>
         <small>
           Exception-first cockpit. Shortcuts: Alt+Shift+W (weekly), Alt+Shift+U
@@ -277,7 +276,7 @@ export function CloseLoopPanel({ onStatus }: CloseLoopPanelProps) {
         className={`fo-close-health ${healthClass(closeStats.healthTier)}`}
       >
         <div className="fo-space-between">
-          <strong><Trans>Close confidence score</Trans></strong>
+          <strong>Close confidence score</strong>
           <strong>{closeStats.healthScore}</strong>
         </div>
         <small>
@@ -295,23 +294,17 @@ export function CloseLoopPanel({ onStatus }: CloseLoopPanelProps) {
         <Button
           onClick={() => runClose.mutate('weekly')}
           disabled={runClose.isPending || runFullCycle.isPending}
-        ><Trans>
-          Run weekly close
-        </Trans></Button>
+        >Run weekly close</Button>
         <Button
           variant="secondary"
           onClick={() => runClose.mutate('monthly')}
           disabled={runClose.isPending || runFullCycle.isPending}
-        ><Trans>
-          Run monthly close
-        </Trans></Button>
+        >Run monthly close</Button>
         <Button
           variant="secondary"
           onClick={() => runFullCycle.mutate()}
           disabled={runClose.isPending || runFullCycle.isPending}
-        ><Trans>
-          Full cycle
-        </Trans></Button>
+        >Full cycle</Button>
       </div>
 
       <div className="fo-space-between">
@@ -326,7 +319,7 @@ export function CloseLoopPanel({ onStatus }: CloseLoopPanelProps) {
           onValueChange={value => setPeriodFilter(value as ClosePeriodFilter)}
         >
           <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder={t('Period')} />
+            <SelectValue placeholder={'Period'} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">all periods</SelectItem>
@@ -341,7 +334,7 @@ export function CloseLoopPanel({ onStatus }: CloseLoopPanelProps) {
           }
         >
           <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder={t('Exceptions')} />
+            <SelectValue placeholder={'Exceptions'} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">all runs</SelectItem>
@@ -352,7 +345,7 @@ export function CloseLoopPanel({ onStatus }: CloseLoopPanelProps) {
 
       <div className="fo-close-stage-list">
         <article className={`fo-close-stage ${stageClass(stages.preflight)}`}>
-          <strong><Trans>Preflight pressure</Trans></strong>
+          <strong>Preflight pressure</strong>
           <small>
             Urgent + expiring workload before close commit (
             {pulse.data?.urgentReviews ?? 0}/
@@ -360,21 +353,21 @@ export function CloseLoopPanel({ onStatus }: CloseLoopPanelProps) {
           </small>
         </article>
         <article className={`fo-close-stage ${stageClass(stages.execution)}`}>
-          <strong><Trans>Execution freshness</Trans></strong>
+          <strong>Execution freshness</strong>
           <small>{runAgeLabel(closeStats.latestRun)}</small>
         </article>
         <article className={`fo-close-stage ${stageClass(stages.exceptions)}`}>
-          <strong><Trans>Exception resolution</Trans></strong>
+          <strong>Exception resolution</strong>
           <small>{closeStats.unresolvedRuns.length} unresolved runs.</small>
         </article>
         <article className={`fo-close-stage ${stageClass(stages.confidence)}`}>
-          <strong><Trans>Operational confidence</Trans></strong>
-          <small><Trans>Health score </Trans>{closeStats.healthScore}.</small>
+          <strong>Operational confidence</strong>
+          <small>Health score {closeStats.healthScore}.</small>
         </article>
       </div>
 
       <div className="fo-stack">
-        <strong><Trans>Unresolved exception rail</Trans></strong>
+        <strong>Unresolved exception rail</strong>
         {closeStats.unresolvedRuns.length === 0 ? (
           <small>No unresolved close exceptions.</small>
         ) : (
@@ -396,9 +389,7 @@ export function CloseLoopPanel({ onStatus }: CloseLoopPanelProps) {
                     size="sm"
                     variant="secondary"
                     onClick={() => markResolved(run.id)}
-                  ><Trans>
-                    Mark resolved
-                  </Trans></Button>
+                  >Mark resolved</Button>
                 </div>
               </article>
             ))}
@@ -437,17 +428,13 @@ export function CloseLoopPanel({ onStatus }: CloseLoopPanelProps) {
                       size="sm"
                       variant="secondary"
                       onClick={() => unresolveRun(run.id)}
-                    ><Trans>
-                      Move to unresolved
-                    </Trans></Button>
+                    >Move to unresolved</Button>
                   ) : (
                     <Button
                       size="sm"
                       variant="secondary"
                       onClick={() => markResolved(run.id)}
-                    ><Trans>
-                      Mark resolved
-                    </Trans></Button>
+                    >Mark resolved</Button>
                   )}
                 </div>
               ) : null}

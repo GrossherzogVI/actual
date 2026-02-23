@@ -138,6 +138,7 @@ export function useAnalyticsData(): AnalyticsData {
     async function fetchAll() {
       setLoading(true);
 
+      try {
       // 1) Categories
       const { list: cats, grouped } = await send('get-categories');
       if (cancelled) return;
@@ -155,28 +156,34 @@ export function useAnalyticsData(): AnalyticsData {
         }
       }
 
-      // 2) Spending by category for current month
+      // 2) Spending by category for current month — single aggregated query
       const startOfMonth = monthUtils.firstDayOfMonth(currentMonth);
       const today = monthUtils.currentDay();
 
+      const { data: catSums } = await aqlQuery(
+        q('transactions')
+          .filter({
+            $and: [
+              { date: { $gte: startOfMonth } },
+              { date: { $lte: today } },
+            ],
+            'account.offbudget': false,
+            'payee.transfer_acct': null,
+          })
+          .filter({ amount: { $lt: 0 } })
+          .groupBy([{ $id: '$category' }])
+          .select([{ category: { $id: '$category' } }, { amount: { $sum: '$amount' } }]),
+      );
+
+      const expenseCatIds = new Set(expenseCats.map(c => c.id));
+      const catById = new Map(expenseCats.map(c => [c.id, c]));
+
       const catSpending: CategorySpending[] = [];
-      for (const cat of expenseCats) {
-        const { data: sum } = await aqlQuery(
-          q('transactions')
-            .filter({
-              $and: [
-                { date: { $gte: startOfMonth } },
-                { date: { $lte: today } },
-                { category: cat.id },
-              ],
-              'account.offbudget': false,
-              'payee.transfer_acct': null,
-            })
-            .filter({ amount: { $lt: 0 } })
-            .calculate({ $sum: '$amount' }),
-        );
-        const absAmount = Math.abs(sum || 0);
+      for (const row of catSums || []) {
+        if (!row.category || !expenseCatIds.has(row.category)) continue;
+        const absAmount = Math.abs(row.amount || 0);
         if (absAmount > 0) {
+          const cat = catById.get(row.category)!;
           catSpending.push({
             id: cat.id,
             name: cat.name,
@@ -198,53 +205,70 @@ export function useAnalyticsData(): AnalyticsData {
       const totalSpent = catSpending.reduce((s, c) => s + c.amount, 0);
       if (!cancelled) setTotalSpentThisMonth(totalSpent);
 
-      // 3) Monthly income vs expenses for last 6 months
-      const monthlyData: MonthlyTotals[] = [];
-      for (const month of months) {
-        const start = monthUtils.firstDayOfMonth(month);
-        const end =
-          month === currentMonth ? today : monthUtils.lastDayOfMonth(month);
+      // 3) Monthly income vs expenses for last 6 months — two aggregated queries
+      const rangeStart = monthUtils.firstDayOfMonth(months[0]);
+      const rangeEnd =
+        months[months.length - 1] === currentMonth
+          ? today
+          : monthUtils.lastDayOfMonth(months[months.length - 1]);
 
-        const [incomeResult, expenseResult] = await Promise.all([
-          aqlQuery(
-            q('transactions')
-              .filter({
-                $and: [{ date: { $gte: start } }, { date: { $lte: end } }],
-                'account.offbudget': false,
-                'payee.transfer_acct': null,
-              })
-              .filter({ amount: { $gt: 0 } })
-              .calculate({ $sum: '$amount' }),
-          ),
-          aqlQuery(
-            q('transactions')
-              .filter({
-                $and: [{ date: { $gte: start } }, { date: { $lte: end } }],
-                'account.offbudget': false,
-                'payee.transfer_acct': null,
-              })
-              .filter({ amount: { $lt: 0 } })
-              .calculate({ $sum: '$amount' }),
-          ),
-        ]);
+      const [incomeByMonth, expenseByMonth] = await Promise.all([
+        aqlQuery(
+          q('transactions')
+            .filter({
+              $and: [
+                { date: { $gte: rangeStart } },
+                { date: { $lte: rangeEnd } },
+              ],
+              'account.offbudget': false,
+              'payee.transfer_acct': null,
+            })
+            .filter({ amount: { $gt: 0 } })
+            .groupBy({ $month: '$date' })
+            .select([{ month: { $month: '$date' } }, { amount: { $sum: '$amount' } }]),
+        ),
+        aqlQuery(
+          q('transactions')
+            .filter({
+              $and: [
+                { date: { $gte: rangeStart } },
+                { date: { $lte: rangeEnd } },
+              ],
+              'account.offbudget': false,
+              'payee.transfer_acct': null,
+            })
+            .filter({ amount: { $lt: 0 } })
+            .groupBy({ $month: '$date' })
+            .select([{ month: { $month: '$date' } }, { amount: { $sum: '$amount' } }]),
+        ),
+      ]);
 
-        const income = incomeResult.data || 0;
-        const expenses = Math.abs(expenseResult.data || 0);
+      const incomeMap = new Map<string, number>();
+      for (const row of incomeByMonth.data || []) {
+        incomeMap.set(row.month, row.amount || 0);
+      }
+      const expenseMap = new Map<string, number>();
+      for (const row of expenseByMonth.data || []) {
+        expenseMap.set(row.month, Math.abs(row.amount || 0));
+      }
 
-        monthlyData.push({
+      const monthlyData: MonthlyTotals[] = months.map(month => {
+        const income = incomeMap.get(month) || 0;
+        const expenses = expenseMap.get(month) || 0;
+        return {
           month,
           label: formatMonthLabel(month),
           income,
           expenses,
           net: income - expenses,
-        });
-      }
+        };
+      });
       if (!cancelled) setMonthlyTotals(monthlyData);
 
       // 4) Fixed vs Variable (contracts)
       let fixedAmount = 0;
       try {
-        const contracts = await (send as Function)('contract-list');
+        const contracts = await send('contract-list', {});
         if (Array.isArray(contracts)) {
           for (const c of contracts) {
             if (c.status === 'active' && c.amount != null) {
@@ -261,6 +285,7 @@ export function useAnalyticsData(): AnalyticsData {
                   monthly = monthly / 6;
                   break;
                 case 'annual':
+                case 'yearly':
                   monthly = monthly / 12;
                   break;
               }
@@ -280,43 +305,51 @@ export function useAnalyticsData(): AnalyticsData {
         });
       }
 
-      // 5) Spending trends: top 5 categories over 6 months
+      // 5) Spending trends: top 5 categories over 6 months — single aggregated query
       const top5 = catSpending.slice(0, 5);
-      const trendLines: TrendLine[] = [];
-      for (const cat of top5) {
-        const dataPoints: TrendLine['data'] = [];
-        for (const month of months) {
-          const start = monthUtils.firstDayOfMonth(month);
-          const end =
-            month === currentMonth ? today : monthUtils.lastDayOfMonth(month);
+      const top5Ids = new Set(top5.map(c => c.id));
 
-          const { data: sum } = await aqlQuery(
-            q('transactions')
-              .filter({
-                $and: [
-                  { date: { $gte: start } },
-                  { date: { $lte: end } },
-                  { category: cat.id },
-                ],
-                'account.offbudget': false,
-                'payee.transfer_acct': null,
-              })
-              .filter({ amount: { $lt: 0 } })
-              .calculate({ $sum: '$amount' }),
-          );
-          dataPoints.push({
-            month,
-            label: formatMonthLabel(month),
-            amount: Math.abs(sum || 0),
-          });
+      const { data: trendRows } = await aqlQuery(
+        q('transactions')
+          .filter({
+            $and: [
+              { date: { $gte: rangeStart } },
+              { date: { $lte: rangeEnd } },
+            ],
+            'account.offbudget': false,
+            'payee.transfer_acct': null,
+          })
+          .filter({ amount: { $lt: 0 } })
+          .groupBy([{ $id: '$category' }, { $month: '$date' }])
+          .select([
+            { category: { $id: '$category' } },
+            { month: { $month: '$date' } },
+            { amount: { $sum: '$amount' } },
+          ]),
+      );
+
+      // Build lookup: categoryId -> month -> amount
+      const trendLookup = new Map<string, Map<string, number>>();
+      for (const row of trendRows || []) {
+        if (!row.category || !top5Ids.has(row.category)) continue;
+        let monthMap = trendLookup.get(row.category);
+        if (!monthMap) {
+          monthMap = new Map();
+          trendLookup.set(row.category, monthMap);
         }
-        trendLines.push({
-          id: cat.id,
-          name: cat.name,
-          color: cat.color,
-          data: dataPoints,
-        });
+        monthMap.set(row.month, Math.abs(row.amount || 0));
       }
+
+      const trendLines: TrendLine[] = top5.map(cat => ({
+        id: cat.id,
+        name: cat.name,
+        color: cat.color,
+        data: months.map(month => ({
+          month,
+          label: formatMonthLabel(month),
+          amount: trendLookup.get(cat.id)?.get(month) || 0,
+        })),
+      }));
       if (!cancelled) setSpendingTrends(trendLines);
 
       // 6) Budget alerts — categories where spending > budgeted
@@ -360,7 +393,11 @@ export function useAnalyticsData(): AnalyticsData {
         // Budget data might not be available
       }
 
-      if (!cancelled) setLoading(false);
+      } catch {
+        // Analytics data loading failed — degrade gracefully
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
 
     void fetchAll();

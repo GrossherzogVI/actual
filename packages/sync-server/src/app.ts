@@ -33,7 +33,36 @@ process.on('unhandledRejection', reason => {
 });
 
 app.disable('x-powered-by');
-app.use(cors());
+
+const defaultAllowedOrigins = [
+  'http://localhost:5006',
+  'http://localhost:3000',
+  'http://212.69.84.228',
+];
+const allowedOrigins: string[] = process.env.ACTUAL_ALLOWED_ORIGINS
+  ? process.env.ACTUAL_ALLOWED_ORIGINS.split(',').map(o => o.trim())
+  : defaultAllowedOrigins;
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (e.g. curl, mobile apps, same-origin)
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS: origin '${origin}' not allowed`));
+      }
+    },
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'X-ACTUAL-TOKEN', 'Authorization'],
+    credentials: true,
+  }),
+);
+
 app.set('trust proxy', config.get('trustedProxies'));
 if (process.env.NODE_ENV !== 'development') {
   app.use(
@@ -143,6 +172,27 @@ app.get('/metrics', (_req, res) => {
 app.use((req, res, next) => {
   res.set('Cross-Origin-Opener-Policy', 'same-origin');
   res.set('Cross-Origin-Embedder-Policy', 'require-corp');
+  res.set('X-Frame-Options', 'DENY');
+  res.set('X-Content-Type-Options', 'nosniff');
+  res.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+
+  // Content Security Policy
+  const ollamaUrl = process.env.ACTUAL_OLLAMA_URL ?? '';
+  const connectSrc = ollamaUrl ? `'self' ${ollamaUrl}` : `'self'`;
+  res.set(
+    'Content-Security-Policy',
+    [
+      `default-src 'self'`,
+      `script-src 'self'`,
+      `style-src 'self' 'unsafe-inline'`,
+      `font-src 'self' data:`,
+      `img-src 'self' data: blob:`,
+      `connect-src ${connectSrc}`,
+      `worker-src 'self' blob:`,
+      `frame-ancestors 'none'`,
+    ].join('; '),
+  );
+
   next();
 });
 if (process.env.NODE_ENV === 'development') {

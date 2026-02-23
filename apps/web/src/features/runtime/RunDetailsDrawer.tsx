@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
-import { Trans } from 'react-i18next';
 
 import type { PlaybookRun, WorkflowCommandExecution } from '../../core/types';
+
+import { Button } from '@/components/ui/button';
 
 type RunDetails = PlaybookRun | WorkflowCommandExecution;
 
@@ -75,20 +76,18 @@ export function RunDetailsDrawer({
         className="fo-run-drawer"
         role="dialog"
         aria-modal="true"
-        aria-label={t("Run details drawer")}
+        aria-label={"Run details drawer"}
       >
         <header className="fo-run-drawer-header">
           <div className="fo-stack">
             <strong>
-              <Trans>Run details</Trans>
+              Run details
             </strong>
             <small>
               {runScopeLabel(run)} · {run.executionMode} · {run.id}
             </small>
           </div>
-          <button className="fo-btn-secondary" type="button" onClick={onClose}><Trans>
-            Close
-          </Trans></button>
+          <Button variant="secondary" onClick={onClose}>Close</Button>
         </header>
 
         <section className="fo-run-drawer-grid">
@@ -118,7 +117,7 @@ export function RunDetailsDrawer({
         </section>
 
         <section className="fo-run-drawer-section">
-          <strong><Trans>Status timeline</Trans></strong>
+          <strong>Status timeline</strong>
           <div className="fo-run-drawer-list">
             {run.statusTimeline.length === 0 ? (
               <small className="fo-muted-line">
@@ -144,7 +143,7 @@ export function RunDetailsDrawer({
         </section>
 
         <section className="fo-run-drawer-section">
-          <strong><Trans>Guardrails</Trans></strong>
+          <strong>Guardrails</strong>
           <div className="fo-run-drawer-list">
             {run.guardrailResults.length === 0 ? (
               <small className="fo-muted-line">No guardrail findings.</small>
@@ -167,7 +166,7 @@ export function RunDetailsDrawer({
         </section>
 
         <section className="fo-run-drawer-section">
-          <strong><Trans>Effects</Trans></strong>
+          <strong>Effects</strong>
           <div className="fo-run-drawer-list">
             {run.effectSummaries.length === 0 ? (
               <small className="fo-muted-line">No effect summaries.</small>
@@ -192,7 +191,7 @@ export function RunDetailsDrawer({
 
         <section className="fo-run-drawer-section">
           <strong>
-            {'playbookId' in run ? t('Executed commands') : t('Command steps')}
+            {'playbookId' in run ? 'Executed commands' : 'Command steps'}
           </strong>
           <div className="fo-run-drawer-list">
             {'playbookId' in run ? (
@@ -243,17 +242,14 @@ export function RunDetailsDrawer({
         </section>
 
         <footer className="fo-run-drawer-footer">
-          <button className="fo-btn-secondary" type="button" onClick={onClose}><Trans>
-            Close
-          </Trans></button>
-          <button
-            className="fo-btn-secondary"
-            type="button"
+          <Button variant="secondary" onClick={onClose}>Close</Button>
+          <Button
+            variant="secondary"
             disabled={!rollbackAllowed || !onRollback || rollbackPending}
             onClick={() => onRollback?.(run.id)}
           >
-            {rollbackPending ? 'Rolling back...' : t('Rollback from details')}
-          </button>
+            {rollbackPending ? 'Rolling back...' : 'Rollback from details'}
+          </Button>
         </footer>
       </aside>
     </div>

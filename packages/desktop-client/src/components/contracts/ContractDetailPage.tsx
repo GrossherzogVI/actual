@@ -686,6 +686,7 @@ export function ContractDetailPage() {
           type: formData.type || undefined,
           amount: amountCents,
           interval: formData.interval || undefined,
+          category_id: formData.category_id || undefined,
           start_date: formData.start_date || undefined,
           end_date: formData.end_date || undefined,
           notice_period_months: formData.notice_period_months
@@ -697,6 +698,17 @@ export function ContractDetailPage() {
           iban: formData.iban.trim() || undefined,
           counterparty: formData.counterparty.trim() || undefined,
           notes: formData.notes.trim() || undefined,
+          tags: (formData as any).tags ?? [],
+          payment_method: formData.payment_method || undefined,
+          grace_period_days: formData.grace_period_days
+            ? parseInt(formData.grace_period_days, 10)
+            : undefined,
+          soft_shift: formData.soft_shift || undefined,
+          hard_shift: formData.hard_shift || undefined,
+          lead_time_override: formData.lead_time_override
+            ? parseInt(formData.lead_time_override, 10)
+            : undefined,
+          show_hard_deadline: formData.show_hard_deadline,
         });
         if (result && 'error' in result) {
           setSaveError(result.error);
@@ -713,6 +725,7 @@ export function ContractDetailPage() {
             type: formData.type || null,
             amount: amountCents ?? null,
             interval: formData.interval || null,
+            category_id: formData.category_id || null,
             start_date: formData.start_date || null,
             end_date: formData.end_date || null,
             notice_period_months: formData.notice_period_months
@@ -724,6 +737,17 @@ export function ContractDetailPage() {
             iban: formData.iban.trim() || null,
             counterparty: formData.counterparty.trim() || null,
             notes: formData.notes.trim() || null,
+            tags: (formData as any).tags ?? [],
+            payment_method: formData.payment_method || null,
+            grace_period_days: formData.grace_period_days
+              ? parseInt(formData.grace_period_days, 10)
+              : null,
+            soft_shift: formData.soft_shift || null,
+            hard_shift: formData.hard_shift || null,
+            lead_time_override: formData.lead_time_override
+              ? parseInt(formData.lead_time_override, 10)
+              : null,
+            show_hard_deadline: formData.show_hard_deadline,
           },
         });
         if (result && 'error' in result) {
@@ -837,6 +861,7 @@ export function ContractDetailPage() {
       type: contract.type ?? '',
       amount: contract.amount != null ? String(contract.amount / 100) : '',
       interval: contract.interval ?? 'monthly',
+      category_id: contract.category_id ?? '',
       start_date: contract.start_date ?? '',
       end_date: contract.end_date ?? '',
       notice_period_months:
@@ -849,6 +874,18 @@ export function ContractDetailPage() {
       iban: contract.iban ?? '',
       counterparty: contract.counterparty ?? '',
       notes: contract.notes ?? '',
+      payment_method: contract.payment_method ?? 'manual_sepa',
+      grace_period_days:
+        contract.grace_period_days != null
+          ? String(contract.grace_period_days)
+          : '5',
+      soft_shift: contract.soft_deadline_shift ?? 'before',
+      hard_shift: contract.hard_deadline_shift ?? 'after',
+      lead_time_override:
+        contract.lead_time_override != null
+          ? String(contract.lead_time_override)
+          : '',
+      show_hard_deadline: contract.show_hard_deadline ?? false,
     };
 
     return (

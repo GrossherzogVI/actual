@@ -3,20 +3,41 @@ import { getAccountDb } from '../src/account-db.js';
 export const up = async function () {
   const db = getAccountDb();
 
-  // Drop old scaffold tables (Phase 0)
+  // Drop old scaffold tables (Phase 0) — children before parents to respect FK constraints
   db.exec(`
     DROP TABLE IF EXISTS contract_documents;
     DROP TABLE IF EXISTS invoices;
     DROP TABLE IF EXISTS expected_events;
-    DROP TABLE IF EXISTS contracts;
     DROP TABLE IF EXISTS ai_rule_suggestions;
     DROP TABLE IF EXISTS ai_audit_log;
     DROP TABLE IF EXISTS ai_classifications;
+    DROP TABLE IF EXISTS contracts;
+  `);
+
+  // 2.0 AI Classifications (recreated with runtime-expected schema)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS ai_classifications (
+      id TEXT PRIMARY KEY,
+      transaction_id TEXT NOT NULL,
+      original_payee TEXT NOT NULL DEFAULT '',
+      normalized_payee TEXT NOT NULL DEFAULT '',
+      suggested_category_id TEXT NOT NULL,
+      confidence REAL NOT NULL DEFAULT 0.0,
+      model_version TEXT DEFAULT 'ollama',
+      classified_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_ai_classifications_transaction
+      ON ai_classifications(transaction_id);
+    CREATE INDEX IF NOT EXISTS idx_ai_classifications_normalized_payee
+      ON ai_classifications(normalized_payee);
+    CREATE INDEX IF NOT EXISTS idx_ai_classifications_category
+      ON ai_classifications(suggested_category_id);
   `);
 
   // 2.1 Enriched Contracts Table
   db.exec(`
-    CREATE TABLE contracts (
+    CREATE TABLE IF NOT EXISTS contracts (
       id TEXT PRIMARY KEY,
 
       -- Identity
@@ -59,16 +80,16 @@ export const up = async function () {
       tombstone INTEGER DEFAULT 0
     );
 
-    CREATE INDEX idx_contracts_schedule ON contracts(schedule_id);
-    CREATE INDEX idx_contracts_status ON contracts(status);
-    CREATE INDEX idx_contracts_category ON contracts(category_id);
-    CREATE INDEX idx_contracts_type ON contracts(type);
-    CREATE INDEX idx_contracts_cancellation ON contracts(cancellation_deadline);
+    CREATE INDEX IF NOT EXISTS idx_contracts_schedule ON contracts(schedule_id);
+    CREATE INDEX IF NOT EXISTS idx_contracts_status ON contracts(status);
+    CREATE INDEX IF NOT EXISTS idx_contracts_category ON contracts(category_id);
+    CREATE INDEX IF NOT EXISTS idx_contracts_type ON contracts(type);
+    CREATE INDEX IF NOT EXISTS idx_contracts_cancellation ON contracts(cancellation_deadline);
   `);
 
   // 2.2 Contract Price History
   db.exec(`
-    CREATE TABLE contract_price_history (
+    CREATE TABLE IF NOT EXISTS contract_price_history (
       id TEXT PRIMARY KEY,
       contract_id TEXT NOT NULL REFERENCES contracts(id) ON DELETE CASCADE,
       old_amount INTEGER NOT NULL,
@@ -79,12 +100,12 @@ export const up = async function () {
       created_at TEXT DEFAULT (datetime('now'))
     );
 
-    CREATE INDEX idx_price_history_contract ON contract_price_history(contract_id);
+    CREATE INDEX IF NOT EXISTS idx_price_history_contract ON contract_price_history(contract_id);
   `);
 
   // 2.3 Contract Additional Events
   db.exec(`
-    CREATE TABLE contract_events (
+    CREATE TABLE IF NOT EXISTS contract_events (
       id TEXT PRIMARY KEY,
       contract_id TEXT NOT NULL REFERENCES contracts(id) ON DELETE CASCADE,
       description TEXT NOT NULL,
@@ -97,12 +118,12 @@ export const up = async function () {
       created_at TEXT DEFAULT (datetime('now'))
     );
 
-    CREATE INDEX idx_contract_events_contract ON contract_events(contract_id);
+    CREATE INDEX IF NOT EXISTS idx_contract_events_contract ON contract_events(contract_id);
   `);
 
   // 2.4 Contract Tags
   db.exec(`
-    CREATE TABLE contract_tags (
+    CREATE TABLE IF NOT EXISTS contract_tags (
       contract_id TEXT NOT NULL REFERENCES contracts(id) ON DELETE CASCADE,
       tag TEXT NOT NULL,
       PRIMARY KEY (contract_id, tag)
@@ -111,7 +132,7 @@ export const up = async function () {
 
   // 2.5 Contract Documents
   db.exec(`
-    CREATE TABLE contract_documents (
+    CREATE TABLE IF NOT EXISTS contract_documents (
       id TEXT PRIMARY KEY,
       contract_id TEXT NOT NULL REFERENCES contracts(id) ON DELETE CASCADE,
       filename TEXT NOT NULL,
@@ -120,12 +141,12 @@ export const up = async function () {
       uploaded_at TEXT DEFAULT (datetime('now'))
     );
 
-    CREATE INDEX idx_contract_docs_contract ON contract_documents(contract_id);
+    CREATE INDEX IF NOT EXISTS idx_contract_docs_contract ON contract_documents(contract_id);
   `);
 
   // 2.6 AI Review Queue
   db.exec(`
-    CREATE TABLE review_queue (
+    CREATE TABLE IF NOT EXISTS review_queue (
       id TEXT PRIMARY KEY,
 
       type TEXT NOT NULL
@@ -158,15 +179,15 @@ export const up = async function () {
       updated_at TEXT DEFAULT (datetime('now'))
     );
 
-    CREATE INDEX idx_review_queue_status ON review_queue(status);
-    CREATE INDEX idx_review_queue_type ON review_queue(type);
-    CREATE INDEX idx_review_queue_priority ON review_queue(priority);
-    CREATE INDEX idx_review_queue_transaction ON review_queue(transaction_id);
+    CREATE INDEX IF NOT EXISTS idx_review_queue_status ON review_queue(status);
+    CREATE INDEX IF NOT EXISTS idx_review_queue_type ON review_queue(type);
+    CREATE INDEX IF NOT EXISTS idx_review_queue_priority ON review_queue(priority);
+    CREATE INDEX IF NOT EXISTS idx_review_queue_transaction ON review_queue(transaction_id);
   `);
 
   // 2.7 AI Smart Matching Rules
   db.exec(`
-    CREATE TABLE smart_match_rules (
+    CREATE TABLE IF NOT EXISTS smart_match_rules (
       id TEXT PRIMARY KEY,
 
       payee_pattern TEXT NOT NULL,
@@ -187,20 +208,20 @@ export const up = async function () {
       updated_at TEXT DEFAULT (datetime('now'))
     );
 
-    CREATE INDEX idx_smart_match_payee ON smart_match_rules(payee_pattern);
-    CREATE INDEX idx_smart_match_tier ON smart_match_rules(tier);
+    CREATE INDEX IF NOT EXISTS idx_smart_match_payee ON smart_match_rules(payee_pattern);
+    CREATE INDEX IF NOT EXISTS idx_smart_match_tier ON smart_match_rules(tier);
   `);
 
   // 2.8 Quick Add Frecency
   db.exec(`
-    CREATE TABLE category_frecency (
+    CREATE TABLE IF NOT EXISTS category_frecency (
       category_id TEXT PRIMARY KEY,
       use_count INTEGER DEFAULT 0,
       last_used_at TEXT,
       score REAL DEFAULT 0.0
     );
 
-    CREATE TABLE quick_add_presets (
+    CREATE TABLE IF NOT EXISTS quick_add_presets (
       id TEXT PRIMARY KEY,
       label TEXT NOT NULL,
       icon TEXT,
@@ -229,5 +250,6 @@ export const down = async function () {
     DROP TABLE IF EXISTS contract_events;
     DROP TABLE IF EXISTS contract_price_history;
     DROP TABLE IF EXISTS contracts;
+    DROP TABLE IF EXISTS ai_classifications;
   `);
 };
