@@ -1,8 +1,13 @@
 // @ts-strict-ignore
 import * as asyncStorage from '../../platform/server/asyncStorage';
 import { createApp } from '../app';
-import { get, post } from '../post';
-import { getServer } from '../server-config';
+import {
+  createGatewayEnvelope,
+  gatewayGet,
+  gatewayPost,
+} from '../financeos-gateway';
+
+type HandlerError = { error: string };
 
 export type ScenarioHandlers = {
   'scenario-list-branches': typeof scenarioListBranches;
@@ -20,104 +25,120 @@ app.method('scenario-apply-mutation', scenarioApplyMutation);
 app.method('scenario-compare-outcomes', scenarioCompareOutcomes);
 app.method('scenario-adopt-branch', scenarioAdoptBranch);
 
-async function scenarioListBranches(): Promise<Array<Record<string, unknown>> | { error: string }> {
+function readError(err: unknown, fallback = 'unknown') {
+  return (
+    (err as { reason?: string; message?: string })?.reason ||
+    (err as { reason?: string; message?: string })?.message ||
+    fallback
+  );
+}
+
+async function scenarioListBranches(): Promise<Array<Record<string, unknown>> | HandlerError> {
   const userToken = await asyncStorage.getItem('user-token');
-  if (!userToken) return { error: 'not-logged-in' };
+  if (!userToken) {
+    return { error: 'not-logged-in' };
+  }
 
   try {
-    const res = await get(getServer().BASE_SERVER + '/scenario/branches', {
-      headers: { 'X-ACTUAL-TOKEN': userToken },
-    });
-
-    const parsed = JSON.parse(res);
-    return parsed.data as Array<Record<string, unknown>>;
+    return await gatewayGet<Array<Record<string, unknown>>>('/scenario/v1/branches', userToken);
   } catch (err) {
-    return { error: err.reason || err.message || 'network-failure' };
+    return { error: readError(err, 'network-failure') };
   }
 }
 
 async function scenarioCreateBranch(args: {
   name: string;
-  base_date?: string;
+  baseBranchId?: string;
   notes?: string;
-}): Promise<Record<string, unknown> | { error: string }> {
+}): Promise<Record<string, unknown> | HandlerError> {
   const userToken = await asyncStorage.getItem('user-token');
-  if (!userToken) return { error: 'not-logged-in' };
+  if (!userToken) {
+    return { error: 'not-logged-in' };
+  }
 
   try {
-    const result = await post(
-      getServer().BASE_SERVER + '/scenario/branches',
-      args,
-      { 'X-ACTUAL-TOKEN': userToken },
+    return await gatewayPost<Record<string, unknown>>(
+      '/scenario/v1/create-branch',
+      {
+        envelope: createGatewayEnvelope('scenario-create-branch'),
+        name: args.name,
+        baseBranchId: args.baseBranchId,
+        notes: args.notes,
+      },
+      userToken,
     );
-
-    return result as Record<string, unknown>;
   } catch (err) {
-    return { error: err.reason || err.message || 'unknown' };
+    return { error: readError(err) };
   }
 }
 
 async function scenarioApplyMutation(args: {
-  branch_id: string;
-  kind: string;
+  branchId?: string;
+  mutationKind?: string;
   payload: Record<string, unknown>;
-}): Promise<Record<string, unknown> | { error: string }> {
+}): Promise<Record<string, unknown> | HandlerError> {
   const userToken = await asyncStorage.getItem('user-token');
-  if (!userToken) return { error: 'not-logged-in' };
+  if (!userToken) {
+    return { error: 'not-logged-in' };
+  }
 
   try {
-    const result = await post(
-      getServer().BASE_SERVER + `/scenario/branches/${args.branch_id}/mutations`,
-      { kind: args.kind, payload: args.payload },
-      { 'X-ACTUAL-TOKEN': userToken },
+    return await gatewayPost<Record<string, unknown>>(
+      '/scenario/v1/apply-mutation',
+      {
+        envelope: createGatewayEnvelope('scenario-apply-mutation'),
+        branchId: args.branchId ?? '',
+        mutationKind: args.mutationKind ?? '',
+        payload: args.payload,
+      },
+      userToken,
     );
-
-    return result as Record<string, unknown>;
   } catch (err) {
-    return { error: err.reason || err.message || 'unknown' };
+    return { error: readError(err) };
   }
 }
 
 async function scenarioCompareOutcomes(args: {
-  branch_id: string;
-  against_branch_id?: string;
-}): Promise<Record<string, unknown> | { error: string }> {
+  branchId?: string;
+  againstBranchId?: string;
+}): Promise<Record<string, unknown> | HandlerError> {
   const userToken = await asyncStorage.getItem('user-token');
-  if (!userToken) return { error: 'not-logged-in' };
-
-  const params = new URLSearchParams();
-  if (args.against_branch_id) {
-    params.set('against', args.against_branch_id);
+  if (!userToken) {
+    return { error: 'not-logged-in' };
   }
 
   try {
-    const res = await get(
-      getServer().BASE_SERVER + `/scenario/branches/${args.branch_id}/compare?${params.toString()}`,
-      { headers: { 'X-ACTUAL-TOKEN': userToken } },
+    return await gatewayPost<Record<string, unknown>>(
+      '/scenario/v1/compare-outcomes',
+      {
+        branchId: args.branchId ?? '',
+        againstBranchId: args.againstBranchId,
+      },
+      userToken,
     );
-
-    const parsed = JSON.parse(res);
-    return parsed.data as Record<string, unknown>;
   } catch (err) {
-    return { error: err.reason || err.message || 'network-failure' };
+    return { error: readError(err, 'network-failure') };
   }
 }
 
 async function scenarioAdoptBranch(args: {
-  branch_id: string;
-}): Promise<Record<string, unknown> | { error: string }> {
+  branchId?: string;
+}): Promise<Record<string, unknown> | HandlerError> {
   const userToken = await asyncStorage.getItem('user-token');
-  if (!userToken) return { error: 'not-logged-in' };
+  if (!userToken) {
+    return { error: 'not-logged-in' };
+  }
 
   try {
-    const result = await post(
-      getServer().BASE_SERVER + `/scenario/branches/${args.branch_id}/adopt`,
-      {},
-      { 'X-ACTUAL-TOKEN': userToken },
+    return await gatewayPost<Record<string, unknown>>(
+      '/scenario/v1/adopt-branch',
+      {
+        envelope: createGatewayEnvelope('scenario-adopt-branch'),
+        branchId: args.branchId ?? '',
+      },
+      userToken,
     );
-
-    return result as Record<string, unknown>;
   } catch (err) {
-    return { error: err.reason || err.message || 'unknown' };
+    return { error: readError(err) };
   }
 }

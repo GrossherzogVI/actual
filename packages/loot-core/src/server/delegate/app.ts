@@ -1,8 +1,13 @@
 // @ts-strict-ignore
 import * as asyncStorage from '../../platform/server/asyncStorage';
 import { createApp } from '../app';
-import { get, post } from '../post';
-import { getServer } from '../server-config';
+import {
+  createGatewayEnvelope,
+  gatewayGet,
+  gatewayPost,
+} from '../financeos-gateway';
+
+type HandlerError = { error: string };
 
 export type DelegateHandlers = {
   'delegate-list-lanes': typeof delegateListLanes;
@@ -20,97 +25,117 @@ app.method('delegate-accept-lane', delegateAcceptLane);
 app.method('delegate-complete-lane', delegateCompleteLane);
 app.method('delegate-reject-lane', delegateRejectLane);
 
-async function delegateListLanes(): Promise<Array<Record<string, unknown>> | { error: string }> {
+function readError(err: unknown, fallback = 'unknown') {
+  return (
+    (err as { reason?: string; message?: string })?.reason ||
+    (err as { reason?: string; message?: string })?.message ||
+    fallback
+  );
+}
+
+async function delegateListLanes(): Promise<Array<Record<string, unknown>> | HandlerError> {
   const userToken = await asyncStorage.getItem('user-token');
-  if (!userToken) return { error: 'not-logged-in' };
+  if (!userToken) {
+    return { error: 'not-logged-in' };
+  }
 
   try {
-    const res = await get(getServer().BASE_SERVER + '/delegate/lanes', {
-      headers: { 'X-ACTUAL-TOKEN': userToken },
-    });
-
-    const parsed = JSON.parse(res);
-    return parsed.data as Array<Record<string, unknown>>;
+    return await gatewayGet<Array<Record<string, unknown>>>('/delegate/v1/lanes', userToken);
   } catch (err) {
-    return { error: err.reason || err.message || 'network-failure' };
+    return { error: readError(err, 'network-failure') };
   }
 }
 
 async function delegateAssignLane(args: {
   title: string;
   assignee?: string;
-  assigned_by?: string;
+  assignedBy?: string;
   payload?: Record<string, unknown>;
-}): Promise<Record<string, unknown> | { error: string }> {
+}): Promise<Record<string, unknown> | HandlerError> {
   const userToken = await asyncStorage.getItem('user-token');
-  if (!userToken) return { error: 'not-logged-in' };
+  if (!userToken) {
+    return { error: 'not-logged-in' };
+  }
 
   try {
-    const result = await post(
-      getServer().BASE_SERVER + '/delegate/assign-lane',
-      args,
-      { 'X-ACTUAL-TOKEN': userToken },
+    return await gatewayPost<Record<string, unknown>>(
+      '/delegate/v1/assign-lane',
+      {
+        envelope: createGatewayEnvelope('delegate-assign-lane'),
+        title: args.title,
+        assignee: args.assignee || 'delegate',
+        assignedBy: args.assignedBy ?? 'owner',
+        payload: args.payload || {},
+      },
+      userToken,
     );
-
-    return result as Record<string, unknown>;
   } catch (err) {
-    return { error: err.reason || err.message || 'unknown' };
+    return { error: readError(err) };
   }
 }
 
 async function delegateAcceptLane(args: {
-  id: string;
-}): Promise<Record<string, unknown> | { error: string }> {
+  laneId?: string;
+}): Promise<Record<string, unknown> | HandlerError> {
   const userToken = await asyncStorage.getItem('user-token');
-  if (!userToken) return { error: 'not-logged-in' };
+  if (!userToken) {
+    return { error: 'not-logged-in' };
+  }
 
   try {
-    const result = await post(
-      getServer().BASE_SERVER + `/delegate/accept-lane/${args.id}`,
-      {},
-      { 'X-ACTUAL-TOKEN': userToken },
+    return await gatewayPost<Record<string, unknown>>(
+      '/delegate/v1/accept-lane',
+      {
+        envelope: createGatewayEnvelope('delegate-accept-lane'),
+        laneId: args.laneId ?? '',
+      },
+      userToken,
     );
-
-    return result as Record<string, unknown>;
   } catch (err) {
-    return { error: err.reason || err.message || 'unknown' };
+    return { error: readError(err) };
   }
 }
 
 async function delegateCompleteLane(args: {
-  id: string;
-}): Promise<Record<string, unknown> | { error: string }> {
+  laneId?: string;
+}): Promise<Record<string, unknown> | HandlerError> {
   const userToken = await asyncStorage.getItem('user-token');
-  if (!userToken) return { error: 'not-logged-in' };
+  if (!userToken) {
+    return { error: 'not-logged-in' };
+  }
 
   try {
-    const result = await post(
-      getServer().BASE_SERVER + `/delegate/complete-lane/${args.id}`,
-      {},
-      { 'X-ACTUAL-TOKEN': userToken },
+    return await gatewayPost<Record<string, unknown>>(
+      '/delegate/v1/complete-lane',
+      {
+        envelope: createGatewayEnvelope('delegate-complete-lane'),
+        laneId: args.laneId ?? '',
+      },
+      userToken,
     );
-
-    return result as Record<string, unknown>;
   } catch (err) {
-    return { error: err.reason || err.message || 'unknown' };
+    return { error: readError(err) };
   }
 }
 
 async function delegateRejectLane(args: {
-  id: string;
-}): Promise<Record<string, unknown> | { error: string }> {
+  laneId?: string;
+}): Promise<Record<string, unknown> | HandlerError> {
   const userToken = await asyncStorage.getItem('user-token');
-  if (!userToken) return { error: 'not-logged-in' };
+  if (!userToken) {
+    return { error: 'not-logged-in' };
+  }
 
   try {
-    const result = await post(
-      getServer().BASE_SERVER + `/delegate/reject-lane/${args.id}`,
-      {},
-      { 'X-ACTUAL-TOKEN': userToken },
+    return await gatewayPost<Record<string, unknown>>(
+      '/delegate/v1/reject-lane',
+      {
+        envelope: createGatewayEnvelope('delegate-reject-lane'),
+        laneId: args.laneId ?? '',
+      },
+      userToken,
     );
-
-    return result as Record<string, unknown>;
   } catch (err) {
-    return { error: err.reason || err.message || 'unknown' };
+    return { error: readError(err) };
   }
 }

@@ -1,8 +1,13 @@
 // @ts-strict-ignore
 import * as asyncStorage from '../../platform/server/asyncStorage';
 import { createApp } from '../app';
-import { get, patch, post } from '../post';
-import { getServer } from '../server-config';
+import {
+  createGatewayEnvelope,
+  gatewayGet,
+  gatewayPost,
+} from '../financeos-gateway';
+
+type HandlerError = { error: string };
 
 export type PolicyHandlers = {
   'policy-get-egress': typeof policyGetEgress;
@@ -18,81 +23,98 @@ app.method('policy-set-egress', policySetEgress);
 app.method('policy-list-egress-audit', policyListEgressAudit);
 app.method('policy-record-egress-audit', policyRecordEgressAudit);
 
-async function policyGetEgress(): Promise<Record<string, unknown> | { error: string }> {
+function readError(err: unknown, fallback = 'unknown') {
+  return (
+    (err as { reason?: string; message?: string })?.reason ||
+    (err as { reason?: string; message?: string })?.message ||
+    fallback
+  );
+}
+
+async function policyGetEgress(): Promise<Record<string, unknown> | HandlerError> {
   const userToken = await asyncStorage.getItem('user-token');
-  if (!userToken) return { error: 'not-logged-in' };
+  if (!userToken) {
+    return { error: 'not-logged-in' };
+  }
 
   try {
-    const res = await get(getServer().BASE_SERVER + '/policy/egress-policy', {
-      headers: { 'X-ACTUAL-TOKEN': userToken },
-    });
-    const parsed = JSON.parse(res);
-    return parsed.data as Record<string, unknown>;
+    return await gatewayGet<Record<string, unknown>>('/policy/v1/egress-policy', userToken);
   } catch (err) {
-    return { error: err.reason || err.message || 'network-failure' };
+    return { error: readError(err, 'network-failure') };
   }
 }
 
 async function policySetEgress(args: {
-  allow_cloud?: boolean;
-  allowed_providers?: string[];
-  redaction_mode?: 'strict' | 'balanced' | 'off';
-}): Promise<Record<string, unknown> | { error: string }> {
+  allowCloud?: boolean;
+  allowedProviders?: string[];
+  redactionMode?: 'strict' | 'balanced' | 'off';
+}): Promise<Record<string, unknown> | HandlerError> {
   const userToken = await asyncStorage.getItem('user-token');
-  if (!userToken) return { error: 'not-logged-in' };
+  if (!userToken) {
+    return { error: 'not-logged-in' };
+  }
 
   try {
-    const result = await patch(
-      getServer().BASE_SERVER + '/policy/egress-policy',
-      args,
-      { 'X-ACTUAL-TOKEN': userToken },
+    return await gatewayPost<Record<string, unknown>>(
+      '/policy/v1/set-egress-policy',
+      {
+        envelope: createGatewayEnvelope('set-egress-policy'),
+        policy: {
+          allowCloud: args.allowCloud ?? false,
+          allowedProviders: args.allowedProviders ?? [],
+          redactionMode: args.redactionMode ?? 'strict',
+        },
+      },
+      userToken,
     );
-
-    return result as Record<string, unknown>;
   } catch (err) {
-    return { error: err.reason || err.message || 'unknown' };
+    return { error: readError(err) };
   }
 }
 
 async function policyListEgressAudit(args?: {
   limit?: number;
-}): Promise<Array<Record<string, unknown>> | { error: string }> {
+}): Promise<Array<Record<string, unknown>> | HandlerError> {
   const userToken = await asyncStorage.getItem('user-token');
-  if (!userToken) return { error: 'not-logged-in' };
-
-  const params = new URLSearchParams();
-  if (args?.limit) params.set('limit', String(args.limit));
+  if (!userToken) {
+    return { error: 'not-logged-in' };
+  }
 
   try {
-    const res = await get(
-      getServer().BASE_SERVER + `/policy/egress-audit?${params.toString()}`,
-      { headers: { 'X-ACTUAL-TOKEN': userToken } },
+    return await gatewayPost<Array<Record<string, unknown>>>(
+      '/policy/v1/list-egress-audit',
+      {
+        limit: args?.limit ?? 50,
+      },
+      userToken,
     );
-
-    const parsed = JSON.parse(res);
-    return parsed.data as Array<Record<string, unknown>>;
   } catch (err) {
-    return { error: err.reason || err.message || 'network-failure' };
+    return { error: readError(err, 'network-failure') };
   }
 }
 
 async function policyRecordEgressAudit(args: {
-  event_type: string;
+  eventType?: string;
   provider?: string;
   payload?: Record<string, unknown>;
-}): Promise<Record<string, unknown> | { error: string }> {
+}): Promise<Record<string, unknown> | HandlerError> {
   const userToken = await asyncStorage.getItem('user-token');
-  if (!userToken) return { error: 'not-logged-in' };
+  if (!userToken) {
+    return { error: 'not-logged-in' };
+  }
 
   try {
-    const result = await post(
-      getServer().BASE_SERVER + '/policy/record-egress',
-      args,
-      { 'X-ACTUAL-TOKEN': userToken },
+    return await gatewayPost<Record<string, unknown>>(
+      '/policy/v1/record-egress-audit',
+      {
+        envelope: createGatewayEnvelope('record-egress-audit'),
+        eventType: args.eventType ?? 'manual-audit-event',
+        provider: args.provider,
+        payload: args.payload,
+      },
+      userToken,
     );
-
-    return result as Record<string, unknown>;
   } catch (err) {
-    return { error: err.reason || err.message || 'unknown' };
+    return { error: readError(err) };
   }
 }

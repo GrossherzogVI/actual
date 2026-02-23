@@ -1,21 +1,19 @@
 // @ts-strict-ignore
 import * as asyncStorage from '../../platform/server/asyncStorage';
 import { createApp } from '../app';
-import { get, post } from '../post';
-import { getServer } from '../server-config';
+import {
+  createGatewayEnvelope,
+  gatewayGet,
+  gatewayPost,
+} from '../financeos-gateway';
+
+type HandlerError = { error: string };
 
 export type WorkflowMoneyPulse = {
-  generated_at: string;
-  pending_reviews: number;
-  urgent_reviews: number;
-  active_contracts: number;
-  monthly_commitment: number;
-  top_actions: Array<{
-    id: string;
-    title: string;
-    route: string;
-    urgency: 'high' | 'medium' | 'low';
-  }>;
+  generatedAtMs: number;
+  pendingReviews: number;
+  urgentReviews: number;
+  expiringContracts: number;
 };
 
 export type WorkflowHandlers = {
@@ -38,52 +36,54 @@ app.method('workflow-run-playbook', workflowRunPlaybook);
 app.method('workflow-run-close-routine', workflowRunCloseRoutine);
 app.method('workflow-apply-batch-policy', workflowApplyBatchPolicy);
 
-async function workflowMoneyPulse(): Promise<WorkflowMoneyPulse | { error: string }> {
+function readError(err: unknown, fallback = 'unknown') {
+  return (
+    (err as { reason?: string; message?: string })?.reason ||
+    (err as { reason?: string; message?: string })?.message ||
+    fallback
+  );
+}
+
+async function workflowMoneyPulse(): Promise<WorkflowMoneyPulse | HandlerError> {
   const userToken = await asyncStorage.getItem('user-token');
-  if (!userToken) return { error: 'not-logged-in' };
+  if (!userToken) {
+    return { error: 'not-logged-in' };
+  }
 
   try {
-    const res = await get(getServer().BASE_SERVER + '/workflow/money-pulse', {
-      headers: { 'X-ACTUAL-TOKEN': userToken },
-    });
-
-    const parsed = JSON.parse(res);
-    return parsed.data as WorkflowMoneyPulse;
+    return await gatewayGet<WorkflowMoneyPulse>('/workflow/v1/money-pulse', userToken);
   } catch (err) {
-    return { error: err.reason || err.message || 'network-failure' };
+    return { error: readError(err, 'network-failure') };
   }
 }
 
-async function workflowResolveNextAction(): Promise<Record<string, unknown> | { error: string }> {
+async function workflowResolveNextAction(): Promise<Record<string, unknown> | HandlerError> {
   const userToken = await asyncStorage.getItem('user-token');
-  if (!userToken) return { error: 'not-logged-in' };
+  if (!userToken) {
+    return { error: 'not-logged-in' };
+  }
 
   try {
-    const result = await post(
-      getServer().BASE_SERVER + '/workflow/resolve-next-action',
-      {},
-      { 'X-ACTUAL-TOKEN': userToken },
+    return await gatewayPost<Record<string, unknown>>(
+      '/workflow/v1/resolve-next-action',
+      { envelope: createGatewayEnvelope('resolve-next-action') },
+      userToken,
     );
-
-    return result as Record<string, unknown>;
   } catch (err) {
-    return { error: err.reason || err.message || 'unknown' };
+    return { error: readError(err) };
   }
 }
 
-async function workflowPlaybookList(): Promise<Array<Record<string, unknown>> | { error: string }> {
+async function workflowPlaybookList(): Promise<Array<Record<string, unknown>> | HandlerError> {
   const userToken = await asyncStorage.getItem('user-token');
-  if (!userToken) return { error: 'not-logged-in' };
+  if (!userToken) {
+    return { error: 'not-logged-in' };
+  }
 
   try {
-    const res = await get(getServer().BASE_SERVER + '/workflow/playbooks', {
-      headers: { 'X-ACTUAL-TOKEN': userToken },
-    });
-
-    const parsed = JSON.parse(res);
-    return parsed.data as Array<Record<string, unknown>>;
+    return await gatewayGet<Array<Record<string, unknown>>>('/workflow/v1/playbooks', userToken);
   } catch (err) {
-    return { error: err.reason || err.message || 'network-failure' };
+    return { error: readError(err, 'network-failure') };
   }
 }
 
@@ -91,79 +91,95 @@ async function workflowPlaybookCreate(args: {
   name: string;
   description?: string;
   commands: Array<Record<string, unknown>>;
-}): Promise<Record<string, unknown> | { error: string }> {
+}): Promise<Record<string, unknown> | HandlerError> {
   const userToken = await asyncStorage.getItem('user-token');
-  if (!userToken) return { error: 'not-logged-in' };
+  if (!userToken) {
+    return { error: 'not-logged-in' };
+  }
 
   try {
-    const result = await post(
-      getServer().BASE_SERVER + '/workflow/playbooks',
-      args,
-      { 'X-ACTUAL-TOKEN': userToken },
+    return await gatewayPost<Record<string, unknown>>(
+      '/workflow/v1/playbooks',
+      {
+        name: args.name,
+        description: args.description ?? '',
+        commands: args.commands,
+      },
+      userToken,
     );
-
-    return result as Record<string, unknown>;
   } catch (err) {
-    return { error: err.reason || err.message || 'unknown' };
+    return { error: readError(err) };
   }
 }
 
 async function workflowRunPlaybook(args: {
   id: string;
-  dry_run?: boolean;
-}): Promise<Record<string, unknown> | { error: string }> {
+  dryRun?: boolean;
+}): Promise<Record<string, unknown> | HandlerError> {
   const userToken = await asyncStorage.getItem('user-token');
-  if (!userToken) return { error: 'not-logged-in' };
+  if (!userToken) {
+    return { error: 'not-logged-in' };
+  }
 
   try {
-    const result = await post(
-      getServer().BASE_SERVER + `/workflow/playbooks/${args.id}/run`,
-      { dry_run: args.dry_run ?? true },
-      { 'X-ACTUAL-TOKEN': userToken },
+    return await gatewayPost<Record<string, unknown>>(
+      '/workflow/v1/run-playbook',
+      {
+        envelope: createGatewayEnvelope('run-playbook'),
+        playbookId: args.id,
+        dryRun: args.dryRun ?? true,
+      },
+      userToken,
     );
-
-    return result as Record<string, unknown>;
   } catch (err) {
-    return { error: err.reason || err.message || 'unknown' };
+    return { error: readError(err) };
   }
 }
 
 async function workflowRunCloseRoutine(args: {
   period: 'weekly' | 'monthly';
-}): Promise<Record<string, unknown> | { error: string }> {
+}): Promise<Record<string, unknown> | HandlerError> {
   const userToken = await asyncStorage.getItem('user-token');
-  if (!userToken) return { error: 'not-logged-in' };
+  if (!userToken) {
+    return { error: 'not-logged-in' };
+  }
 
   try {
-    const result = await post(
-      getServer().BASE_SERVER + '/workflow/run-close-routine',
-      args,
-      { 'X-ACTUAL-TOKEN': userToken },
+    return await gatewayPost<Record<string, unknown>>(
+      '/workflow/v1/run-close-routine',
+      {
+        envelope: createGatewayEnvelope('run-close-routine'),
+        period: args.period,
+      },
+      userToken,
     );
-
-    return result as Record<string, unknown>;
   } catch (err) {
-    return { error: err.reason || err.message || 'unknown' };
+    return { error: readError(err) };
   }
 }
 
 async function workflowApplyBatchPolicy(args: {
   ids: string[];
   status: 'accepted' | 'rejected' | 'dismissed' | 'snoozed';
-  resolved_action?: string;
-}): Promise<{ updated: number; status: string } | { error: string }> {
+  resolvedAction?: string;
+}): Promise<Record<string, unknown> | HandlerError> {
   const userToken = await asyncStorage.getItem('user-token');
-  if (!userToken) return { error: 'not-logged-in' };
+  if (!userToken) {
+    return { error: 'not-logged-in' };
+  }
 
   try {
-    const result = await post(
-      getServer().BASE_SERVER + '/workflow/apply-batch-policy',
-      args,
-      { 'X-ACTUAL-TOKEN': userToken },
+    return await gatewayPost<Record<string, unknown>>(
+      '/workflow/v1/apply-batch-policy',
+      {
+        envelope: createGatewayEnvelope('apply-batch-policy'),
+        ids: args.ids,
+        status: args.status,
+        resolvedAction: args.resolvedAction ?? 'batch-policy',
+      },
+      userToken,
     );
-
-    return result as { updated: number; status: string };
   } catch (err) {
-    return { error: err.reason || err.message || 'unknown' };
+    return { error: readError(err) };
   }
 }

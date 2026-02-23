@@ -1,8 +1,13 @@
 // @ts-strict-ignore
 import * as asyncStorage from '../../platform/server/asyncStorage';
 import { createApp } from '../app';
-import { get, post } from '../post';
-import { getServer } from '../server-config';
+import {
+  createGatewayEnvelope,
+  gatewayGet,
+  gatewayPost,
+} from '../financeos-gateway';
+
+type HandlerError = { error: string };
 
 export type FocusHandlers = {
   'focus-adaptive-panel': typeof focusAdaptivePanel;
@@ -14,39 +19,49 @@ export const app = createApp<FocusHandlers>();
 app.method('focus-adaptive-panel', focusAdaptivePanel);
 app.method('focus-record-action-outcome', focusRecordActionOutcome);
 
-async function focusAdaptivePanel(): Promise<Record<string, unknown> | { error: string }> {
+function readError(err: unknown, fallback = 'unknown') {
+  return (
+    (err as { reason?: string; message?: string })?.reason ||
+    (err as { reason?: string; message?: string })?.message ||
+    fallback
+  );
+}
+
+async function focusAdaptivePanel(): Promise<Record<string, unknown> | HandlerError> {
   const userToken = await asyncStorage.getItem('user-token');
-  if (!userToken) return { error: 'not-logged-in' };
+  if (!userToken) {
+    return { error: 'not-logged-in' };
+  }
 
   try {
-    const res = await get(getServer().BASE_SERVER + '/focus/adaptive-panel', {
-      headers: { 'X-ACTUAL-TOKEN': userToken },
-    });
-
-    const parsed = JSON.parse(res);
-    return parsed.data as Record<string, unknown>;
+    return await gatewayGet<Record<string, unknown>>('/focus/v1/adaptive-panel', userToken);
   } catch (err) {
-    return { error: err.reason || err.message || 'network-failure' };
+    return { error: readError(err, 'network-failure') };
   }
 }
 
 async function focusRecordActionOutcome(args: {
-  action_id: string;
+  actionId?: string;
   outcome: string;
   notes?: string;
-}): Promise<Record<string, unknown> | { error: string }> {
+}): Promise<Record<string, unknown> | HandlerError> {
   const userToken = await asyncStorage.getItem('user-token');
-  if (!userToken) return { error: 'not-logged-in' };
+  if (!userToken) {
+    return { error: 'not-logged-in' };
+  }
 
   try {
-    const result = await post(
-      getServer().BASE_SERVER + '/focus/record-action-outcome',
-      args,
-      { 'X-ACTUAL-TOKEN': userToken },
+    return await gatewayPost<Record<string, unknown>>(
+      '/focus/v1/record-action-outcome',
+      {
+        envelope: createGatewayEnvelope('record-action-outcome'),
+        actionId: args.actionId ?? '',
+        outcome: args.outcome,
+        notes: args.notes,
+      },
+      userToken,
     );
-
-    return result as Record<string, unknown>;
   } catch (err) {
-    return { error: err.reason || err.message || 'unknown' };
+    return { error: readError(err) };
   }
 }

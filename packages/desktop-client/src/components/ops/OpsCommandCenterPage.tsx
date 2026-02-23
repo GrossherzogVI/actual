@@ -485,20 +485,24 @@ export function OpsCommandCenterPage() {
             <View style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
               <MetricCard
                 title={t('Pending Reviews')}
-                value={String(moneyPulse?.pending_reviews ?? 0)}
+                value={String(moneyPulse?.pendingReviews ?? 0)}
                 subtitle={t('Urgent: {{count}}', {
-                  count: moneyPulse?.urgent_reviews ?? 0,
+                  count: moneyPulse?.urgentReviews ?? 0,
                 })}
               />
               <MetricCard
-                title={t('Active Contracts')}
-                value={String(moneyPulse?.active_contracts ?? 0)}
-                subtitle={t('Monthly committed')}
+                title={t('Expiring Contracts')}
+                value={String(moneyPulse?.expiringContracts ?? 0)}
+                subtitle={t('Within 30-day window')}
               />
               <MetricCard
-                title={t('Commitment')}
-                value={`€${((moneyPulse?.monthly_commitment ?? 0) / 100).toFixed(2)}`}
-                subtitle={t('Projected monthly')}
+                title={t('Pulse Updated')}
+                value={
+                  moneyPulse?.generatedAtMs
+                    ? new Date(moneyPulse.generatedAtMs).toLocaleTimeString()
+                    : '--:--'
+                }
+                subtitle={t('Gateway telemetry')}
               />
             </View>
           </View>
@@ -560,7 +564,7 @@ export function OpsCommandCenterPage() {
             <Text style={{ fontSize: 12, color: theme.pageTextSubdued }}>
               {t('Next-best actions ranked by urgency and confidence.')}
             </Text>
-            {(adaptiveFocus?.suggested_actions ?? []).slice(0, 5).map(action => (
+            {(adaptiveFocus?.actions ?? []).slice(0, 5).map(action => (
               <View
                 key={action.id}
                 style={{

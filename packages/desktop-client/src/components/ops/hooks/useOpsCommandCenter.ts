@@ -6,22 +6,21 @@ type HandlerError = { error: string };
 type HandlerResult<T> = T | HandlerError;
 
 type MoneyPulse = {
-  generated_at: string;
-  pending_reviews: number;
-  urgent_reviews: number;
-  active_contracts: number;
-  monthly_commitment: number;
-  top_actions: Array<{ id: string; title: string; route: string; urgency: string }>;
+  generatedAtMs: number;
+  pendingReviews: number;
+  urgentReviews: number;
+  expiringContracts: number;
 };
 
 type AdaptiveFocus = {
-  generated_at: string;
-  indicators: {
-    urgent_review_count: number;
-    pending_review_count: number;
-    expiring_contract_count: number;
-  };
-  suggested_actions: Array<{ id: string; title: string; route: string; score: number; reason: string }>;
+  generatedAtMs: number;
+  actions: Array<{
+    id: string;
+    title: string;
+    route: string;
+    score: number;
+    reason: string;
+  }>;
 };
 
 async function callHandler<T>(
@@ -91,10 +90,10 @@ export function useOpsCommandCenter() {
 
   const resolveNextAction = useCallback(async () => {
     return callHandler<{
+      id?: string;
       route?: string;
       title?: string;
-      action_type?: string;
-      payload?: unknown;
+      confidence?: number;
     }>('workflow-resolve-next-action');
   }, []);
 
@@ -114,7 +113,7 @@ export function useOpsCommandCenter() {
     async (id: string, dryRun = true) => {
       const result = await callHandler<Record<string, unknown>>(
         'workflow-run-playbook',
-        { id, dry_run: dryRun },
+        { id, dryRun },
       );
       await refresh();
       return result;
@@ -145,7 +144,7 @@ export function useOpsCommandCenter() {
         {
           title,
           assignee,
-          assigned_by: 'owner',
+          assignedBy: 'owner',
           payload: { source: 'ops-command-center' },
         },
       );
