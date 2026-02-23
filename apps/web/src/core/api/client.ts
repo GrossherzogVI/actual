@@ -26,6 +26,7 @@ import type {
   RuntimeMetrics,
   ScenarioAdoptionCheck,
   ScenarioBranch,
+  ScenarioBranchPromotionResult,
   ScenarioComparison,
   ScenarioLineage,
   ScenarioMutation,
@@ -766,6 +767,45 @@ export const apiClient = {
         preferredBaseBranchId: input.preferredBaseBranchId,
         notes: input.notes,
         recommendationId: input.recommendationId,
+      }),
+    });
+  },
+
+  promoteScenarioBranchRun(input: {
+    branchId: string;
+    mutationId?: string;
+    assignee?: string;
+    sourceSurface?: string;
+    note?: string;
+    executionMode?: ExecutionMode;
+    guardrailProfile?: GuardrailProfile;
+    rollbackWindowMinutes?: number;
+    idempotencyKey?: string;
+    rollbackOnFailure?: boolean;
+  }) {
+    const normalized = normalizeRunOptions(
+      {
+        executionMode: input.executionMode,
+        guardrailProfile: input.guardrailProfile,
+        rollbackWindowMinutes: input.rollbackWindowMinutes,
+        idempotencyKey: input.idempotencyKey,
+        rollbackOnFailure: input.rollbackOnFailure,
+      },
+      {
+        executionMode: 'live',
+      },
+    );
+
+    return request<ScenarioBranchPromotionResult>('/scenario/v1/promote-branch-run', {
+      method: 'POST',
+      body: JSON.stringify({
+        envelope: commandEnvelope('promote-scenario-branch-run'),
+        branchId: input.branchId,
+        mutationId: input.mutationId,
+        assignee: input.assignee,
+        sourceSurface: input.sourceSurface,
+        note: input.note,
+        ...normalized,
       }),
     });
   },

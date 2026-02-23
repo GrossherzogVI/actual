@@ -794,7 +794,7 @@ export function App() {
             <PlaybooksPanel onStatus={setStatus} onRoute={handleRoute} />
           </motion.div>
           <motion.div variants={itemVariants}>
-            <SpatialTwinPanel onStatus={setStatus} />
+            <SpatialTwinPanel onStatus={setStatus} onRoute={handleRoute} />
           </motion.div>
           <motion.div variants={itemVariants}>
             <DecisionGraphPanel

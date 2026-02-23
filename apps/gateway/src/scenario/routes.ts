@@ -3,7 +3,7 @@ import * as z from 'zod';
 
 import { commandEnvelopeSchema } from '@finance-os/domain-kernel';
 
-import { parseRequestBody, sendNotFound } from '../http/route-utils';
+import { parseRequestBody, sendConflict, sendNotFound } from '../http/route-utils';
 import type { GatewayService } from '../services/gateway-service';
 
 type RequestLike = { body?: unknown };
@@ -16,6 +16,8 @@ const simulationSources = [
   'command-mesh',
   'manual',
 ] as const;
+const executionModes = ['dry-run', 'live'] as const;
+const guardrailProfiles = ['strict', 'balanced', 'off'] as const;
 
 export const scenarioSchemas = {
   createBranch: z.object({
@@ -42,6 +44,19 @@ export const scenarioSchemas = {
     preferredBaseBranchId: z.string().trim().min(1).optional(),
     notes: z.string().optional(),
     recommendationId: z.string().optional(),
+  }),
+  promoteBranchRun: z.object({
+    envelope: commandEnvelopeSchema,
+    branchId: z.string().trim().min(1),
+    mutationId: z.string().trim().min(1).optional(),
+    assignee: z.string().trim().min(1).optional(),
+    sourceSurface: z.string().trim().min(1).default('spatial-twin'),
+    note: z.string().max(512).optional(),
+    executionMode: z.enum(executionModes).default('live'),
+    guardrailProfile: z.enum(guardrailProfiles).default('strict'),
+    rollbackWindowMinutes: z.number().int().min(1).max(1440).default(60),
+    idempotencyKey: z.string().min(8).max(128).optional(),
+    rollbackOnFailure: z.boolean().default(false),
   }),
   compareOutcomes: z.object({
     branchId: z.string().min(1),
@@ -140,6 +155,43 @@ export async function registerScenarioRoutes(
       recommendationId: payload.recommendationId,
       actorId: payload.envelope.actorId,
     });
+  });
+
+  app.post('/promote-branch-run', async (request, reply) => {
+    const payload = parseRequestBody(
+      scenarioSchemas.promoteBranchRun,
+      (request as RequestLike).body,
+      reply,
+    );
+    if (!payload) return;
+
+    const result = await service.promoteScenarioBranchToRun({
+      branchId: payload.branchId,
+      mutationId: payload.mutationId,
+      assignee: payload.assignee,
+      sourceSurface: payload.sourceSurface,
+      note: payload.note,
+      actorId: payload.envelope.actorId,
+      options: {
+        executionMode: payload.executionMode,
+        guardrailProfile: payload.guardrailProfile,
+        rollbackWindowMinutes: payload.rollbackWindowMinutes,
+        idempotencyKey: payload.idempotencyKey,
+        rollbackOnFailure: payload.rollbackOnFailure,
+      },
+    });
+
+    if (!result.ok) {
+      if (result.error === 'branch-not-found') {
+        return sendNotFound(reply, 'branch-not-found');
+      }
+      if (result.error === 'source-mutation-not-found') {
+        return sendConflict(reply, 'source-mutation-not-found');
+      }
+      return sendConflict(reply, 'source-mutation-chain-missing');
+    }
+
+    return result.result;
   });
 
   app.post('/compare-outcomes', async (request, reply) => {

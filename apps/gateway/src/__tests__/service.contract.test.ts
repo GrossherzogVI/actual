@@ -1038,6 +1038,84 @@ describe('gateway service contract behavior', () => {
     expect(mutations.some(mutation => mutation.id === simulation.mutation.id)).toBe(true);
   });
 
+  it('promotes simulation branches into command runs with traceable linkage', async () => {
+    const { service } = await createHarness();
+
+    const simulation = await service.simulateScenarioBranch({
+      label: 'Promote me',
+      chain: 'triage -> open-review',
+      source: 'manual',
+      expectedImpact: 'workflow compression',
+      confidence: 0.9,
+      actorId: 'owner',
+    });
+
+    const promoted = await service.promoteScenarioBranchToRun({
+      branchId: simulation.branch.id,
+      mutationId: simulation.mutation.id,
+      actorId: 'owner',
+      sourceSurface: 'spatial-twin',
+      options: {
+        executionMode: 'live',
+        guardrailProfile: 'strict',
+        rollbackWindowMinutes: 30,
+      },
+    });
+
+    expect(promoted.ok).toBe(true);
+    if (!promoted.ok) {
+      return;
+    }
+
+    expect(promoted.result.chain).toBe('triage -> open-review');
+    expect(promoted.result.sourceMutation.id).toBe(simulation.mutation.id);
+    expect(promoted.result.run.executionMode).toBe('live');
+    expect(promoted.result.run.sourceSurface).toBe('spatial-twin');
+    expect(promoted.result.promotionMutation.kind).toBe('run-promotion-link');
+    expect(promoted.result.promotionMutation.payload).toMatchObject({
+      sourceMutationId: simulation.mutation.id,
+      runId: promoted.result.run.id,
+      runExecutionMode: 'live',
+    });
+
+    const branchMutations = await service.listScenarioMutations(simulation.branch.id);
+    expect(
+      branchMutations.some(
+        mutation => mutation.id === promoted.result.promotionMutation.id,
+      ),
+    ).toBe(true);
+  });
+
+  it('rejects scenario promotion when mutation chain metadata is missing', async () => {
+    const { service } = await createHarness();
+
+    const branch = await service.createScenarioBranch({
+      name: 'No chain branch',
+    });
+    const mutation = await service.applyScenarioMutation({
+      branchId: branch.id,
+      mutationKind: 'manual-adjustment',
+      payload: {
+        amountDelta: 120,
+      },
+    });
+    expect(mutation).not.toBeNull();
+    if (!mutation) {
+      return;
+    }
+
+    const promoted = await service.promoteScenarioBranchToRun({
+      branchId: branch.id,
+      mutationId: mutation.id,
+      actorId: 'owner',
+    });
+
+    expect(promoted).toEqual({
+      ok: false,
+      error: 'source-mutation-chain-missing',
+    });
+  });
+
   it('filters command runs by actor, surface, mode, and error state', async () => {
     const { service } = await createHarness();
 

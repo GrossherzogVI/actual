@@ -207,6 +207,15 @@ export type ScenarioSimulationResult = {
   recommendationId?: string;
 };
 
+export type ScenarioBranchPromotionResult = {
+  branch: ScenarioBranch;
+  sourceMutation: ScenarioMutation;
+  promotionMutation: ScenarioMutation;
+  run: WorkflowCommandExecution;
+  chain: string;
+  promotedAtMs: number;
+};
+
 export type DelegateLane = {
   id: string;
   title: string;

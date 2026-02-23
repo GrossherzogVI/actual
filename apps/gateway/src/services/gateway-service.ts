@@ -41,6 +41,7 @@ import type {
   RunStatusTransition,
   ScenarioAdoptionCheck,
   ScenarioBranch,
+  ScenarioBranchPromotionResult,
   ScenarioComparison,
   ScenarioLineage,
   ScenarioLineageNode,
@@ -375,6 +376,18 @@ function deriveSimulationDelta(input: {
     amountDelta: hasExplicitAmount ? Math.round(explicitAmount as number) : derivedAmount,
     riskDelta: hasExplicitRisk ? Math.round(explicitRisk as number) : derivedRisk,
   };
+}
+
+function mutationChain(mutation: ScenarioMutation): string | null {
+  const chain = mutation.payload.chain;
+  if (typeof chain !== 'string') {
+    return null;
+  }
+  const trimmed = chain.trim();
+  if (!trimmed) {
+    return null;
+  }
+  return trimmed;
 }
 
 function encodeOpsActivityCursor(cursor: OpsActivityCursor): string {
@@ -2597,6 +2610,127 @@ export function createGatewayService(
     };
   }
 
+  async function promoteScenarioBranchToRun(input: {
+    branchId: string;
+    mutationId?: string;
+    assignee?: string;
+    sourceSurface?: string;
+    note?: string;
+    actorId?: string;
+    options?: ExecutionOptionsInput;
+  }): Promise<
+    | { ok: true; result: ScenarioBranchPromotionResult }
+    | {
+        ok: false;
+        error:
+          | 'branch-not-found'
+          | 'source-mutation-not-found'
+          | 'source-mutation-chain-missing';
+      }
+  > {
+    const branch = await repository.getScenarioBranchById(input.branchId);
+    if (!branch) {
+      return {
+        ok: false,
+        error: 'branch-not-found',
+      };
+    }
+
+    const mutations = await repository.listScenarioMutations(branch.id);
+    const orderedMutations = mutations
+      .slice()
+      .sort(
+        (a, b) =>
+          b.createdAtMs - a.createdAtMs ||
+          (a.id === b.id ? 0 : a.id < b.id ? 1 : -1),
+      );
+
+    const sourceMutation = input.mutationId
+      ? orderedMutations.find(mutation => mutation.id === input.mutationId)
+      : orderedMutations.find(mutation => !!mutationChain(mutation));
+
+    if (!sourceMutation) {
+      return {
+        ok: false,
+        error: 'source-mutation-not-found',
+      };
+    }
+
+    const chain = mutationChain(sourceMutation);
+    if (!chain) {
+      return {
+        ok: false,
+        error: 'source-mutation-chain-missing',
+      };
+    }
+
+    const actorId = input.actorId || 'owner';
+    const sourceSurface = input.sourceSurface || 'spatial-twin';
+    const promotedAtMs = Date.now();
+    const run = await executeWorkflowCommandChain({
+      chain,
+      assignee: input.assignee,
+      options: input.options,
+      actorId,
+      sourceSurface,
+    });
+
+    const source = sourceMutation.payload.source;
+    const recommendationId = sourceMutation.payload.recommendationId;
+    const promotionMutation = await applyScenarioMutation({
+      branchId: branch.id,
+      mutationKind: 'run-promotion-link',
+      payload: {
+        sourceMutationId: sourceMutation.id,
+        source: typeof source === 'string' && source.length > 0 ? source : 'manual',
+        recommendationId:
+          typeof recommendationId === 'string' && recommendationId.length > 0
+            ? recommendationId
+            : undefined,
+        chain,
+        runId: run.id,
+        runStatus: run.status,
+        runExecutionMode: run.executionMode,
+        runGuardrailProfile: run.guardrailProfile,
+        runRollbackEligible: run.rollbackEligible,
+        runRollbackWindowUntilMs: run.rollbackWindowUntilMs,
+        actorId,
+        sourceSurface,
+        note: input.note,
+        promotedAtMs,
+      },
+    });
+
+    if (!promotionMutation) {
+      throw new Error('scenario-promotion-mutation-failed');
+    }
+
+    await queue.enqueue(
+      queueJob('scenario.branch.promoted-run', {
+        branchId: branch.id,
+        sourceMutationId: sourceMutation.id,
+        promotionMutationId: promotionMutation.id,
+        runId: run.id,
+        status: run.status,
+        executionMode: run.executionMode,
+        actorId,
+        sourceSurface,
+      }),
+    );
+
+    return {
+      ok: true,
+      result: {
+        branch,
+        sourceMutation,
+        promotionMutation,
+        run,
+        chain,
+        promotedAtMs,
+      },
+    };
+  }
+
   async function createScenarioBranch(input: {
     name: string;
     baseBranchId?: string;
@@ -4002,6 +4136,7 @@ export function createGatewayService(
     listScenarioBranches,
     createScenarioBranch,
     simulateScenarioBranch,
+    promoteScenarioBranchToRun,
     listScenarioMutations,
     applyScenarioMutation,
     compareScenarioOutcomes,

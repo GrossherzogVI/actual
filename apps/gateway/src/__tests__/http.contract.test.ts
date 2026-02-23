@@ -852,6 +852,86 @@ describe('gateway HTTP contract/runtime', () => {
     expect(body.source).toBe('decision-graph');
   });
 
+  it('promotes simulated scenario branches into workflow command runs', async () => {
+    const { app } = await createHarness();
+
+    const simulated = await invoke(app, 'POST', '/scenario/v1/simulate-branch', {
+      envelope: envelope(),
+      label: 'Promotable simulation',
+      chain: 'triage -> open-review',
+      source: 'command-mesh',
+      expectedImpact: 'workflow compression',
+      confidence: 0.9,
+    });
+    expect(simulated.statusCode).toBe(200);
+
+    const simulationBody = simulated.body as {
+      branch?: { id?: string };
+      mutation?: { id?: string };
+    };
+    const branchId = simulationBody.branch?.id;
+    const mutationId = simulationBody.mutation?.id;
+    expect(typeof branchId).toBe('string');
+    expect(typeof mutationId).toBe('string');
+    if (typeof branchId !== 'string' || typeof mutationId !== 'string') {
+      return;
+    }
+
+    const promoted = await invoke(app, 'POST', '/scenario/v1/promote-branch-run', {
+      envelope: envelope(),
+      branchId,
+      mutationId,
+      sourceSurface: 'spatial-twin',
+      executionMode: 'live',
+      guardrailProfile: 'strict',
+      rollbackWindowMinutes: 30,
+      rollbackOnFailure: false,
+    });
+
+    expect(promoted.statusCode).toBe(200);
+    const body = promoted.body as {
+      branch?: { id?: string };
+      sourceMutation?: { id?: string };
+      promotionMutation?: { kind?: string };
+      run?: { id?: string; status?: string; executionMode?: string };
+      chain?: string;
+    };
+    expect(body.branch?.id).toBe(branchId);
+    expect(body.sourceMutation?.id).toBe(mutationId);
+    expect(body.promotionMutation?.kind).toBe('run-promotion-link');
+    expect(typeof body.run?.id).toBe('string');
+    expect(body.run?.executionMode).toBe('live');
+    expect(body.chain).toBe('triage -> open-review');
+  });
+
+  it('returns 409 when promoting a mutation without chain metadata', async () => {
+    const { app, seeds } = await createHarness();
+
+    const mutation = await invoke(app, 'POST', '/scenario/v1/apply-mutation', {
+      envelope: envelope(),
+      branchId: seeds.branchId,
+      mutationKind: 'manual-adjustment',
+      payload: {
+        amountDelta: 120,
+      },
+    });
+    expect(mutation.statusCode).toBe(200);
+
+    const mutationBody = mutation.body as { id?: string };
+    const promoted = await invoke(app, 'POST', '/scenario/v1/promote-branch-run', {
+      envelope: envelope(),
+      branchId: seeds.branchId,
+      mutationId: mutationBody.id,
+      executionMode: 'live',
+      guardrailProfile: 'strict',
+      rollbackWindowMinutes: 60,
+      rollbackOnFailure: false,
+    });
+
+    expect(promoted.statusCode).toBe(409);
+    expect(promoted.body).toEqual({ error: 'source-mutation-chain-missing' });
+  });
+
   it('serves temporal intelligence signals over HTTP query params', async () => {
     const { app } = await createHarness();
 

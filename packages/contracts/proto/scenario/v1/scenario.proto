@@ -8,6 +8,7 @@ service ScenarioService {
   rpc CreateBranch(CreateBranchRequest) returns (CreateBranchResponse);
   rpc ApplyMutation(ApplyMutationRequest) returns (ApplyMutationResponse);
   rpc SimulateBranch(SimulateBranchRequest) returns (SimulateBranchResponse);
+  rpc PromoteBranchRun(PromoteBranchRunRequest) returns (PromoteBranchRunResponse);
   rpc CompareOutcomes(CompareOutcomesRequest) returns (CompareOutcomesResponse);
   rpc AdoptionCheck(AdoptionCheckRequest) returns (AdoptionCheckResponse);
   rpc ListMutations(ListMutationsRequest) returns (ListMutationsResponse);
@@ -63,6 +64,31 @@ message SimulateBranchResponse {
   int64 simulated_at_ms = 9;
   string expected_impact = 10;
   string recommendation_id = 11;
+}
+
+message PromoteBranchRunRequest {
+  financeos.common.v1.CommandEnvelope envelope = 1;
+  string branch_id = 2;
+  string mutation_id = 3;
+  string assignee = 4;
+  string source_surface = 5;
+  string note = 6;
+  string execution_mode = 7;
+  string guardrail_profile = 8;
+  int32 rollback_window_minutes = 9;
+  string idempotency_key = 10;
+  bool rollback_on_failure = 11;
+}
+
+message PromoteBranchRunResponse {
+  string branch_id = 1;
+  string source_mutation_id = 2;
+  string promotion_mutation_id = 3;
+  string run_id = 4;
+  string run_status = 5;
+  string run_execution_mode = 6;
+  string chain = 7;
+  int64 promoted_at_ms = 8;
 }
 
 message CompareOutcomesRequest {

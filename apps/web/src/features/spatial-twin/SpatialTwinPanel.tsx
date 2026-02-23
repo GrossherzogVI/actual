@@ -2,6 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { apiClient } from '../../core/api/client';
+import type {
+  ExecutionMode,
+  GuardrailProfile,
+  ScenarioMutation,
+  WorkflowCommandExecution,
+} from '../../core/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -14,6 +20,7 @@ import {
 
 type SpatialTwinPanelProps = {
   onStatus?: (status: string) => void;
+  onRoute?: (route: string) => void;
 };
 
 type CheckpointLevel = 'pass' | 'warn' | 'fail';
@@ -23,6 +30,17 @@ type Checkpoint = {
   label: string;
   level: CheckpointLevel;
   detail: string;
+};
+
+type PromotionEntry = {
+  promotionMutationId: string;
+  sourceMutationId?: string;
+  runId?: string;
+  chain?: string;
+  source: string;
+  note?: string;
+  promotedAtMs: number;
+  run: WorkflowCommandExecution | null;
 };
 
 const BRANCH_COLORS = ['var(--fo-info)', 'var(--fo-ok)', 'var(--fo-accent)', '#f97316'];
@@ -56,7 +74,52 @@ function metricClass(value: number): string {
   return 'fo-spatial-metric-neutral';
 }
 
-export function SpatialTwinPanel({ onStatus }: SpatialTwinPanelProps) {
+function mutationChain(mutation: ScenarioMutation): string | null {
+  const chain = mutation.payload.chain;
+  if (typeof chain !== 'string') {
+    return null;
+  }
+  const trimmed = chain.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function mutationSource(mutation: ScenarioMutation): string {
+  const source = mutation.payload.source;
+  if (typeof source === 'string' && source.trim().length > 0) {
+    return source.trim();
+  }
+  return 'manual';
+}
+
+function optionalString(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function optionalNumber(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  return undefined;
+}
+
+function isRollbackOpen(run: WorkflowCommandExecution, nowMs: number): boolean {
+  if (!(run.status === 'completed' || run.status === 'failed')) {
+    return false;
+  }
+  if (!run.rollbackEligible) {
+    return false;
+  }
+  if (typeof run.rollbackWindowUntilMs !== 'number') {
+    return false;
+  }
+  return run.rollbackWindowUntilMs > nowMs;
+}
+
+export function SpatialTwinPanel({ onStatus, onRoute }: SpatialTwinPanelProps) {
   const queryClient = useQueryClient();
   const [branchName, setBranchName] = useState('');
   const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
@@ -64,6 +127,16 @@ export function SpatialTwinPanel({ onStatus }: SpatialTwinPanelProps) {
   const [amountDelta, setAmountDelta] = useState('150');
   const [riskDelta, setRiskDelta] = useState('-1');
   const [forceAdopt, setForceAdopt] = useState(false);
+  const [promotionMutationId, setPromotionMutationId] = useState<string | null>(null);
+  const [promotionExecutionMode, setPromotionExecutionMode] =
+    useState<ExecutionMode>('live');
+  const [promotionGuardrailProfile, setPromotionGuardrailProfile] =
+    useState<GuardrailProfile>('strict');
+  const [promotionRollbackWindowMinutes, setPromotionRollbackWindowMinutes] =
+    useState(60);
+  const [promotionRollbackOnFailure, setPromotionRollbackOnFailure] = useState(false);
+  const [promotionIdempotencyKey, setPromotionIdempotencyKey] = useState('');
+  const [promotionAssignee, setPromotionAssignee] = useState('delegate');
 
   const branchesQuery = useQuery({
     queryKey: ['scenario-branches'],
@@ -109,6 +182,83 @@ export function SpatialTwinPanel({ onStatus }: SpatialTwinPanelProps) {
     enabled: !!selectedBranch,
     queryFn: () => apiClient.listScenarioMutations(selectedBranch!.id),
   });
+
+  const promotableMutations = useMemo(
+    () =>
+      (mutationsQuery.data || [])
+        .filter(mutation => !!mutationChain(mutation))
+        .sort(
+          (a, b) =>
+            b.createdAtMs - a.createdAtMs ||
+            (a.id === b.id ? 0 : a.id < b.id ? 1 : -1),
+        ),
+    [mutationsQuery.data],
+  );
+  const selectedPromotionMutation =
+    promotableMutations.find(mutation => mutation.id === promotionMutationId) ||
+    null;
+
+  const commandRunsQuery = useQuery({
+    queryKey: ['command-runs', 'spatial-twin'],
+    queryFn: () =>
+      apiClient.listCommandRuns({
+        limit: 80,
+      }),
+    refetchInterval: 15_000,
+  });
+  const commandRunsById = useMemo(
+    () =>
+      new Map(
+        (commandRunsQuery.data || []).map(run => [run.id, run] as const),
+      ),
+    [commandRunsQuery.data],
+  );
+
+  const promotionEntries = useMemo<PromotionEntry[]>(
+    () =>
+      (mutationsQuery.data || [])
+        .filter(mutation => mutation.kind === 'run-promotion-link')
+        .map(mutation => {
+          const runId = optionalString(mutation.payload.runId);
+          const promotedAtMs =
+            optionalNumber(mutation.payload.promotedAtMs) || mutation.createdAtMs;
+          return {
+            promotionMutationId: mutation.id,
+            sourceMutationId: optionalString(mutation.payload.sourceMutationId),
+            runId,
+            chain: optionalString(mutation.payload.chain),
+            source: optionalString(mutation.payload.source) || 'manual',
+            note: optionalString(mutation.payload.note),
+            promotedAtMs,
+            run: runId ? commandRunsById.get(runId) || null : null,
+          };
+        })
+        .sort(
+          (a, b) =>
+            b.promotedAtMs - a.promotedAtMs ||
+            (a.promotionMutationId === b.promotionMutationId
+              ? 0
+              : a.promotionMutationId < b.promotionMutationId
+                ? 1
+                : -1),
+        ),
+    [commandRunsById, mutationsQuery.data],
+  );
+
+  useEffect(() => {
+    if (promotableMutations.length === 0) {
+      if (promotionMutationId !== null) {
+        setPromotionMutationId(null);
+      }
+      return;
+    }
+    if (
+      !promotionMutationId ||
+      !promotableMutations.some(mutation => mutation.id === promotionMutationId)
+    ) {
+      setPromotionMutationId(promotableMutations[0]!.id);
+    }
+  }, [promotableMutations, promotionMutationId]);
 
   const adoptionCheckQuery = useQuery({
     queryKey: ['scenario-adoption-check', selectedBranch?.id, comparisonTarget?.id],
@@ -208,6 +358,67 @@ export function SpatialTwinPanel({ onStatus }: SpatialTwinPanelProps) {
     },
   });
 
+  const promoteBranchRun = useMutation({
+    mutationFn: async () => {
+      if (!selectedBranch) {
+        throw new Error('Select a branch to promote.');
+      }
+
+      return apiClient.promoteScenarioBranchRun({
+        branchId: selectedBranch.id,
+        mutationId: promotionMutationId || undefined,
+        assignee: promotionAssignee.trim() || undefined,
+        sourceSurface: 'spatial-twin',
+        note: `Spatial twin promotion from branch ${selectedBranch.name}.`,
+        executionMode: promotionExecutionMode,
+        guardrailProfile: promotionGuardrailProfile,
+        rollbackWindowMinutes: promotionRollbackWindowMinutes,
+        idempotencyKey: promotionIdempotencyKey.trim() || undefined,
+        rollbackOnFailure: promotionRollbackOnFailure,
+      });
+    },
+    onSuccess: async promotion => {
+      if (onStatus) {
+        onStatus(
+          `Promoted branch ${promotion.branch.name} to ${promotion.run.executionMode} run ${promotion.run.id} (${promotion.run.status}).`,
+        );
+      }
+      onRoute?.('/ops#command-mesh');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['scenario-branches'] }),
+        queryClient.invalidateQueries({ queryKey: ['scenario-mutations'] }),
+        queryClient.invalidateQueries({ queryKey: ['scenario-compare'] }),
+        queryClient.invalidateQueries({ queryKey: ['scenario-adoption-check'] }),
+        queryClient.invalidateQueries({ queryKey: ['scenario-lineage'] }),
+        queryClient.invalidateQueries({ queryKey: ['command-runs'] }),
+      ]);
+    },
+    onError: error => {
+      if (onStatus) {
+        onStatus(errorMessage(error, 'Promote branch run failed'));
+      }
+    },
+  });
+
+  const rollbackPromotedRun = useMutation({
+    mutationFn: async (input: { runId: string; reason: string }) =>
+      apiClient.rollbackCommandRun(input.runId, input.reason),
+    onSuccess: async run => {
+      if (onStatus) {
+        onStatus(`Rollback completed for promoted run ${run.id}.`);
+      }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['command-runs'] }),
+        queryClient.invalidateQueries({ queryKey: ['scenario-mutations'] }),
+      ]);
+    },
+    onError: error => {
+      if (onStatus) {
+        onStatus(errorMessage(error, 'Rollback promoted run failed'));
+      }
+    },
+  });
+
   const positioned = useMemo(
     () =>
       branches.map((branch, index) => ({
@@ -287,6 +498,22 @@ export function SpatialTwinPanel({ onStatus }: SpatialTwinPanelProps) {
     (!canAdopt && adoptionCheckQuery.data !== null);
   const forceAdoptDisabled =
     !selectedBranch || adoptBranch.isPending || !forceAdopt;
+  const selectedPromotionChain = selectedPromotionMutation
+    ? mutationChain(selectedPromotionMutation)
+    : null;
+  const promoteDisabled =
+    !selectedBranch ||
+    promotableMutations.length === 0 ||
+    promoteBranchRun.isPending ||
+    !selectedPromotionChain;
+  const latestRollbackEligiblePromotion = useMemo(
+    () =>
+      promotionEntries.find(
+        entry =>
+          !!entry.run && isRollbackOpen(entry.run, Date.now()),
+      ) || null,
+    [promotionEntries],
+  );
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -311,6 +538,26 @@ export function SpatialTwinPanel({ onStatus }: SpatialTwinPanelProps) {
         event.preventDefault();
         adoptBranch.mutate({ branchId: selectedBranch.id, force: true });
       }
+      if (
+        key === 'p' &&
+        selectedBranch &&
+        promotableMutations.length > 0 &&
+        !promoteBranchRun.isPending
+      ) {
+        event.preventDefault();
+        promoteBranchRun.mutate();
+      }
+      if (
+        key === 'r' &&
+        latestRollbackEligiblePromotion?.runId &&
+        !rollbackPromotedRun.isPending
+      ) {
+        event.preventDefault();
+        rollbackPromotedRun.mutate({
+          runId: latestRollbackEligiblePromotion.runId,
+          reason: 'spatial-twin-promotion-rollback',
+        });
+      }
     };
 
     window.addEventListener('keydown', onKeyDown);
@@ -319,6 +566,10 @@ export function SpatialTwinPanel({ onStatus }: SpatialTwinPanelProps) {
     adoptBranch,
     applyMutation,
     createBranch,
+    promoteBranchRun,
+    promotableMutations.length,
+    latestRollbackEligiblePromotion,
+    rollbackPromotedRun,
     forceAdoptDisabled,
     safeAdoptDisabled,
     selectedBranch,
@@ -604,11 +855,193 @@ export function SpatialTwinPanel({ onStatus }: SpatialTwinPanelProps) {
         ) : null}
       </article>
 
+      <article className="fo-card">
+        <strong>Promote Simulation</strong>
+        <small>
+          Promote a simulated chain into autopilot execution while keeping source
+          mutation and run linkage.
+        </small>
+
+        <div className="fo-row mt-2">
+          <label className="fo-space-between fo-spatial-compare-select w-full max-w-[340px]">
+            <small className="mr-4">Simulation source</small>
+            <Select
+              value={promotionMutationId || 'unavailable'}
+              onValueChange={value => setPromotionMutationId(value)}
+            >
+              <SelectTrigger className="flex-1">
+                <SelectValue placeholder="Pick simulation mutation" />
+              </SelectTrigger>
+              <SelectContent>
+                {promotableMutations.length === 0 ? (
+                  <SelectItem value="unavailable" disabled>
+                    no simulation chains
+                  </SelectItem>
+                ) : null}
+                {promotableMutations.map(mutation => (
+                  <SelectItem key={mutation.id} value={mutation.id}>
+                    {new Date(mutation.createdAtMs).toLocaleTimeString()} ·{' '}
+                    {mutationSource(mutation)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </label>
+        </div>
+
+        <div className="fo-row mt-2">
+          <Select
+            value={promotionExecutionMode}
+            onValueChange={value => setPromotionExecutionMode(value as ExecutionMode)}
+          >
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Mode" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="dry-run">dry-run</SelectItem>
+              <SelectItem value="live">live</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={promotionGuardrailProfile}
+            onValueChange={value =>
+              setPromotionGuardrailProfile(value as GuardrailProfile)
+            }
+          >
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Guardrail" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="strict">strict</SelectItem>
+              <SelectItem value="balanced">balanced</SelectItem>
+              <SelectItem value="off">off</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input
+            className="w-[120px]"
+            aria-label="spatial twin rollback window minutes"
+            type="number"
+            min={1}
+            max={1440}
+            value={promotionRollbackWindowMinutes}
+            onChange={event =>
+              setPromotionRollbackWindowMinutes(
+                Math.max(1, Math.min(1440, Number(event.target.value) || 60)),
+              )
+            }
+            title="Rollback window minutes"
+          />
+          <label className="fo-row">
+            <input
+              type="checkbox"
+              aria-label="spatial twin rollback on failure"
+              checked={promotionRollbackOnFailure}
+              onChange={event => setPromotionRollbackOnFailure(event.target.checked)}
+            />
+            <small>rollback on failure</small>
+          </label>
+        </div>
+
+        <div className="fo-row mt-2">
+          <Input
+            aria-label="spatial twin promotion assignee"
+            value={promotionAssignee}
+            onChange={event => setPromotionAssignee(event.target.value)}
+            placeholder="assignee (optional)"
+          />
+          <Input
+            aria-label="spatial twin idempotency key"
+            value={promotionIdempotencyKey}
+            onChange={event => setPromotionIdempotencyKey(event.target.value)}
+            placeholder="idempotency key (optional, 8-128 chars)"
+          />
+          <Button
+            disabled={promoteDisabled}
+            onClick={() => promoteBranchRun.mutate()}
+          >
+            {promoteBranchRun.isPending
+              ? 'Promoting...'
+              : promotionExecutionMode === 'live'
+                ? 'Promote to live run'
+                : 'Promote to dry-run'}
+          </Button>
+        </div>
+
+        <small>
+          {selectedPromotionChain
+            ? `Chain: ${selectedPromotionChain}`
+            : 'No simulation chain found for current branch.'}
+        </small>
+      </article>
+
+      <article className="fo-card">
+        <strong>Run Provenance</strong>
+        <small>
+          Trace promoted simulations to command runs and rollback from this lane.
+        </small>
+        {promotionEntries.length === 0 ? (
+          <small>No promoted runs for this branch yet.</small>
+        ) : null}
+        {promotionEntries.slice(0, 6).map(entry => {
+          const run = entry.run;
+          const rollbackOpen = run ? isRollbackOpen(run, Date.now()) : false;
+          return (
+            <article key={entry.promotionMutationId} className="fo-log">
+              <strong>
+                {entry.chain || 'unknown chain'} {run ? `→ ${run.status}` : '→ pending run'}
+              </strong>
+              <small>
+                promoted {new Date(entry.promotedAtMs).toLocaleString()} · source {entry.source}
+              </small>
+              <small>
+                source mutation: {entry.sourceMutationId || 'unknown'} · run:{' '}
+                {entry.runId || 'unknown'}
+              </small>
+              {run ? (
+                <small>
+                  mode {run.executionMode} · guardrail {run.guardrailProfile} · errors{' '}
+                  {run.errorCount} · status path{' '}
+                  {run.statusTimeline.map(step => step.status).join(' -> ')}
+                </small>
+              ) : (
+                <small>Run details not loaded yet.</small>
+              )}
+              {run && typeof run.rollbackWindowUntilMs === 'number' ? (
+                <small>
+                  rollback window until {new Date(run.rollbackWindowUntilMs).toLocaleString()}
+                </small>
+              ) : null}
+              {entry.note ? <small>note: {entry.note}</small> : null}
+              <div className="fo-row mt-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={!run || !rollbackOpen || rollbackPromotedRun.isPending}
+                  onClick={() => {
+                    if (!run) {
+                      return;
+                    }
+                    rollbackPromotedRun.mutate({
+                      runId: run.id,
+                      reason: 'spatial-twin-promotion-rollback',
+                    });
+                  }}
+                >
+                  {rollbackPromotedRun.isPending ? 'Rolling back...' : 'Rollback promoted run'}
+                </Button>
+              </div>
+            </article>
+          );
+        })}
+      </article>
+
       <div className="fo-hints">
         <code>alt+shift+b branch</code>
         <code>alt+shift+m mutate</code>
         <code>alt+shift+a adopt safe</code>
         <code>alt+shift+f force adopt</code>
+        <code>alt+shift+p promote run</code>
+        <code>alt+shift+r rollback promoted run</code>
       </div>
     </section>
   );
