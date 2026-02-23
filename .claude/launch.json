@@ -3,9 +3,9 @@
   "configurations": [
     {
       "name": "desktop-client",
-      "runtimeExecutable": "/Users/admin/homebrew/bin/node",
-      "runtimeArgs": [".yarn/releases/yarn-4.10.3.cjs", "workspace", "@actual-app/web", "start"],
-      "port": 3001
+      "runtimeExecutable": "/bin/sh",
+      "runtimeArgs": ["-c", "cd packages/desktop-client && IS_GENERIC_BROWSER=1 REACT_APP_BACKEND_WORKER_HASH=dev /Users/admin/homebrew/bin/node ../../node_modules/.bin/vite --port 3055"],
+      "port": 3055
     },
     {
       "name": "desktop-with-sync",
