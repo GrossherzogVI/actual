@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { motion, AnimatePresence, type Variants } from 'motion/react';
 
 import {
   CommandPaletteAdvanced,
@@ -280,10 +281,10 @@ export function App() {
     (input: {
       target: RunAnomalyCandidate | null;
       selector:
-        | 'latest-live'
-        | 'latest-failed'
-        | 'latest-blocked'
-        | 'latest-rollback-eligible';
+      | 'latest-live'
+      | 'latest-failed'
+      | 'latest-blocked'
+      | 'latest-rollback-eligible';
       source: 'palette' | 'shell';
       emptyMessage: string;
       contextLabel: string;
@@ -617,28 +618,59 @@ export function App() {
     });
   };
 
+  // Motion Variants
+  const containerVariants: Variants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+        delayChildren: 0.1,
+      },
+    },
+  };
+
+  const itemVariants: Variants = {
+    hidden: { opacity: 0, y: 15, scale: 0.98 },
+    show: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: {
+        type: 'spring',
+        stiffness: 300,
+        damping: 24,
+      }
+    },
+  };
+
   return (
     <div className="fo-app-shell">
       <header className="fo-topbar">
-        <div>
+        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.4 }}>
           <h1>Finance OS - Command Center</h1>
           <small>Precision Command Center / Ops Superhuman mode</small>
-        </div>
+        </motion.div>
 
-        <div className="fo-metrics">
-          <div className="fo-metric-card">
+        <motion.div
+          className="fo-metrics"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.4, staggerChildren: 0.1 }}
+        >
+          <motion.div className="fo-metric-card" whileHover={{ scale: 1.05 }}>
             <strong>{moneyPulse.data?.pendingReviews ?? '-'}</strong>
             <small>Pending Reviews</small>
-          </div>
-          <div className="fo-metric-card">
+          </motion.div>
+          <motion.div className="fo-metric-card" whileHover={{ scale: 1.05 }}>
             <strong>{moneyPulse.data?.urgentReviews ?? '-'}</strong>
             <small>Urgent</small>
-          </div>
-          <div className="fo-metric-card">
+          </motion.div>
+          <motion.div className="fo-metric-card" whileHover={{ scale: 1.05 }}>
             <strong>{moneyPulse.data?.expiringContracts ?? '-'}</strong>
             <small>Expiring 30d</small>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       </header>
 
       <nav className="fo-loop-strip">
@@ -702,16 +734,24 @@ export function App() {
         </small>
       </nav>
 
-      <main className="fo-main-grid">
+      <motion.main
+        className="fo-main-grid"
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+      >
         <aside className="fo-column fo-left-column">
-          <CloseLoopPanel onStatus={setStatus} />
-          <section className="fo-panel">
+          <motion.div variants={itemVariants}>
+            <CloseLoopPanel onStatus={setStatus} />
+          </motion.div>
+
+          <motion.section className="fo-panel" variants={itemVariants}>
             <header className="fo-panel-header">
               <h2>Narrative Compression Pulse</h2>
               <small>Daily briefing compressed into top actionable outcomes.</small>
             </header>
             <div className="fo-stack">
-              <article className="fo-card">
+              <motion.article className="fo-card" whileHover={{ scale: 1.01 }}>
                 <strong>{narrativePulse.data?.summary || 'Generating pulse...'}</strong>
                 <small>
                   Generated:{' '}
@@ -719,77 +759,121 @@ export function App() {
                     ? new Date(narrativePulse.data.generatedAtMs).toLocaleTimeString()
                     : '-'}
                 </small>
-              </article>
-              {(narrativePulse.data?.highlights || []).map(highlight => (
-                <article className="fo-card" key={highlight}>
-                  <small>{highlight}</small>
-                </article>
-              ))}
+              </motion.article>
+              <AnimatePresence>
+                {(narrativePulse.data?.highlights || []).map((highlight, index) => (
+                  <motion.article
+                    className="fo-card"
+                    key={highlight}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.1 * index }}
+                  >
+                    <small>{highlight}</small>
+                  </motion.article>
+                ))}
+              </AnimatePresence>
               {(narrativePulse.data?.actionHints || []).map(hint => (
                 <article className="fo-card" key={hint}>
                   <strong>{hint}</strong>
                 </article>
               ))}
             </div>
-          </section>
-          <TemporalIntelligencePanel onStatus={setStatus} onRoute={handleRoute} />
+          </motion.section>
+
+          <motion.div variants={itemVariants}>
+            <TemporalIntelligencePanel onStatus={setStatus} onRoute={handleRoute} />
+          </motion.div>
         </aside>
 
         <section className="fo-column fo-center-column">
-          <CommandMeshPanel onRoute={handleRoute} onStatus={setStatus} />
-          <PlaybooksPanel onStatus={setStatus} />
-          <SpatialTwinPanel onStatus={setStatus} />
-          <DecisionGraphPanel
-            recommendations={recommendations.data || []}
-            onStatus={setStatus}
-            onRoute={handleRoute}
-          />
+          <motion.div variants={itemVariants}>
+            <CommandMeshPanel onRoute={handleRoute} onStatus={setStatus} />
+          </motion.div>
+          <motion.div variants={itemVariants}>
+            <PlaybooksPanel onStatus={setStatus} />
+          </motion.div>
+          <motion.div variants={itemVariants}>
+            <SpatialTwinPanel onStatus={setStatus} />
+          </motion.div>
+          <motion.div variants={itemVariants}>
+            <DecisionGraphPanel
+              recommendations={recommendations.data || []}
+              onStatus={setStatus}
+              onRoute={handleRoute}
+            />
+          </motion.div>
         </section>
 
         <aside className="fo-column fo-right-column">
-          <AdaptiveFocusRail onRoute={handleRoute} onStatus={setStatus} />
-          <OpsActivityFeedPanel onRoute={handleRoute} />
-          <RuntimeIncidentTimelinePanel onRoute={handleRoute} onStatus={setStatus} />
-          <DelegateLanesPanel onStatus={setStatus} />
-          <PolicyControlPanel onStatus={setStatus} />
-          <RuntimeControlPanel onStatus={setStatus} />
+          <motion.div variants={itemVariants}>
+            <AdaptiveFocusRail onRoute={handleRoute} onStatus={setStatus} />
+          </motion.div>
+          <motion.div variants={itemVariants}>
+            <OpsActivityFeedPanel onRoute={handleRoute} />
+          </motion.div>
+          <motion.div variants={itemVariants}>
+            <RuntimeIncidentTimelinePanel onRoute={handleRoute} onStatus={setStatus} />
+          </motion.div>
+          <motion.div variants={itemVariants}>
+            <DelegateLanesPanel onStatus={setStatus} />
+          </motion.div>
+          <motion.div variants={itemVariants}>
+            <PolicyControlPanel onStatus={setStatus} />
+          </motion.div>
+          <motion.div variants={itemVariants}>
+            <RuntimeControlPanel onStatus={setStatus} />
+          </motion.div>
         </aside>
-      </main>
+      </motion.main>
 
       <footer className="fo-status-bar">
         <span>{status}</span>
         <code>{lastRoute}</code>
         <code>
           {latestTerminalRun
-            ? `run:${latestTerminalRun.status} (${latestTerminalRun.statusPath || 'n/a'}) | rollback:${
-                latestTerminalRun.rollbackWindowUntilMs
-                  ? latestTerminalRun.rollbackWindowUntilMs > Date.now()
-                    ? `open until ${new Date(
-                        latestTerminalRun.rollbackWindowUntilMs,
-                      ).toLocaleTimeString()}`
-                    : 'window expired'
-                  : 'n/a'
-              }`
+            ? `run:${latestTerminalRun.status} (${latestTerminalRun.statusPath || 'n/a'}) | rollback:${latestTerminalRun.rollbackWindowUntilMs
+              ? latestTerminalRun.rollbackWindowUntilMs > Date.now()
+                ? `open until ${new Date(
+                  latestTerminalRun.rollbackWindowUntilMs,
+                ).toLocaleTimeString()}`
+                : 'window expired'
+              : 'n/a'
+            }`
             : 'run: none'}
         </code>
       </footer>
 
-      {paletteOpen ? (
-        <div className="fo-palette-overlay" role="presentation" onClick={() => setPaletteOpen(false)}>
-          <div
-            className="fo-palette"
-            style={{
-              borderColor: commandCenterTokens.color.border,
-            }}
-            onClick={event => event.stopPropagation()}
+      <AnimatePresence>
+        {paletteOpen ? (
+          <motion.div
+            className="fo-palette-overlay"
+            role="presentation"
+            onClick={() => setPaletteOpen(false)}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
           >
-            <CommandPaletteAdvanced
-              entries={paletteEntries}
-              onSelect={handlePaletteSelection}
-            />
-          </div>
-        </div>
-      ) : null}
+            <motion.div
+              className="fo-palette"
+              initial={{ scale: 0.95, opacity: 0, y: -20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: -20 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              style={{
+                borderColor: commandCenterTokens.color.border,
+              }}
+              onClick={event => event.stopPropagation()}
+            >
+              <CommandPaletteAdvanced
+                entries={paletteEntries}
+                onSelect={handlePaletteSelection}
+              />
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }
