@@ -98,6 +98,7 @@ function payloadFor(service: string, rpc: string, seeds: RuntimeSeeds) {
     ids: ['id-1'],
     status: 'accepted',
     resolvedAction: 'batch-policy',
+    chain: 'triage -> close-weekly',
     name: 'Scenario A',
     baseBranchId: seeds.branchId,
     notes: 'runtime-seed',

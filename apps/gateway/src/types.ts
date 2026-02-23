@@ -29,6 +29,23 @@ export type PlaybookRun = {
   createdAtMs: number;
 };
 
+export type WorkflowCommandExecutionStep = {
+  id: string;
+  raw: string;
+  canonical: string;
+  status: 'ok' | 'error';
+  detail: string;
+  route?: string;
+};
+
+export type WorkflowCommandExecution = {
+  id: string;
+  chain: string;
+  steps: WorkflowCommandExecutionStep[];
+  errorCount: number;
+  executedAtMs: number;
+};
+
 export type CloseRun = {
   id: string;
   period: 'weekly' | 'monthly';

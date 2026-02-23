@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { COMMAND_MESH_HINTS } from '@finance-os/domain-kernel';
+
 import { apiClient } from '../../core/api/client';
 
 type CommandMeshPanelProps = {
@@ -30,89 +32,25 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
 
   const execute = useMutation({
     mutationFn: async (chain: string) => {
-      const steps = chain
-        .split('->')
-        .map(part => part.trim().toLowerCase())
-        .filter(Boolean);
+      const run = await apiClient.executeCommandChain(chain);
 
-      for (const step of steps) {
-        if (step === 'triage' || step === 'resolve-next') {
-          const action = await apiClient.resolveNextAction();
-          if (action.route) {
-            onRoute(action.route);
-          }
-          addLog({
-            step,
-            status: 'ok',
-            detail: action.title,
-          });
-          continue;
-        }
-
-        if (step === 'close-weekly') {
-          const run = await apiClient.runCloseRoutine('weekly');
-          addLog({
-            step,
-            status: 'ok',
-            detail: `Weekly close run ${run.id} (${run.exceptionCount} exceptions)`,
-          });
-          continue;
-        }
-
-        if (step === 'close-monthly') {
-          const run = await apiClient.runCloseRoutine('monthly');
-          addLog({
-            step,
-            status: 'ok',
-            detail: `Monthly close run ${run.id} (${run.exceptionCount} exceptions)`,
-          });
-          continue;
-        }
-
-        if (step === 'playbook-create-default') {
-          const playbook = await apiClient.createPlaybook('Ops Compression', [
-            { verb: 'resolve-next-action', lane: 'triage' },
-            { verb: 'run-close', period: 'weekly' },
-          ]);
-          addLog({
-            step,
-            status: 'ok',
-            detail: `Created playbook ${playbook.name}`,
-          });
-          continue;
-        }
-
-        if (step === 'delegate-expiring') {
-          const lane = await apiClient.assignDelegateLane(
-            'Handle expiring contracts in 30d window',
-            'delegate',
-          );
-          addLog({
-            step,
-            status: 'ok',
-            detail: `Assigned lane ${lane.title}`,
-          });
-          continue;
-        }
-
-        if (step === 'open-review') {
-          onRoute('/review?priority=urgent');
-          addLog({
-            step,
-            status: 'ok',
-            detail: 'Opened urgent review lane',
-          });
-          continue;
-        }
-
+      for (const step of run.steps) {
         addLog({
-          step,
-          status: 'error',
-          detail: 'Unknown step',
+          step: step.raw,
+          status: step.status,
+          detail: step.detail,
         });
+
+        if (step.route) {
+          onRoute(step.route);
+        }
       }
 
-      onStatus('Command chain executed');
+      onStatus(
+        run.errorCount > 0
+          ? `Command chain executed with ${run.errorCount} error(s)`
+          : 'Command chain executed',
+      );
       await queryClient.invalidateQueries();
     },
   });
@@ -142,12 +80,9 @@ export function CommandMeshPanel({ onRoute, onStatus }: CommandMeshPanelProps) {
       </div>
 
       <div className="fo-hints">
-        <code>triage</code>
-        <code>close-weekly</code>
-        <code>close-monthly</code>
-        <code>playbook-create-default</code>
-        <code>delegate-expiring</code>
-        <code>open-review</code>
+        {COMMAND_MESH_HINTS.map(hint => (
+          <code key={hint.command}>{hint.command}</code>
+        ))}
       </div>
 
       <div className="fo-log-list">

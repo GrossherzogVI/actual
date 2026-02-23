@@ -32,6 +32,11 @@ export const workflowSchemas = {
     status: z.string().min(1),
     resolvedAction: z.string().default('batch-policy'),
   }),
+  executeChain: z.object({
+    envelope: commandEnvelopeSchema,
+    chain: z.string().min(1),
+    assignee: z.string().min(1).optional(),
+  }),
 };
 
 export async function registerWorkflowRoutes(
@@ -106,5 +111,19 @@ export async function registerWorkflowRoutes(
       payload.status,
       payload.resolvedAction,
     );
+  });
+
+  app.post('/execute-chain', async (request, reply) => {
+    const payload = parseRequestBody(
+      workflowSchemas.executeChain,
+      (request as RequestLike).body,
+      reply,
+    );
+    if (!payload) return;
+
+    return service.executeWorkflowCommandChain({
+      chain: payload.chain,
+      assignee: payload.assignee,
+    });
   });
 }

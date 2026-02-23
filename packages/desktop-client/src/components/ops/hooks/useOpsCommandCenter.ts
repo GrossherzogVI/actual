@@ -23,6 +23,21 @@ type AdaptiveFocus = {
   }>;
 };
 
+type CommandChainRun = {
+  id: string;
+  chain: string;
+  errorCount: number;
+  executedAtMs: number;
+  steps: Array<{
+    id: string;
+    raw: string;
+    canonical: string;
+    status: 'ok' | 'error';
+    detail: string;
+    route?: string;
+  }>;
+};
+
 async function callHandler<T>(
   name: string,
   args: Record<string, unknown> = {},
@@ -154,6 +169,18 @@ export function useOpsCommandCenter() {
     [refresh],
   );
 
+  const executeCommandChain = useCallback(
+    async (chain: string, assignee?: string) => {
+      const result = await callHandler<CommandChainRun>('workflow-execute-chain', {
+        chain,
+        assignee,
+      });
+      await refresh();
+      return result;
+    },
+    [refresh],
+  );
+
   useEffect(() => {
     void refresh();
   }, [refresh]);
@@ -171,5 +198,6 @@ export function useOpsCommandCenter() {
     runPlaybook,
     createPlaybook,
     assignLane,
+    executeCommandChain,
   };
 }

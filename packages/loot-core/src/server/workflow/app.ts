@@ -24,6 +24,7 @@ export type WorkflowHandlers = {
   'workflow-run-playbook': typeof workflowRunPlaybook;
   'workflow-run-close-routine': typeof workflowRunCloseRoutine;
   'workflow-apply-batch-policy': typeof workflowApplyBatchPolicy;
+  'workflow-execute-chain': typeof workflowExecuteChain;
 };
 
 export const app = createApp<WorkflowHandlers>();
@@ -35,6 +36,7 @@ app.method('workflow-playbook-create', workflowPlaybookCreate);
 app.method('workflow-run-playbook', workflowRunPlaybook);
 app.method('workflow-run-close-routine', workflowRunCloseRoutine);
 app.method('workflow-apply-batch-policy', workflowApplyBatchPolicy);
+app.method('workflow-execute-chain', workflowExecuteChain);
 
 function readError(err: unknown, fallback = 'unknown') {
   return (
@@ -176,6 +178,30 @@ async function workflowApplyBatchPolicy(args: {
         ids: args.ids,
         status: args.status,
         resolvedAction: args.resolvedAction ?? 'batch-policy',
+      },
+      userToken,
+    );
+  } catch (err) {
+    return { error: readError(err) };
+  }
+}
+
+async function workflowExecuteChain(args: {
+  chain: string;
+  assignee?: string;
+}): Promise<Record<string, unknown> | HandlerError> {
+  const userToken = await asyncStorage.getItem('user-token');
+  if (!userToken) {
+    return { error: 'not-logged-in' };
+  }
+
+  try {
+    return await gatewayPost<Record<string, unknown>>(
+      '/workflow/v1/execute-chain',
+      {
+        envelope: createGatewayEnvelope('execute-chain'),
+        chain: args.chain,
+        assignee: args.assignee,
       },
       userToken,
     );

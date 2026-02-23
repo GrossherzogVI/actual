@@ -1,6 +1,7 @@
 import { customAlphabet } from 'nanoid';
 
 import {
+  parseCommandChain,
   rankRecommendations,
   type Recommendation,
 } from '@finance-os/domain-kernel';
@@ -19,6 +20,8 @@ import type {
   ScenarioComparison,
   ScenarioMutation,
   WorkflowAction,
+  WorkflowCommandExecution,
+  WorkflowCommandExecutionStep,
   WorkflowPlaybook,
 } from '../types';
 
@@ -185,6 +188,183 @@ export function createGatewayService(
     );
 
     return { updatedCount };
+  }
+
+  async function executeWorkflowCommandChain(input: {
+    chain: string;
+    assignee?: string;
+  }): Promise<WorkflowCommandExecution> {
+    const parsed = parseCommandChain(input.chain);
+    const steps: WorkflowCommandExecutionStep[] = [];
+
+    for (const error of parsed.errors) {
+      steps.push({
+        id: 'command-parse-error',
+        raw: error.raw || 'command',
+        canonical: '',
+        status: 'error',
+        detail:
+          error.code === 'empty-command'
+            ? 'Command chain is empty.'
+            : `Unknown command token at position ${error.index + 1}.`,
+      });
+    }
+
+    for (const step of parsed.steps) {
+      if (step.id === 'resolve-next-action') {
+        const action = await resolveNextAction();
+        steps.push({
+          id: step.id,
+          raw: step.raw,
+          canonical: step.canonical,
+          status: 'ok',
+          detail: action.title,
+          route: action.route,
+        });
+        continue;
+      }
+
+      if (step.id === 'run-close-weekly') {
+        const run = await runCloseRoutine('weekly');
+        steps.push({
+          id: step.id,
+          raw: step.raw,
+          canonical: step.canonical,
+          status: 'ok',
+          detail: `Weekly close run ${run.id} (${run.exceptionCount} exceptions).`,
+        });
+        continue;
+      }
+
+      if (step.id === 'run-close-monthly') {
+        const run = await runCloseRoutine('monthly');
+        steps.push({
+          id: step.id,
+          raw: step.raw,
+          canonical: step.canonical,
+          status: 'ok',
+          detail: `Monthly close run ${run.id} (${run.exceptionCount} exceptions).`,
+        });
+        continue;
+      }
+
+      if (step.id === 'create-default-playbook') {
+        const playbook = await createPlaybook({
+          name: 'Weekly Triage Autopilot',
+          description: 'Created from command chain executor.',
+          commands: [
+            { verb: 'resolve-next-action', lane: 'triage' },
+            { verb: 'open-expiring-contracts', window_days: 30 },
+            { verb: 'run-close', period: 'weekly' },
+          ],
+        });
+        steps.push({
+          id: step.id,
+          raw: step.raw,
+          canonical: step.canonical,
+          status: 'ok',
+          detail: `Created playbook ${playbook.name}.`,
+        });
+        continue;
+      }
+
+      if (step.id === 'run-first-playbook') {
+        const first = (await listPlaybooks())[0];
+        if (!first) {
+          steps.push({
+            id: step.id,
+            raw: step.raw,
+            canonical: step.canonical,
+            status: 'error',
+            detail: 'No playbook available to run.',
+          });
+          continue;
+        }
+
+        const run = await runPlaybook(first.id, true);
+        if (!run) {
+          steps.push({
+            id: step.id,
+            raw: step.raw,
+            canonical: step.canonical,
+            status: 'error',
+            detail: `Playbook ${first.id} not found.`,
+          });
+          continue;
+        }
+
+        steps.push({
+          id: step.id,
+          raw: step.raw,
+          canonical: step.canonical,
+          status: 'ok',
+          detail: `Playbook run ${run.id} (${run.executedSteps} steps).`,
+        });
+        continue;
+      }
+
+      if (step.id === 'open-expiring-contracts') {
+        steps.push({
+          id: step.id,
+          raw: step.raw,
+          canonical: step.canonical,
+          status: 'ok',
+          detail: 'Opened expiring contracts lane.',
+          route: '/contracts?filter=expiring',
+        });
+        continue;
+      }
+
+      if (step.id === 'assign-expiring-contracts-lane') {
+        const lane = await assignDelegateLane({
+          title: 'Renegotiate expiring contracts',
+          assignee: input.assignee || 'delegate',
+          assignedBy: 'owner',
+          payload: {
+            source: 'workflow.execute-chain',
+          },
+        });
+        steps.push({
+          id: step.id,
+          raw: step.raw,
+          canonical: step.canonical,
+          status: 'ok',
+          detail: `Assigned lane ${lane.title}.`,
+        });
+        continue;
+      }
+
+      if (step.id === 'open-urgent-review') {
+        steps.push({
+          id: step.id,
+          raw: step.raw,
+          canonical: step.canonical,
+          status: 'ok',
+          detail: 'Opened urgent review lane.',
+          route: '/review?priority=urgent',
+        });
+        continue;
+      }
+
+      if (step.id === 'refresh-command-center') {
+        await getMoneyPulse();
+        steps.push({
+          id: step.id,
+          raw: step.raw,
+          canonical: step.canonical,
+          status: 'ok',
+          detail: 'Refreshed command center data.',
+        });
+      }
+    }
+
+    return {
+      id: nanoid(),
+      chain: input.chain,
+      steps,
+      errorCount: steps.filter(step => step.status === 'error').length,
+      executedAtMs: Date.now(),
+    };
   }
 
   async function getAdaptiveFocusPanel(): Promise<FocusPanel> {
@@ -643,6 +823,7 @@ export function createGatewayService(
     runPlaybook,
     runCloseRoutine,
     applyBatchPolicy,
+    executeWorkflowCommandChain,
     getAdaptiveFocusPanel,
     recordActionOutcome,
     listScenarioBranches,

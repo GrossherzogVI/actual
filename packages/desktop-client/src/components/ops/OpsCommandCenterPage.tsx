@@ -122,11 +122,9 @@ export function OpsCommandCenterPage() {
     playbooks,
     lanes,
     refresh,
-    resolveNextAction,
     runCloseRoutine,
     runPlaybook,
-    createPlaybook,
-    assignLane,
+    executeCommandChain,
   } = useOpsCommandCenter();
 
   const [commandInput, setCommandInput] = useState(
@@ -162,216 +160,43 @@ export function OpsCommandCenterPage() {
     setCommandLogs(prev => [log, ...prev].slice(0, 20));
   }, []);
 
-  const executeStep = useCallback(
-    async (stepRaw: string) => {
-      const step = stepRaw.trim().toLowerCase();
-
-      if (step === 'triage' || step === 'resolve-next') {
-        const next = await resolveNextAction();
-        if (isErrorResult(next)) {
-          appendLog({
-            id: nowId(),
-            step: stepRaw,
-            status: 'error',
-            detail: String(next.error),
-          });
-          return;
-        }
-        const route = typeof next?.route === 'string' ? next.route : '';
-        if (route) {
-          await navigate(route);
-        }
-        appendLog({
-          id: nowId(),
-          step: stepRaw,
-          status: 'ok',
-          detail: String(next?.title || t('Next action resolved')),
-        });
-        return;
-      }
-
-      if (step === 'close' || step === 'close -> weekly' || step === 'weekly') {
-        const result = await runCloseRoutine('weekly');
-        if (isErrorResult(result)) {
-          appendLog({
-            id: nowId(),
-            step: stepRaw,
-            status: 'error',
-            detail: String(result.error),
-          });
-          return;
-        }
-        appendLog({
-          id: nowId(),
-          step: stepRaw,
-          status: 'ok',
-          detail: t('Weekly close routine completed.'),
-        });
-        return;
-      }
-
-      if (step === 'monthly') {
-        const result = await runCloseRoutine('monthly');
-        if (isErrorResult(result)) {
-          appendLog({
-            id: nowId(),
-            step: stepRaw,
-            status: 'error',
-            detail: String(result.error),
-          });
-          return;
-        }
-        appendLog({
-          id: nowId(),
-          step: stepRaw,
-          status: 'ok',
-          detail: t('Monthly close routine completed.'),
-        });
-        return;
-      }
-
-      if (step === 'playbook' || step === 'playbook -> create-default') {
-        const created = await createPlaybook(t('Weekly Triage Autopilot'), [
-          { verb: 'resolve-next-action', lane: 'triage' },
-          { verb: 'open-expiring-contracts', window_days: 30 },
-          { verb: 'run-close', period: 'weekly' },
-        ]);
-
-        if (isErrorResult(created)) {
-          appendLog({
-            id: nowId(),
-            step: stepRaw,
-            status: 'error',
-            detail: String(created.error),
-          });
-          return;
-        }
-
-        appendLog({
-          id: nowId(),
-          step: stepRaw,
-          status: 'ok',
-          detail: t('Default playbook created.'),
-        });
-        return;
-      }
-
-      if (step === 'run-first' || step === 'playbook -> run-first') {
-        const first = playbooks[0];
-        if (!first || typeof first.id !== 'string') {
-          appendLog({
-            id: nowId(),
-            step: stepRaw,
-            status: 'error',
-            detail: t('No playbook available to run.'),
-          });
-          return;
-        }
-        const result = await runPlaybook(first.id, true);
-        if (isErrorResult(result)) {
-          appendLog({
-            id: nowId(),
-            step: stepRaw,
-            status: 'error',
-            detail: String(result.error),
-          });
-          return;
-        }
-        appendLog({
-          id: nowId(),
-          step: stepRaw,
-          status: 'ok',
-          detail: t('Playbook dry-run executed.'),
-        });
-        return;
-      }
-
-      if (step === 'expiring<30d') {
-        await navigate('/contracts?filter=expiring');
-        appendLog({
-          id: nowId(),
-          step: stepRaw,
-          status: 'ok',
-          detail: t('Opened expiring contracts lane.'),
-        });
-        return;
-      }
-
-      if (step === 'batch-renegotiate') {
-        const result = await assignLane(
-          t('Renegotiate expiring contracts'),
-          operatorName.trim() || undefined,
-        );
-        if (isErrorResult(result)) {
-          appendLog({
-            id: nowId(),
-            step: stepRaw,
-            status: 'error',
-            detail: String(result.error),
-          });
-          return;
-        }
-        appendLog({
-          id: nowId(),
-          step: stepRaw,
-          status: 'ok',
-          detail: t('Delegate lane assigned for renegotiation.'),
-        });
-        return;
-      }
-
-      if (step === 'refresh') {
-        await refresh();
-        appendLog({
-          id: nowId(),
-          step: stepRaw,
-          status: 'ok',
-          detail: t('Command center refreshed.'),
-        });
-        return;
-      }
-
-      appendLog({
-        id: nowId(),
-        step: stepRaw,
-        status: 'error',
-        detail: t('Unknown command step'),
-      });
-    },
-    [
-      appendLog,
-      assignLane,
-      createPlaybook,
-      navigate,
-      operatorName,
-      playbooks,
-      refresh,
-      resolveNextAction,
-      runCloseRoutine,
-      runPlaybook,
-      t,
-    ],
-  );
-
   const executeChain = useCallback(
     async (chain: string) => {
-      if (!chain.trim()) return;
-      const steps = chain
-        .split('->')
-        .map(part => part.trim())
-        .filter(Boolean);
-      if (steps.length === 0) return;
-
       setExecuting(true);
       try {
+        const run = await executeCommandChain(
+          chain,
+          operatorName.trim() || undefined,
+        );
+
+        if (isErrorResult(run)) {
+          appendLog({
+            id: nowId(),
+            step: t('command'),
+            status: 'error',
+            detail: String(run.error),
+          });
+          return;
+        }
+
+        const steps = Array.isArray(run.steps) ? run.steps : [];
         for (const step of steps) {
-          await executeStep(step);
+          if (step.route) {
+            await navigate(String(step.route));
+          }
+
+          appendLog({
+            id: nowId(),
+            step: String(step.raw || step.id || t('command')),
+            status: step.status === 'error' ? 'error' : 'ok',
+            detail: String(step.detail || ''),
+          });
         }
       } finally {
         setExecuting(false);
       }
     },
-    [executeStep],
+    [appendLog, executeCommandChain, navigate, operatorName, t],
   );
 
   if (!commandMesh && !adaptiveFocusEnabled && !opsPlaybooks) {

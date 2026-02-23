@@ -82,6 +82,14 @@ export const rpcRegistry: RpcRegistryEntry[] = [
     requestSchema: workflowSchemas.applyBatchPolicy,
   },
   {
+    service: 'workflow.v1',
+    rpc: 'ExecuteChain',
+    method: 'POST',
+    path: '/workflow/v1/execute-chain',
+    requiresEnvelope: true,
+    requestSchema: workflowSchemas.executeChain,
+  },
+  {
     service: 'scenario.v1',
     rpc: 'CreateBranch',
     method: 'POST',

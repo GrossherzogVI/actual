@@ -7,6 +7,7 @@ import type {
   MoneyPulse,
   Playbook,
   ScenarioComparison,
+  WorkflowCommandExecution,
 } from '../types';
 
 const gatewayBaseUrl = import.meta.env.VITE_GATEWAY_URL || 'http://localhost:7070';
@@ -106,6 +107,17 @@ export const apiClient = {
         }),
       },
     );
+  },
+
+  executeCommandChain(chain: string, assignee = 'delegate') {
+    return request<WorkflowCommandExecution>('/workflow/v1/execute-chain', {
+      method: 'POST',
+      body: JSON.stringify({
+        envelope: commandEnvelope('execute-chain'),
+        chain,
+        assignee,
+      }),
+    });
   },
 
   listDelegateLanes() {

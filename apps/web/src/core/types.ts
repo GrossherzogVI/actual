@@ -49,3 +49,20 @@ export type ScenarioComparison = {
 };
 
 export type AppRecommendation = Recommendation;
+
+export type WorkflowCommandExecutionStep = {
+  id: string;
+  raw: string;
+  canonical: string;
+  status: 'ok' | 'error';
+  detail: string;
+  route?: string;
+};
+
+export type WorkflowCommandExecution = {
+  id: string;
+  chain: string;
+  steps: WorkflowCommandExecutionStep[];
+  errorCount: number;
+  executedAtMs: number;
+};

@@ -121,6 +121,7 @@ describe('command envelope enforcement', () => {
         ids: ['id-1'],
         status: 'accepted',
         resolvedAction: 'batch-policy',
+        chain: 'triage -> close-weekly',
         actionId: 'action-1',
         outcome: 'done',
         branchId: 'branch-1',

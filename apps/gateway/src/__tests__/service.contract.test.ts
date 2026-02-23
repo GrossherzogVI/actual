@@ -47,6 +47,30 @@ describe('gateway service contract behavior', () => {
     expect(after.pendingReviews).toBeLessThanOrEqual(before.pendingReviews);
   });
 
+  it('executes command chains with merged pair semantics', async () => {
+    const { service, queue } = await createHarness();
+
+    const run = await service.executeWorkflowCommandChain({
+      chain: 'close -> weekly -> open-review',
+      assignee: 'delegate',
+    });
+
+    expect(run.steps).toHaveLength(2);
+    expect(run.steps[0]).toMatchObject({
+      raw: 'close -> weekly',
+      status: 'ok',
+    });
+    expect(run.steps[1]).toMatchObject({
+      raw: 'open-review',
+      status: 'ok',
+      route: '/review?priority=urgent',
+    });
+    expect(run.errorCount).toBe(0);
+
+    const queued = await queue.dequeue(10);
+    expect(queued.filter(job => job.name === 'workflow.close.run')).toHaveLength(1);
+  });
+
   it('submits and streams ledger events', async () => {
     const { service } = await createHarness();
 
