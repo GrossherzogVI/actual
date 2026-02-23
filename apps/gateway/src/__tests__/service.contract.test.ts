@@ -79,4 +79,49 @@ describe('gateway service contract behavior', () => {
     expect(stream.events.length).toBeGreaterThan(0);
     expect(stream.events[0].type).toBe('ledger.transaction.created');
   });
+
+  it('assigns ledger versions per workspace+aggregate stream', async () => {
+    const { service } = await createHarness();
+
+    const firstA1 = await service.submitLedgerCommand({
+      workspaceId: 'workspace-1',
+      actorId: 'tester',
+      commandType: 'ledger.transaction.created',
+      aggregateId: 'transaction-a1',
+      aggregateType: 'transaction',
+      payload: { amount: 100 },
+    });
+
+    const firstA2 = await service.submitLedgerCommand({
+      workspaceId: 'workspace-1',
+      actorId: 'tester',
+      commandType: 'ledger.transaction.created',
+      aggregateId: 'transaction-a2',
+      aggregateType: 'transaction',
+      payload: { amount: 200 },
+    });
+
+    const secondA1 = await service.submitLedgerCommand({
+      workspaceId: 'workspace-1',
+      actorId: 'tester',
+      commandType: 'ledger.transaction.updated',
+      aggregateId: 'transaction-a1',
+      aggregateType: 'transaction',
+      payload: { amount: 150 },
+    });
+
+    const firstOtherWorkspace = await service.submitLedgerCommand({
+      workspaceId: 'workspace-2',
+      actorId: 'tester',
+      commandType: 'ledger.transaction.created',
+      aggregateId: 'transaction-a1',
+      aggregateType: 'transaction',
+      payload: { amount: 999 },
+    });
+
+    expect(firstA1.version).toBe(1);
+    expect(firstA2.version).toBe(1);
+    expect(secondA1.version).toBe(2);
+    expect(firstOtherWorkspace.version).toBe(1);
+  });
 });

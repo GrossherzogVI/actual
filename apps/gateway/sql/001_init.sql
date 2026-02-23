@@ -117,5 +117,15 @@ CREATE TABLE IF NOT EXISTS ledger_events (
   version INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS ledger_stream_versions (
+  workspace_id TEXT NOT NULL,
+  aggregate_id TEXT NOT NULL,
+  version INTEGER NOT NULL,
+  PRIMARY KEY (workspace_id, aggregate_id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_ledger_events_workspace_time
   ON ledger_events(workspace_id, occurred_at_ms DESC);
+
+CREATE INDEX IF NOT EXISTS idx_ledger_events_workspace_aggregate_version
+  ON ledger_events(workspace_id, aggregate_id, version DESC);

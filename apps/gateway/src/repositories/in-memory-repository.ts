@@ -34,6 +34,7 @@ export class InMemoryGatewayRepository implements GatewayRepository {
   private readonly egressAudit: EgressAuditEntry[] = [];
   private readonly corrections = new Map<string, Correction>();
   private readonly ledgerEvents: LedgerEvent[] = [];
+  private readonly ledgerStreamVersions = new Map<string, number>();
 
   private opsState: OpsState = {
     pendingReviews: 7,
@@ -261,8 +262,17 @@ export class InMemoryGatewayRepository implements GatewayRepository {
   }
 
   async appendLedgerEvent(event: LedgerEvent): Promise<LedgerEvent> {
-    this.ledgerEvents.push(event);
-    return event;
+    const streamKey = `${event.workspaceId}:${event.aggregateId}`;
+    const nextVersion = (this.ledgerStreamVersions.get(streamKey) || 0) + 1;
+    this.ledgerStreamVersions.set(streamKey, nextVersion);
+
+    const versionedEvent: LedgerEvent = {
+      ...event,
+      version: nextVersion,
+    };
+
+    this.ledgerEvents.push(versionedEvent);
+    return versionedEvent;
   }
 
   async streamLedgerEvents(input: {

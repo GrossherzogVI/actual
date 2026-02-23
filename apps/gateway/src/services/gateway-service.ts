@@ -558,13 +558,6 @@ export function createGatewayService(
     aggregateType: string;
     payload: Record<string, unknown>;
   }): Promise<LedgerEvent> {
-    const stream = await repository.streamLedgerEvents({
-      workspaceId: input.workspaceId,
-      limit: 1,
-    });
-
-    const version = (stream.events[0]?.version || 0) + 1;
-
     const event: LedgerEvent = {
       eventId: nanoid(),
       workspaceId: input.workspaceId,
@@ -574,19 +567,20 @@ export function createGatewayService(
       payload: input.payload,
       actorId: input.actorId,
       occurredAtMs: Date.now(),
-      version,
+      version: 0,
     };
 
-    await repository.appendLedgerEvent(event);
+    const committedEvent = await repository.appendLedgerEvent(event);
     await queue.enqueue(
       queueJob('ledger.command.submitted', {
-        eventId: event.eventId,
-        workspaceId: event.workspaceId,
-        commandType: event.type,
+        eventId: committedEvent.eventId,
+        workspaceId: committedEvent.workspaceId,
+        commandType: committedEvent.type,
+        version: committedEvent.version,
       }),
     );
 
-    return event;
+    return committedEvent;
   }
 
   async function streamLedgerEvents(input: {

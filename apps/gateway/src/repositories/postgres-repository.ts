@@ -592,25 +592,52 @@ export class PostgresGatewayRepository implements GatewayRepository {
   }
 
   async appendLedgerEvent(event: LedgerEvent): Promise<LedgerEvent> {
-    await this.pool.query(
-      `INSERT INTO ledger_events
-         (event_id, workspace_id, aggregate_id, aggregate_type, event_type, payload_json,
-          actor_id, occurred_at_ms, version)
-       VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9)`,
-      [
-        event.eventId,
-        event.workspaceId,
-        event.aggregateId,
-        event.aggregateType,
-        event.type,
-        JSON.stringify(event.payload),
-        event.actorId,
-        event.occurredAtMs,
-        event.version,
-      ],
-    );
+    const client = await this.pool.connect();
 
-    return event;
+    try {
+      await client.query('BEGIN');
+
+      const versionResult = await client.query<{ version: number }>(
+        `INSERT INTO ledger_stream_versions (workspace_id, aggregate_id, version)
+         VALUES ($1, $2, 1)
+         ON CONFLICT (workspace_id, aggregate_id)
+         DO UPDATE SET version = ledger_stream_versions.version + 1
+         RETURNING version`,
+        [event.workspaceId, event.aggregateId],
+      );
+
+      const version = Number(versionResult.rows[0]?.version || 1);
+
+      await client.query(
+        `INSERT INTO ledger_events
+           (event_id, workspace_id, aggregate_id, aggregate_type, event_type, payload_json,
+            actor_id, occurred_at_ms, version)
+         VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9)`,
+        [
+          event.eventId,
+          event.workspaceId,
+          event.aggregateId,
+          event.aggregateType,
+          event.type,
+          JSON.stringify(event.payload),
+          event.actorId,
+          event.occurredAtMs,
+          version,
+        ],
+      );
+
+      await client.query('COMMIT');
+
+      return {
+        ...event,
+        version,
+      };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async streamLedgerEvents(input: {
