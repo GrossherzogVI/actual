@@ -52,6 +52,11 @@ const STEP_EFFECTS: Record<string, EffectTemplate> = {
     description: 'Assigned delegate triage batch lane.',
     reversible: false,
   },
+  'escalate-stale-lanes': {
+    kind: 'delegate.escalate-stale-lanes',
+    description: 'Escalated stale delegate lanes.',
+    reversible: false,
+  },
   'create-default-playbook': {
     kind: 'playbook.create-default',
     description: 'Created default playbook.',

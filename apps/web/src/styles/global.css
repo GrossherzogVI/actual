@@ -9,39 +9,50 @@
 :root {
   color-scheme: dark;
 
-  /* Strict Professional UI Tokens - Linear/Radix inspired */
-  --background: 224 71% 4%;
-  --foreground: 213 31% 91%;
-  --card: 222 47% 11%;
-  --card-foreground: 213 31% 91%;
-  --popover: 224 71% 4%;
-  --popover-foreground: 215 20% 65%;
-  --primary: 0 0% 100%;
-  --primary-foreground: 222.2 47.4% 11.2%;
-  --secondary: 222 47% 11%;
-  --secondary-foreground: 210 40% 98%;
-  --muted: 223 47% 11%;
-  --muted-foreground: 215.4 16.3% 56.9%;
-  --accent: 216 34% 17%;
-  --accent-foreground: 210 40% 98%;
-  --destructive: 0 63% 31%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 216 34% 17%;
-  --input: 216 34% 17%;
-  --ring: 216 34% 17%;
-  --radius: 0.25rem;
+  /* Vercel & Shadcn V4 Strict Monochromatic Theme */
+  --background: 0 0% 0%;
+  /* Pure Black */
+  --foreground: 0 0% 98%;
+  --card: 0 0% 4%;
+  /* Elevated #0A0A0A */
+  --card-foreground: 0 0% 98%;
+  --popover: 0 0% 4%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 0 0% 98%;
+  --primary-foreground: 0 0% 4%;
+  --secondary: 0 0% 12%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 0 0% 12%;
+  --muted-foreground: 0 0% 63%;
+  /* Zinc 400 */
+  --accent: 0 0% 12%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 0 0% 15%;
+  /* #262626 */
+  --input: 0 0% 15%;
+  --ring: 0 0% 83%;
+  --radius: 0.5rem;
+  /* Classic 8px */
 
-  /* Minimalist Core Colors */
-  --fo-bg: #0C0D0F;
-  --fo-bg-2: #111215;
-  --fo-panel: rgba(255, 255, 255, 0.015);
-  --fo-border: rgba(255, 255, 255, 0.05);
-  --fo-text: #EDEDED;
-  --fo-muted: #8F8F8F;
-  --fo-danger: #E5484D;
-  --fo-ok: #30A46C;
-  --fo-accent: #FFB224;
-  --fo-info: #3E63DD;
+  /* Finance OS Core Colors - Pure Contrast */
+  --fo-bg: #000000;
+  --fo-bg-2: #0A0A0A;
+  --fo-panel: #0A0A0A;
+  --fo-border: #262626;
+  /* Crisp neutral boundary */
+  --fo-text: #FAFAFA;
+  --fo-muted: #A1A1AA;
+  /* Semantic 'Smart' Colors - High Saturation */
+  --fo-danger: #EF4444;
+  /* Vivid Red */
+  --fo-ok: #10B981;
+  /* Emerald Green */
+  --fo-accent: #F59E0B;
+  /* Amber Warning */
+  --fo-info: #3B82F6;
+  /* Precision Blue */
 }
 
 @layer base {
@@ -69,11 +80,13 @@ body,
 }
 
 body {
-  font-family: 'Inter', 'Public Sans', sans-serif;
+  font-family: var(--font-sans);
   background: var(--fo-bg);
   background-attachment: fixed;
   color: var(--fo-text);
   line-height: 1.5;
+  letter-spacing: -0.01em;
+  /* Elegant subtle tracking */
   -webkit-font-smoothing: antialiased;
 }
 
@@ -112,8 +125,9 @@ pre {
 .fo-topbar h1 {
   margin: 0;
   font-size: 14px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-weight: 500;
+  color: var(--fo-text);
+  letter-spacing: -0.015em;
 }
 
 .fo-topbar small {
@@ -280,30 +294,22 @@ pre {
 
 .fo-panel {
   background: var(--fo-panel);
-  backdrop-filter: blur(24px);
   border: 1px solid var(--fo-border);
   border-radius: 8px;
-  /* Tighter radius */
+  /* Elegant mid-radius */
   padding: 16px;
-  /* High density padding */
   display: grid;
   gap: 16px;
-  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.5);
-  /* Minimal shadow */
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  /* Subtle top inner bevel */
   position: relative;
   overflow: hidden;
   transition: all 150ms easeOut;
 }
 
 .fo-panel:hover {
-  border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.6);
-  transform: translateY(-1px);
-}
-
-.fo-panel::before {
-  display: none;
-  /* Removed garish faux-light strip */
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
 .fo-panel-header {
@@ -314,7 +320,9 @@ pre {
 .fo-panel-header h2 {
   margin: 0;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--fo-text);
 }
 
 .fo-panel-header small {
@@ -358,19 +366,20 @@ pre {
 
 .fo-btn,
 .fo-btn-secondary {
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(8px);
+  border: 1px solid var(--fo-border);
+  background: var(--fo-bg);
   color: var(--fo-text);
   border-radius: 6px;
-  padding: 7px 11px;
+  padding: 7px 12px;
+  font-weight: 500;
   cursor: pointer;
   transition: all 120ms easeOut;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .fo-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: var(--fo-bg-2);
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
 .fo-btn-secondary {
@@ -443,21 +452,24 @@ pre {
 .fo-chip {
   border: 1px solid var(--fo-border);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--fo-text);
-  padding: 4px 9px;
+  background: var(--fo-bg-2);
+  color: var(--fo-muted);
+  padding: 4px 10px;
   cursor: pointer;
+  font-weight: 500;
   transition: all 120ms easeOut;
 }
 
 .fo-chip:hover {
-  border-color: var(--fo-info);
-  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--fo-text);
 }
 
 .fo-chip-active {
-  border-color: var(--fo-accent);
-  box-shadow: 0 0 10px rgba(251, 191, 36, 0.15);
+  color: var(--fo-text);
+  border-color: var(--fo-text);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .fo-playbook-templates {
@@ -475,19 +487,19 @@ pre {
 }
 
 .fo-playbook-token-triage {
-  border-color: rgba(96, 165, 250, 0.55);
+  border-color: rgba(59, 130, 246, 0.5);
 }
 
 .fo-playbook-token-contracts {
-  border-color: rgba(245, 158, 11, 0.55);
+  border-color: rgba(245, 158, 11, 0.5);
 }
 
 .fo-playbook-token-close {
-  border-color: rgba(16, 185, 129, 0.55);
+  border-color: rgba(16, 185, 129, 0.5);
 }
 
 .fo-playbook-token-utility {
-  border-color: rgba(148, 163, 184, 0.55);
+  border-color: var(--fo-border);
 }
 
 .fo-playbook-chain-grid {
@@ -499,33 +511,32 @@ pre {
 
 .fo-playbook-chain-block {
   border: 1px solid var(--fo-border);
-  border-radius: 8px;
-  background: rgba(18, 25, 38, 0.3);
-  backdrop-filter: blur(8px);
-  padding: 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 10px;
   display: grid;
-  gap: 4px;
+  gap: 6px;
 }
 
 .fo-playbook-chain-block-invalid {
-  border-color: rgba(239, 68, 68, 0.4);
-  box-shadow: 0 0 10px rgba(239, 68, 68, 0.1);
+  border-color: var(--fo-danger);
 }
 
 .fo-playbook-chain-remove {
   border: 1px solid var(--fo-border);
-  border-radius: 6px;
-  background: rgba(12, 23, 36, 0.8);
+  border-radius: 4px;
+  background: transparent;
   color: var(--fo-muted);
   width: 22px;
   height: 22px;
   line-height: 1;
   cursor: pointer;
+  transition: all 100ms ease;
 }
 
 .fo-playbook-chain-remove:hover {
   border-color: var(--fo-danger);
-  color: #fecaca;
+  color: var(--fo-danger);
 }
 
 .fo-playbook-chain-arrow {
@@ -537,33 +548,32 @@ pre {
 
 .fo-preview-panel {
   border: 1px solid var(--fo-border);
-  border-radius: 10px;
-  padding: 10px;
+  border-radius: 6px;
+  padding: 12px;
   display: grid;
   gap: 8px;
-  background: rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .fo-preview-steps {
   display: grid;
-  gap: 6px;
+  gap: 8px;
   max-height: 220px;
   overflow: auto;
 }
 
 .fo-preview-step {
-  border: 1px solid rgba(16, 185, 129, 0.45);
-  border-radius: 8px;
-  padding: 8px;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 6px;
+  padding: 10px;
   display: grid;
   gap: 4px;
-  background: rgba(18, 41, 35, 0.55);
+  background: rgba(16, 185, 129, 0.05);
 }
 
 .fo-preview-step-error {
-  border-color: rgba(239, 68, 68, 0.65);
-  background: rgba(50, 18, 18, 0.56);
+  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.05);
 }
 
 .fo-focus-workbench {
@@ -574,56 +584,53 @@ pre {
 
 .fo-focus-list {
   display: grid;
-  gap: 6px;
+  gap: 8px;
   max-height: 260px;
   overflow: auto;
 }
 
 .fo-focus-item {
   border: 1px solid var(--fo-border);
-  border-radius: 8px;
-  padding: 8px;
+  border-radius: 6px;
+  padding: 10px;
   display: grid;
-  gap: 5px;
-  text-align: left;
-  background: rgba(18, 25, 38, 0.3);
+  gap: 6px;
+  background: var(--fo-bg-2);
   color: var(--fo-text);
   cursor: pointer;
   transition: all 120ms easeOut;
 }
 
 .fo-focus-item:hover {
-  border-color: var(--fo-info);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .fo-focus-item-selected {
-  border-color: rgba(59, 130, 246, 0.5);
-  background: rgba(59, 130, 246, 0.1);
-  box-shadow: 0 0 15px rgba(59, 130, 246, 0.1);
+  border-color: var(--fo-text);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .fo-focus-score-track {
   width: 100%;
-  height: 6px;
+  height: 4px;
   border-radius: 999px;
-  background: rgba(10, 19, 30, 0.9);
+  background: rgba(255, 255, 255, 0.1);
   overflow: hidden;
 }
 
 .fo-focus-score-fill {
   display: block;
   height: 100%;
-  background: linear-gradient(90deg, #60a5fa, #10b981);
+  background: var(--fo-text);
 }
 
 .fo-focus-detail {
   border: 1px solid var(--fo-border);
-  border-radius: 8px;
-  padding: 8px;
+  border-radius: 6px;
+  padding: 12px;
   display: grid;
   gap: 8px;
-  background: rgba(18, 25, 38, 0.3);
-  backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .fo-focus-outcomes {
@@ -635,15 +642,15 @@ pre {
 
 .fo-focus-outcome {
   border: 1px solid var(--fo-border);
-  border-radius: 8px;
-  padding: 7px;
+  border-radius: 6px;
+  padding: 8px;
   display: grid;
   gap: 4px;
-  background: rgba(10, 19, 30, 0.65);
+  background: var(--fo-bg);
 }
 
 .fo-focus-outcome-recent {
-  border-color: rgba(16, 185, 129, 0.5);
+  border-left: 2px solid var(--fo-ok);
 }
 
 .fo-activity-list {
@@ -655,27 +662,23 @@ pre {
 
 .fo-activity-item {
   border: 1px solid var(--fo-border);
-  border-radius: 8px;
-  padding: 8px;
+  border-radius: 6px;
+  padding: 10px;
   display: grid;
   gap: 6px;
-  background: rgba(18, 25, 38, 0.3);
-  backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .fo-activity-info {
-  border-left: 3px solid var(--fo-info);
-  box-shadow: -4px 0 15px -5px rgba(59, 130, 246, 0.3);
+  border-left: 2px solid var(--fo-info);
 }
 
 .fo-activity-warn {
-  border-left: 3px solid var(--fo-accent);
-  box-shadow: -4px 0 15px -5px rgba(251, 191, 36, 0.3);
+  border-left: 2px solid var(--fo-accent);
 }
 
 .fo-activity-critical {
-  border-left: 3px solid var(--fo-danger);
-  box-shadow: -4px 0 15px -5px rgba(239, 68, 68, 0.3);
+  border-left: 2px solid var(--fo-danger);
 }
 
 .fo-delegate-grid {
@@ -750,36 +753,32 @@ pre {
 
 .fo-metric-card {
   border: 1px solid var(--fo-border);
-  border-radius: 8px;
-  padding: 8px 10px;
+  border-radius: 6px;
+  padding: 10px 12px;
   min-width: 104px;
   display: grid;
-  gap: 2px;
+  gap: 4px;
   text-align: right;
-  background: rgba(18, 25, 38, 0.3);
-  backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .fo-runtime-signal {
-  border-width: 2px;
+  border-width: 1px;
 }
 
 .fo-runtime-signal-stable {
   border-color: rgba(16, 185, 129, 0.4);
-  background: rgba(16, 185, 129, 0.1);
-  box-shadow: 0 0 15px rgba(16, 185, 129, 0.1);
+  background: rgba(16, 185, 129, 0.05);
 }
 
 .fo-runtime-signal-warn {
-  border-color: rgba(251, 191, 36, 0.4);
-  background: rgba(251, 191, 36, 0.1);
-  box-shadow: 0 0 15px rgba(251, 191, 36, 0.1);
+  border-color: rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.05);
 }
 
 .fo-runtime-signal-critical {
   border-color: rgba(239, 68, 68, 0.4);
-  background: rgba(239, 68, 68, 0.1);
-  box-shadow: 0 0 15px rgba(239, 68, 68, 0.1);
+  background: rgba(239, 68, 68, 0.05);
 }
 
 .fo-runtime-badge {
@@ -826,10 +825,9 @@ pre {
 .fo-incident-item {
   border: 1px solid var(--fo-border);
   border-left-width: 4px;
-  border-radius: 8px;
-  background: rgba(18, 25, 38, 0.3);
-  backdrop-filter: blur(8px);
-  padding: 8px;
+  border-radius: 6px;
+  background: var(--fo-bg-2);
+  padding: 10px;
   display: grid;
   gap: 6px;
 }
@@ -852,7 +850,7 @@ pre {
 
 .fo-status-bar {
   border-top: 1px solid var(--fo-border);
-  background: rgba(3, 5, 8, 0.8);
+  background: var(--fo-bg-2);
   backdrop-filter: blur(16px);
   padding: 8px 14px;
   display: flex;
@@ -862,7 +860,7 @@ pre {
 }
 
 .fo-status-bar code {
-  color: var(--fo-info);
+  color: var(--fo-text);
 }
 
 @keyframes fo-panel-enter {
@@ -880,7 +878,8 @@ pre {
 .fo-palette-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(4, 8, 13, 0.6);
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -892,11 +891,8 @@ pre {
   width: min(760px, 92vw);
   border: 1px solid var(--fo-border);
   border-radius: 8px;
-  /* Tighter radius */
-  background: rgba(12, 13, 15, 0.85);
-  /* Solid slate base */
-  backdrop-filter: blur(12px);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+  background: var(--fo-bg-2);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
   padding: 8px;
 }
 
@@ -906,13 +902,13 @@ pre {
 }
 
 .fo-palette [cmdk-input] {
-  border: 1px solid var(--fo-border);
-  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid transparent;
+  background: transparent;
   color: var(--fo-text);
   border-radius: 4px;
-  /* Tighter radius */
   padding: 8px 10px;
   font-size: 14px;
+  border-bottom: 1px solid var(--fo-border);
 }
 
 .fo-palette [cmdk-list] {
@@ -937,7 +933,7 @@ pre {
 .fo-run-drawer-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(3, 8, 14, 0.72);
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: flex-end;
   z-index: 120;
@@ -947,13 +943,13 @@ pre {
   width: min(680px, 96vw);
   height: 100%;
   border-left: 1px solid var(--fo-border);
-  background: var(--fo-bg);
-  /* Flat dark slate */
-  padding: 14px;
+  background: var(--fo-bg-2);
+  padding: 16px;
   display: grid;
   grid-template-rows: auto auto 1fr auto;
-  gap: 10px;
+  gap: 12px;
   overflow: hidden;
+  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
 }
 
 .fo-run-drawer-header {
@@ -966,10 +962,10 @@ pre {
 .fo-run-drawer-grid {
   border: 1px solid var(--fo-border);
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.015);
-  padding: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 10px;
   display: grid;
-  gap: 6px 10px;
+  gap: 8px 12px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
@@ -989,8 +985,8 @@ pre {
 .fo-run-drawer-item {
   border: 1px solid var(--fo-border);
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.01);
-  padding: 6px;
+  background: var(--fo-bg);
+  padding: 8px;
   display: grid;
   gap: 4px;
 }
@@ -1109,9 +1105,9 @@ pre {
   width: 100%;
   height: 300px;
   border: 1px solid var(--fo-border);
-  border-radius: 10px;
+  border-radius: 8px;
   overflow: hidden;
-  background: rgba(10, 19, 30, 0.6);
+  background: rgba(255, 255, 255, 0.02);
   position: relative;
 }
 
@@ -1119,41 +1115,44 @@ pre {
   position: absolute;
   width: 210px;
   border: 1px solid var(--fo-border);
-  border-radius: 10px;
-  padding: 8px;
+  border-radius: 6px;
+  padding: 10px;
   display: grid;
   gap: 4px;
-  background: rgba(15, 28, 43, 0.93);
+  background: var(--fo-bg-2);
 }
 
 .fo-decision-graph {
   border: 1px solid var(--fo-border);
-  border-radius: 10px;
-  background: rgba(10, 19, 30, 0.6);
-  padding: 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 12px;
 }
 
 .fo-graph-node rect {
-  fill: #17304b;
-  stroke: #2e5177;
+  fill: var(--fo-bg-2);
+  stroke: var(--fo-border);
 }
 
 .fo-graph-node text {
   fill: var(--fo-text);
   font-size: 12px;
-  font-family: 'IBM Plex Sans', sans-serif;
+  font-family: var(--font-sans);
 }
 
 .fo-graph-node-info rect {
-  fill: #173b5b;
+  fill: rgba(59, 130, 246, 0.15);
+  stroke: var(--fo-info);
 }
 
 .fo-graph-node-warn rect {
-  fill: #4a3319;
+  fill: rgba(245, 158, 11, 0.15);
+  stroke: var(--fo-accent);
 }
 
 .fo-graph-node-ok rect {
-  fill: #184338;
+  fill: rgba(16, 185, 129, 0.15);
+  stroke: var(--fo-ok);
 }
 
 .fo-temporal-summary {
@@ -1164,11 +1163,11 @@ pre {
 
 .fo-temporal-stat {
   border: 1px solid var(--fo-border);
-  border-radius: 8px;
-  background: rgba(18, 25, 38, 0.45);
-  padding: 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 10px;
   display: grid;
-  gap: 3px;
+  gap: 4px;
 }
 
 .fo-temporal-calendar {
@@ -1211,11 +1210,11 @@ pre {
 .fo-temporal-lane {
   border: 1px solid var(--fo-border);
   border-left-width: 4px;
-  border-radius: 8px;
-  padding: 8px;
+  border-radius: 6px;
+  padding: 10px;
   display: grid;
   gap: 6px;
-  background: rgba(18, 25, 38, 0.38);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .fo-temporal-lane-critical {

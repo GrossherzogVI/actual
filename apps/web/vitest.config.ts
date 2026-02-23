@@ -19,6 +19,7 @@ export default defineConfig({
         __dirname,
         '../../packages/domain-kernel/src/index.ts',
       ),
+      '@': resolve(__dirname, './src'),
     },
   },
 });

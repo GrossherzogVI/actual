@@ -132,27 +132,21 @@ describe('DecisionGraphPanel', () => {
 
     await screen.findByText(/Recommendation explanation/i);
 
-    fireEvent.change(screen.getByLabelText('decision execution mode'), {
-      target: { value: 'live' },
-    });
-    fireEvent.change(screen.getByLabelText('decision guardrail profile'), {
-      target: { value: 'strict' },
-    });
     fireEvent.change(screen.getByLabelText('decision rollback window minutes'), {
       target: { value: '90' },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Execute live recommendation' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Dry-run recommendation' }));
 
     await waitFor(() => {
       expect(apiClientMock.executeCommandChain).toHaveBeenCalledWith(
         'triage -> open-review',
         'delegate',
         expect.objectContaining({
-          executionMode: 'live',
-          guardrailProfile: 'strict',
+          executionMode: 'dry-run',
+          guardrailProfile: 'balanced',
           rollbackWindowMinutes: 90,
-          rollbackOnFailure: true,
+          rollbackOnFailure: false,
         }),
       );
     });

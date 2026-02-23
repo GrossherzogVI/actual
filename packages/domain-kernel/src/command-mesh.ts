@@ -8,6 +8,7 @@ export type CommandStepId =
   | 'open-expiring-contracts'
   | 'assign-expiring-contracts-lane'
   | 'delegate-triage-batch'
+  | 'escalate-stale-lanes'
   | 'apply-batch-policy'
   | 'open-urgent-review'
   | 'refresh-command-center';
@@ -45,6 +46,7 @@ const COMMAND_CANONICAL: Record<CommandStepId, string> = {
   'open-expiring-contracts': 'expiring<30d',
   'assign-expiring-contracts-lane': 'batch-renegotiate',
   'delegate-triage-batch': 'delegate-triage-batch',
+  'escalate-stale-lanes': 'escalate-stale-lanes',
   'apply-batch-policy': 'apply-batch-policy',
   'open-urgent-review': 'open-review',
   'refresh-command-center': 'refresh',
@@ -70,6 +72,9 @@ const SINGLE_ALIASES: Record<string, CommandStepId> = {
   'delegate-expiring': 'assign-expiring-contracts-lane',
   'delegate-triage-batch': 'delegate-triage-batch',
   'delegate-batch': 'delegate-triage-batch',
+  'escalate-stale-lanes': 'escalate-stale-lanes',
+  'escalate-stale': 'escalate-stale-lanes',
+  'stale-lanes': 'escalate-stale-lanes',
   'apply-batch-policy': 'apply-batch-policy',
   'batch-policy': 'apply-batch-policy',
   'open-review': 'open-urgent-review',
@@ -103,8 +108,8 @@ export const COMMAND_MESH_HINTS: CommandMeshHint[] = [
     description: 'Open expiring contracts and assign renegotiation lane.',
   },
   {
-    command: 'triage -> delegate-triage-batch -> apply-batch-policy',
-    description: 'Delegate triage batch and apply policy in one chain.',
+    command: 'triage -> escalate-stale-lanes -> delegate-triage-batch -> apply-batch-policy',
+    description: 'Escalate stale lanes, delegate triage batch, and apply policy in one chain.',
   },
 ];
 

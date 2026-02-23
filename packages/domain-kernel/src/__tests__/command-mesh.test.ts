@@ -62,6 +62,21 @@ describe('parseCommandChain', () => {
     ]);
   });
 
+  it('parses stale lane escalation aliases', () => {
+    const parsed = parseCommandChain(
+      'triage -> stale-lanes -> delegate-batch -> batch-policy',
+    );
+
+    expect(parsed.errors).toHaveLength(0);
+    expect(parsed.steps.map(step => step.id)).toEqual([
+      'resolve-next-action',
+      'escalate-stale-lanes',
+      'delegate-triage-batch',
+      'apply-batch-policy',
+    ]);
+    expect(parsed.steps[1]?.canonical).toBe('escalate-stale-lanes');
+  });
+
   it('returns unknown token errors with positional index', () => {
     const parsed = parseCommandChain('triage -> unknown-step');
 

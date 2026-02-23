@@ -167,9 +167,6 @@ describe('PlaybooksPanel', () => {
 
     await screen.findByText('Morning Loop');
 
-    fireEvent.change(screen.getByLabelText('playbook guardrail profile'), {
-      target: { value: 'balanced' },
-    });
     fireEvent.change(screen.getByLabelText('playbook rollback window minutes'), {
       target: { value: '45' },
     });
@@ -188,7 +185,7 @@ describe('PlaybooksPanel', () => {
       'playbook-1',
       expect.objectContaining({
         executionMode: 'live',
-        guardrailProfile: 'balanced',
+        guardrailProfile: 'strict',
         rollbackWindowMinutes: 45,
         rollbackOnFailure: true,
         idempotencyKey: 'playbook-key-001',

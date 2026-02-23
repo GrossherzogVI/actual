@@ -244,6 +244,27 @@ function severitySortValue(severity: TemporalSignalSeverity): number {
   return 2;
 }
 
+function isLaneStaleForEscalation(
+  lane: DelegateLane,
+  nowMs: number,
+): boolean {
+  if (lane.status !== 'assigned') {
+    return false;
+  }
+  const staleThresholdMs = 48 * 60 * 60 * 1000;
+  const isStale = nowMs - lane.updatedAtMs >= staleThresholdMs;
+  if (!isStale) {
+    return false;
+  }
+
+  const deadline = parseLaneDeadline(lane);
+  if (typeof deadline.dueAtMs !== 'number') {
+    return true;
+  }
+  const daysUntilDue = Math.floor((deadline.dueAtMs - nowMs) / MS_PER_DAY);
+  return daysUntilDue <= 3;
+}
+
 function createEmptyOpsTaskStatus(): OpsActivityTaskStatus {
   return {
     running: false,
@@ -1572,6 +1593,41 @@ export function createGatewayService(
               canonical: step.canonical,
               status: 'ok',
               detail: `${prefix}Assigned lane ${lane.id}.`,
+            };
+          }
+        } else if (step.id === 'escalate-stale-lanes') {
+          const now = Date.now();
+          const staleLanes = (await repository.listDelegateLanes(500, {
+            status: 'assigned',
+          })).filter(lane => isLaneStaleForEscalation(lane, now));
+
+          if (options.executionMode === 'dry-run') {
+            result = {
+              id: step.id,
+              raw: step.raw,
+              canonical: step.canonical,
+              status: 'ok',
+              detail: `${prefix}Would escalate ${staleLanes.length} stale lane(s).`,
+            };
+          } else {
+            for (const lane of staleLanes.slice(0, 25)) {
+              await commentDelegateLane({
+                laneId: lane.id,
+                actorId,
+                message:
+                  'Autopilot escalation: lane stale for >48h. Please acknowledge or complete.',
+                payload: {
+                  source: 'workflow.escalate-stale-lanes',
+                  staleHours: Math.round((now - lane.updatedAtMs) / (60 * 60 * 1000)),
+                },
+              });
+            }
+            result = {
+              id: step.id,
+              raw: step.raw,
+              canonical: step.canonical,
+              status: 'ok',
+              detail: `${prefix}Escalated ${staleLanes.length} stale lane(s).`,
             };
           }
         } else if (step.id === 'open-urgent-review') {
@@ -3034,7 +3090,7 @@ export function createGatewayService(
       {
         id: 'temporal-delegate-batch',
         label: 'Batch delegate deadline triage',
-        chain: 'triage -> delegate-triage-batch -> apply-batch-policy',
+        chain: 'triage -> escalate-stale-lanes -> delegate-triage-batch -> apply-batch-policy',
         reason:
           summary.critical + summary.warn > 0
             ? `${summary.critical} critical and ${summary.warn} warning lane(s) need coordinated action.`

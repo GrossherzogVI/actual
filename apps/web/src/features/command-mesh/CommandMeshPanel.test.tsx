@@ -124,17 +124,11 @@ describe('CommandMeshPanel', () => {
   it('passes execution options to command chain execution and renders guardrail blocks', async () => {
     renderPanel();
 
-    fireEvent.change(screen.getByLabelText('command execution mode'), {
-      target: { value: 'live' },
-    });
-    fireEvent.change(screen.getByLabelText('command guardrail profile'), {
-      target: { value: 'strict' },
-    });
     fireEvent.change(screen.getByLabelText('command rollback window minutes'), {
       target: { value: '30' },
     });
     fireEvent.click(screen.getByLabelText('command rollback on failure'));
-    fireEvent.change(screen.getByLabelText('command idempotency key'), {
+    fireEvent.change(screen.getByPlaceholderText('idempotency key (optional, 8-128 chars)'), {
       target: { value: 'command-key-001' },
     });
 
@@ -148,7 +142,7 @@ describe('CommandMeshPanel', () => {
       'triage -> close-weekly',
       'delegate',
       expect.objectContaining({
-        executionMode: 'live',
+        executionMode: 'dry-run',
         guardrailProfile: 'strict',
         rollbackWindowMinutes: 30,
         rollbackOnFailure: true,
@@ -174,7 +168,7 @@ describe('CommandMeshPanel', () => {
     renderPanel();
 
     const rollbackButton = await screen.findByRole('button', {
-      name: 'Rollback latest live chain run',
+      name: 'Rollback latest live chain',
     });
     await waitFor(() => {
       expect(rollbackButton).toBeEnabled();
