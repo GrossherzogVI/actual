@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package financeos.workflow.v1;
+
+import "common/v1/envelope.proto";
+
+service WorkflowService {
+  rpc ResolveNextAction(ResolveNextActionRequest) returns (ResolveNextActionResponse);
+  rpc RunPlaybook(RunPlaybookRequest) returns (RunPlaybookResponse);
+  rpc GetMoneyPulse(GetMoneyPulseRequest) returns (GetMoneyPulseResponse);
+  rpc RunCloseRoutine(RunCloseRoutineRequest) returns (RunCloseRoutineResponse);
+  rpc ApplyBatchPolicy(ApplyBatchPolicyRequest) returns (ApplyBatchPolicyResponse);
+}
+
+message ResolveNextActionRequest {
+  financeos.common.v1.CommandEnvelope envelope = 1;
+}
+
+message ResolveNextActionResponse {
+  string action_id = 1;
+  string title = 2;
+  string route = 3;
+  double confidence = 4;
+}
+
+message RunPlaybookRequest {
+  financeos.common.v1.CommandEnvelope envelope = 1;
+  string playbook_id = 2;
+  bool dry_run = 3;
+}
+
+message RunPlaybookResponse {
+  string run_id = 1;
+  int32 steps = 2;
+  bool dry_run = 3;
+}
+
+message GetMoneyPulseRequest {
+  string workspace_id = 1;
+}
+
+message GetMoneyPulseResponse {
+  int32 pending_reviews = 1;
+  int32 urgent_reviews = 2;
+  int32 expiring_contracts = 3;
+  int64 generated_at_ms = 4;
+}
+
+message RunCloseRoutineRequest {
+  financeos.common.v1.CommandEnvelope envelope = 1;
+  string period = 2;
+}
+
+message RunCloseRoutineResponse {
+  string run_id = 1;
+  int32 exception_count = 2;
+}
+
+message ApplyBatchPolicyRequest {
+  financeos.common.v1.CommandEnvelope envelope = 1;
+  repeated string ids = 2;
+  string status = 3;
+  string resolved_action = 4;
+}
+
+message ApplyBatchPolicyResponse {
+  int32 updated_count = 1;
+}

@@ -1,0 +1,22 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "module": "esnext",
+    "target": "es2022",
+    "moduleResolution": "bundler",
+    "baseUrl": ".",
+    "paths": {
+      "@finance-os/domain-kernel": [
+        "../../packages/domain-kernel/src/index.ts"
+      ],
+      "@finance-os/event-model": [
+        "../../packages/event-model/src/index.ts"
+      ]
+    },
+    "types": ["node"],
+    "strict": true,
+    "noImplicitAny": false,
+    "noEmit": true
+  },
+  "include": ["src/**/*.ts"]
+}

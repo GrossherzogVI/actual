@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package financeos.delegate.v1;
+
+import "common/v1/envelope.proto";
+
+service DelegateService {
+  rpc AssignLane(AssignLaneRequest) returns (AssignLaneResponse);
+  rpc AcceptLane(AcceptLaneRequest) returns (AcceptLaneResponse);
+  rpc CompleteLane(CompleteLaneRequest) returns (CompleteLaneResponse);
+  rpc RejectLane(RejectLaneRequest) returns (RejectLaneResponse);
+}
+
+message AssignLaneRequest {
+  financeos.common.v1.CommandEnvelope envelope = 1;
+  string title = 2;
+  string assignee = 3;
+  bytes payload = 4;
+}
+
+message AssignLaneResponse {
+  string lane_id = 1;
+  string status = 2;
+}
+
+message AcceptLaneRequest {
+  financeos.common.v1.CommandEnvelope envelope = 1;
+  string lane_id = 2;
+}
+
+message AcceptLaneResponse {
+  string lane_id = 1;
+  string status = 2;
+}
+
+message CompleteLaneRequest {
+  financeos.common.v1.CommandEnvelope envelope = 1;
+  string lane_id = 2;
+}
+
+message CompleteLaneResponse {
+  string lane_id = 1;
+  string status = 2;
+}
+
+message RejectLaneRequest {
+  financeos.common.v1.CommandEnvelope envelope = 1;
+  string lane_id = 2;
+  string reason = 3;
+}
+
+message RejectLaneResponse {
+  string lane_id = 1;
+  string status = 2;
+}

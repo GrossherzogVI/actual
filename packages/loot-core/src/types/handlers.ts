@@ -24,6 +24,12 @@ import type { ReviewHandlers } from '../server/review/app';
 import type { ImportDataHandlers } from '../server/import-data/app';
 import type { CategoriesSetupHandlers } from '../server/categories-setup/app';
 import type { QuickAddHandlers } from '../server/quick-add/app';
+import type { WorkflowHandlers } from '../server/workflow/app';
+import type { FocusHandlers } from '../server/focus/app';
+import type { ScenarioHandlers } from '../server/scenario/app';
+import type { DelegateHandlers } from '../server/delegate/app';
+import type { PolicyHandlers } from '../server/policy/app';
+import type { IntelligenceHandlers } from '../server/intelligence/app';
 
 import type { ApiHandlers } from './api-handlers';
 import type { ServerHandlers } from './server-handlers';
@@ -55,6 +61,12 @@ export type Handlers = {} & ServerHandlers &
   ReviewHandlers &
   ImportDataHandlers &
   CategoriesSetupHandlers &
-  QuickAddHandlers;
+  QuickAddHandlers &
+  WorkflowHandlers &
+  FocusHandlers &
+  ScenarioHandlers &
+  DelegateHandlers &
+  PolicyHandlers &
+  IntelligenceHandlers;
 
 export type HandlerFunctions = Handlers[keyof Handlers];

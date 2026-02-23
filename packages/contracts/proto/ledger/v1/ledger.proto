@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package financeos.ledger.v1;
+
+import "common/v1/envelope.proto";
+
+service LedgerService {
+  rpc SubmitCommand(SubmitCommandRequest) returns (SubmitCommandResponse);
+  rpc StreamEvents(StreamEventsRequest) returns (StreamEventsResponse);
+  rpc GetProjectionSnapshot(GetProjectionSnapshotRequest) returns (GetProjectionSnapshotResponse);
+}
+
+message SubmitCommandRequest {
+  financeos.common.v1.CommandEnvelope envelope = 1;
+  string command_type = 2;
+  bytes payload = 3;
+}
+
+message SubmitCommandResponse {
+  string event_id = 1;
+  int64 committed_at_ms = 2;
+}
+
+message StreamEventsRequest {
+  string workspace_id = 1;
+  string cursor = 2;
+  int32 limit = 3;
+}
+
+message LedgerEvent {
+  string event_id = 1;
+  string event_type = 2;
+  string aggregate_id = 3;
+  int64 occurred_at_ms = 4;
+  bytes payload = 5;
+}
+
+message StreamEventsResponse {
+  repeated LedgerEvent events = 1;
+  string next_cursor = 2;
+}
+
+message GetProjectionSnapshotRequest {
+  string workspace_id = 1;
+  string projection_name = 2;
+}
+
+message GetProjectionSnapshotResponse {
+  bytes snapshot = 1;
+  int64 generated_at_ms = 2;
+}

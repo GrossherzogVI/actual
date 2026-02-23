@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package financeos.policy.v1;
+
+import "common/v1/envelope.proto";
+
+service PolicyService {
+  rpc GetEgressPolicy(GetEgressPolicyRequest) returns (GetEgressPolicyResponse);
+  rpc SetEgressPolicy(SetEgressPolicyRequest) returns (SetEgressPolicyResponse);
+  rpc ListEgressAudit(ListEgressAuditRequest) returns (ListEgressAuditResponse);
+}
+
+message EgressPolicy {
+  bool allow_cloud = 1;
+  repeated string allowed_providers = 2;
+  string redaction_mode = 3;
+}
+
+message GetEgressPolicyRequest {
+  string tenant_id = 1;
+}
+
+message GetEgressPolicyResponse {
+  EgressPolicy policy = 1;
+}
+
+message SetEgressPolicyRequest {
+  financeos.common.v1.CommandEnvelope envelope = 1;
+  EgressPolicy policy = 2;
+}
+
+message SetEgressPolicyResponse {
+  EgressPolicy policy = 1;
+}
+
+message ListEgressAuditRequest {
+  string tenant_id = 1;
+  int32 limit = 2;
+}
+
+message EgressAuditEntry {
+  string id = 1;
+  string event_type = 2;
+  string provider = 3;
+  bytes payload = 4;
+  int64 created_at_ms = 5;
+}
+
+message ListEgressAuditResponse {
+  repeated EgressAuditEntry entries = 1;
+}

@@ -24,6 +24,12 @@ import * as reviewApp from './review/app-review';
 import * as importApp from './import/app-import';
 import * as categoriesApp from './categories/app-categories';
 import * as quickAddApp from './quick-add/app-quick-add';
+import * as workflowApp from './workflow/app-workflow';
+import * as focusApp from './focus/app-focus';
+import * as scenarioApp from './scenario/app-scenario';
+import * as delegateApp from './delegate/app-delegate';
+import * as policyApp from './policy/app-policy';
+import * as intelligenceApp from './intelligence/app-intelligence';
 import { config } from './load-config';
 
 const app = express();
@@ -82,6 +88,12 @@ app.use('/review', reviewApp.handlers);
 app.use('/import', importApp.handlers);
 app.use('/categories-setup', categoriesApp.handlers);
 app.use('/quick-add', quickAddApp.handlers);
+app.use('/workflow', workflowApp.handlers);
+app.use('/focus', focusApp.handlers);
+app.use('/scenario', scenarioApp.handlers);
+app.use('/delegate', delegateApp.handlers);
+app.use('/policy', policyApp.handlers);
+app.use('/intelligence', intelligenceApp.handlers);
 
 app.get('/mode', (req, res) => {
   res.send(config.get('mode'));

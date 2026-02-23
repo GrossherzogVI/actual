@@ -331,6 +331,27 @@ export function ExperimentalFeatures() {
             <FeatureToggle flag="extendedCommandBar">
               <Trans>Extended Command Bar</Trans>
             </FeatureToggle>
+            <FeatureToggle flag="commandMesh">
+              <Trans>Command Mesh</Trans>
+            </FeatureToggle>
+            <FeatureToggle flag="adaptiveFocus">
+              <Trans>Adaptive Focus Engine</Trans>
+            </FeatureToggle>
+            <FeatureToggle flag="opsPlaybooks">
+              <Trans>Ops Autopilot Playbooks</Trans>
+            </FeatureToggle>
+            <FeatureToggle flag="spatialTwin">
+              <Trans>Spatial Finance Twin</Trans>
+            </FeatureToggle>
+            <FeatureToggle flag="delegateLanes">
+              <Trans>Delegate Mission Lanes</Trans>
+            </FeatureToggle>
+            <FeatureToggle flag="closeLoop">
+              <Trans>Close Loop Automation</Trans>
+            </FeatureToggle>
+            <FeatureToggle flag="decisionGraph">
+              <Trans>Decision Graph</Trans>
+            </FeatureToggle>
             {showServerPrefs && (
               <ServerFeatureToggle
                 prefName="flags.plugins"

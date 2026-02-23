@@ -23,7 +23,7 @@ export function GlobalKeys() {
       }
 
       if (e.metaKey) {
-        // financeOS mode: keys 1-9 map to the new layout
+        // financeOS mode: keys 1-9 (+0) map to the command-center layout
         if (financeOS) {
           switch (e.key) {
             case '1':
@@ -33,24 +33,27 @@ export function GlobalKeys() {
               void navigate('/accounts');
               break;
             case '3':
-              void navigate('/contracts');
+              void navigate('/ops');
               break;
             case '4':
-              void navigate('/calendar');
+              void navigate('/contracts');
               break;
             case '5':
-              void navigate('/budget');
+              void navigate('/calendar');
               break;
             case '6':
-              void navigate('/reports');
+              void navigate('/budget');
               break;
             case '7':
-              void navigate('/import');
+              void navigate('/reports');
               break;
             case '8':
-              void navigate('/review');
+              void navigate('/import');
               break;
             case '9':
+              void navigate('/review');
+              break;
+            case '0':
               void navigate('/settings');
               break;
             case ',':

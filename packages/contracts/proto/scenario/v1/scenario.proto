@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package financeos.scenario.v1;
+
+import "common/v1/envelope.proto";
+
+service ScenarioService {
+  rpc CreateBranch(CreateBranchRequest) returns (CreateBranchResponse);
+  rpc ApplyMutation(ApplyMutationRequest) returns (ApplyMutationResponse);
+  rpc CompareOutcomes(CompareOutcomesRequest) returns (CompareOutcomesResponse);
+  rpc AdoptBranch(AdoptBranchRequest) returns (AdoptBranchResponse);
+}
+
+message CreateBranchRequest {
+  financeos.common.v1.CommandEnvelope envelope = 1;
+  string name = 2;
+  string base_branch_id = 3;
+  string notes = 4;
+}
+
+message CreateBranchResponse {
+  string branch_id = 1;
+}
+
+message ApplyMutationRequest {
+  financeos.common.v1.CommandEnvelope envelope = 1;
+  string branch_id = 2;
+  string mutation_kind = 3;
+  bytes payload = 4;
+}
+
+message ApplyMutationResponse {
+  string mutation_id = 1;
+}
+
+message CompareOutcomesRequest {
+  string branch_id = 1;
+  string against_branch_id = 2;
+}
+
+message CompareOutcomesResponse {
+  double amount_delta = 1;
+  double risk_delta = 2;
+}
+
+message AdoptBranchRequest {
+  financeos.common.v1.CommandEnvelope envelope = 1;
+  string branch_id = 2;
+}
+
+message AdoptBranchResponse {
+  string branch_id = 1;
+  int64 adopted_at_ms = 2;
+}

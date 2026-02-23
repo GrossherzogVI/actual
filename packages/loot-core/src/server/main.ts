@@ -20,6 +20,12 @@ import { app as reviewApp } from './review/app';
 import { app as importDataApp } from './import-data/app';
 import { app as categoriesSetupApp } from './categories-setup/app';
 import { app as quickAddApp } from './quick-add/app';
+import { app as workflowApp } from './workflow/app';
+import { app as focusApp } from './focus/app';
+import { app as scenarioApp } from './scenario/app';
+import { app as delegateApp } from './delegate/app';
+import { app as policyApp } from './policy/app';
+import { app as intelligenceApp } from './intelligence/app';
 import { installAPI } from './api';
 import { aqlQuery } from './aql';
 import { app as authApp } from './auth/app';
@@ -164,6 +170,12 @@ app.combine(
   importDataApp,
   categoriesSetupApp,
   quickAddApp,
+  workflowApp,
+  focusApp,
+  scenarioApp,
+  delegateApp,
+  policyApp,
+  intelligenceApp,
 );
 
 export function getDefaultDocumentDir() {

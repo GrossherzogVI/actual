@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package financeos.intelligence.v1;
+
+import "common/v1/envelope.proto";
+
+service IntelligenceService {
+  rpc Recommend(RecommendRequest) returns (RecommendResponse);
+  rpc Explain(ExplainRequest) returns (ExplainResponse);
+  rpc Classify(ClassifyRequest) returns (ClassifyResponse);
+  rpc Forecast(ForecastRequest) returns (ForecastResponse);
+  rpc LearnCorrection(LearnCorrectionRequest) returns (LearnCorrectionResponse);
+}
+
+message Recommendation {
+  string id = 1;
+  string title = 2;
+  double confidence = 3;
+  string provenance = 4;
+  string expected_impact = 5;
+  bool reversible = 6;
+  string rationale = 7;
+}
+
+message RecommendRequest {
+  financeos.common.v1.CommandEnvelope envelope = 1;
+  bytes context = 2;
+}
+
+message RecommendResponse {
+  repeated Recommendation recommendations = 1;
+}
+
+message ExplainRequest {
+  financeos.common.v1.CommandEnvelope envelope = 1;
+  Recommendation recommendation = 2;
+}
+
+message ExplainResponse {
+  string narrative = 1;
+}
+
+message ClassifyRequest {
+  financeos.common.v1.CommandEnvelope envelope = 1;
+  string payee = 2;
+  int64 amount = 3;
+}
+
+message ClassifyResponse {
+  string category_hint = 1;
+  double confidence = 2;
+}
+
+message ForecastRequest {
+  financeos.common.v1.CommandEnvelope envelope = 1;
+  int32 months = 2;
+}
+
+message ForecastResponse {
+  int64 projected_total = 1;
+  int64 generated_at_ms = 2;
+}
+
+message LearnCorrectionRequest {
+  financeos.common.v1.CommandEnvelope envelope = 1;
+  bytes input = 2;
+  bytes correct_output = 3;
+}
+
+message LearnCorrectionResponse {
+  string correction_id = 1;
+}

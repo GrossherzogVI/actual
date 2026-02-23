@@ -9,6 +9,7 @@ import {
   SvgCog,
   SvgCreditCard,
   SvgReports,
+  SvgQueue,
   SvgStoreFront,
   SvgTag,
   SvgTuning,
@@ -78,6 +79,7 @@ export function PrimaryButtons() {
         <Item title={t('Accounts')} Icon={SvgCreditCard} to="/accounts" />
         <Item title={t('Budget')} Icon={SvgWallet} to="/budget" />
         <Item title={t('Reports')} Icon={SvgReports} to="/reports" />
+        <Item title={t('Ops')} Icon={SvgQueue} to="/ops" />
         <Item title={t('Contracts')} Icon={SvgCreditCard} to="/contracts" />
         <Item title={t('Calendar')} Icon={SvgCalendar3} to="/calendar" />
         <Item title={t('Analytics')} Icon={SvgReports} to="/analytics" />

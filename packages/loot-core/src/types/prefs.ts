@@ -14,7 +14,14 @@ export type FeatureFlag =
   | 'quickAdd'
   | 'paymentCalendar'
   | 'germanCategories'
-  | 'extendedCommandBar';
+  | 'extendedCommandBar'
+  | 'commandMesh'
+  | 'adaptiveFocus'
+  | 'opsPlaybooks'
+  | 'spatialTwin'
+  | 'delegateLanes'
+  | 'closeLoop'
+  | 'decisionGraph';
 
 /**
  * Cross-device preferences. These sync across devices when they are changed.

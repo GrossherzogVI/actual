@@ -8,6 +8,7 @@ import {
   SvgCreditCard,
   SvgLibrary,
   SvgPiggyBank,
+  SvgQueue,
   SvgReports,
   SvgStoreFront,
   SvgTag,
@@ -188,6 +189,7 @@ export function CommandBar() {
         path: '/reports',
         Icon: SvgReports,
       },
+      { id: 'ops', name: t('Ops Command Center'), path: '/ops', Icon: SvgQueue },
       {
         id: 'schedules',
         name: t('Schedules'),
@@ -263,9 +265,11 @@ export function CommandBar() {
   const quickActionItems: SearchableItem[] = useMemo(
     () => [
       { id: 'qa-add-transaction', name: t('Add Transaction'), Icon: SvgAdd },
+      { id: 'qa-open-ops', name: t('Open Ops Command Center'), Icon: SvgQueue },
       { id: 'qa-new-contract', name: t('New Contract'), Icon: SvgNotesPaperText },
       { id: 'qa-review-queue', name: t('Review Queue'), Icon: SvgCreditCard },
       { id: 'qa-sync-all', name: t('Sync All'), Icon: SvgWallet },
+      { id: 'qa-close-weekly', name: t('Run Weekly Close'), Icon: SvgQueue },
       { id: 'qa-import-data', name: t('Import Data'), Icon: SvgLibrary },
       { id: 'qa-settings', name: t('Settings'), Icon: SvgCog },
     ],
@@ -279,6 +283,9 @@ export function CommandBar() {
         case 'qa-add-transaction':
           void navigate('/quick-add');
           break;
+        case 'qa-open-ops':
+          void navigate('/ops');
+          break;
         case 'qa-new-contract':
           void navigate('/contracts?new=1');
           break;
@@ -287,6 +294,11 @@ export function CommandBar() {
           break;
         case 'qa-sync-all':
           void (send as Function)('sync');
+          break;
+        case 'qa-close-weekly':
+          void (send as Function)('workflow-run-close-routine', {
+            period: 'weekly',
+          });
           break;
         case 'qa-import-data':
           void navigate('/import');

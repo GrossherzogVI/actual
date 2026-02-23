@@ -1,0 +1,10 @@
+version: v2
+managed:
+  enabled: true
+plugins:
+  - remote: buf.build/connectrpc/es:v2.1.0
+    out: gen/es
+    opt:
+      - target=ts
+  - remote: buf.build/protocolbuffers/js:v3.21.4
+    out: gen/js

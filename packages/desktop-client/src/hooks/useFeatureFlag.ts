@@ -19,6 +19,13 @@ const DEFAULT_FEATURE_FLAG_STATE: Record<FeatureFlag, boolean> = {
   paymentCalendar: true,
   germanCategories: false,
   extendedCommandBar: true,
+  commandMesh: true,
+  adaptiveFocus: true,
+  opsPlaybooks: true,
+  spatialTwin: true,
+  delegateLanes: true,
+  closeLoop: true,
+  decisionGraph: true,
 };
 
 export function useFeatureFlag(name: FeatureFlag): boolean {

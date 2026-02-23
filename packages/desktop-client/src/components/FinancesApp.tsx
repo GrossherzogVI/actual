@@ -67,6 +67,11 @@ const ReviewQueuePage = lazy(() =>
     default: m.ReviewQueuePage,
   })),
 );
+const OpsCommandCenterPage = lazy(() =>
+  import('./ops/OpsCommandCenterPage').then(m => ({
+    default: m.OpsCommandCenterPage,
+  })),
+);
 const Settings = lazy(() =>
   import('./settings').then(m => ({ default: m.Settings })),
 );
@@ -452,6 +457,7 @@ export function FinancesApp() {
                   <Route path="/analytics" element={<ErrorBoundary FallbackComponent={FatalError}><Suspense fallback={<LoadingIndicator />}><AnalyticsPage /></Suspense></ErrorBoundary>} />
                   <Route path="/import" element={<ErrorBoundary FallbackComponent={FatalError}><Suspense fallback={<LoadingIndicator />}><ImportPage /></Suspense></ErrorBoundary>} />
                   <Route path="/import/:type" element={<ErrorBoundary FallbackComponent={FatalError}><Suspense fallback={<LoadingIndicator />}><ImportPage /></Suspense></ErrorBoundary>} />
+                  <Route path="/ops" element={<ErrorBoundary FallbackComponent={FatalError}><Suspense fallback={<LoadingIndicator />}><OpsCommandCenterPage /></Suspense></ErrorBoundary>} />
                   {/* redirect all other traffic to the budget page */}
                   <Route path="/*" element={<Navigate to={financeOS ? '/dashboard' : '/budget'} replace />} />
                 </Routes>

@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package financeos.focus.v1;
+
+import "common/v1/envelope.proto";
+
+service FocusService {
+  rpc GetAdaptivePanel(GetAdaptivePanelRequest) returns (GetAdaptivePanelResponse);
+  rpc RecordActionOutcome(RecordActionOutcomeRequest) returns (RecordActionOutcomeResponse);
+}
+
+message GetAdaptivePanelRequest {
+  string workspace_id = 1;
+}
+
+message FocusAction {
+  string id = 1;
+  string title = 2;
+  string route = 3;
+  double score = 4;
+  string reason = 5;
+}
+
+message GetAdaptivePanelResponse {
+  repeated FocusAction actions = 1;
+  int64 generated_at_ms = 2;
+}
+
+message RecordActionOutcomeRequest {
+  financeos.common.v1.CommandEnvelope envelope = 1;
+  string action_id = 2;
+  string outcome = 3;
+  string notes = 4;
+}
+
+message RecordActionOutcomeResponse {
+  string outcome_id = 1;
+}

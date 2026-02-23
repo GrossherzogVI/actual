@@ -1,0 +1,14 @@
+{
+  "name": "@finance-os/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "proto:lint": "buf lint",
+    "proto:breaking": "buf breaking --against '.git#branch=main'",
+    "proto:generate": "buf generate"
+  },
+  "devDependencies": {
+    "@bufbuild/buf": "^1.57.2"
+  }
+}
