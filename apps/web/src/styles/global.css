@@ -1,23 +1,58 @@
+@import 'tailwindcss';
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap');
+
+@theme {
+  --font-sans: 'Inter', 'Public Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
 
 :root {
   color-scheme: dark;
-  --fo-bg: #030508;
-  --fo-bg-2: #050810;
-  --fo-panel: rgba(18, 25, 38, 0.4);
-  --fo-panel-2: rgba(20, 28, 43, 0.4);
-  --fo-border: rgba(255, 255, 255, 0.08);
-  /* crisp wireframe */
-  --fo-text: #F8FAFC;
-  --fo-muted: #94A3B8;
-  --fo-danger: #EF4444;
-  /* Base neon */
-  --fo-ok: #10B981;
-  /* Base neon */
-  --fo-accent: #FBBF24;
-  /* Gold */
-  --fo-info: #3B82F6;
-  /* Confidence blue */
+
+  /* Strict Professional UI Tokens - Linear/Radix inspired */
+  --background: 224 71% 4%;
+  --foreground: 213 31% 91%;
+  --card: 222 47% 11%;
+  --card-foreground: 213 31% 91%;
+  --popover: 224 71% 4%;
+  --popover-foreground: 215 20% 65%;
+  --primary: 0 0% 100%;
+  --primary-foreground: 222.2 47.4% 11.2%;
+  --secondary: 222 47% 11%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 223 47% 11%;
+  --muted-foreground: 215.4 16.3% 56.9%;
+  --accent: 216 34% 17%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 63% 31%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 216 34% 17%;
+  --input: 216 34% 17%;
+  --ring: 216 34% 17%;
+  --radius: 0.25rem;
+
+  /* Minimalist Core Colors */
+  --fo-bg: #0C0D0F;
+  --fo-bg-2: #111215;
+  --fo-panel: rgba(255, 255, 255, 0.015);
+  --fo-border: rgba(255, 255, 255, 0.05);
+  --fo-text: #EDEDED;
+  --fo-muted: #8F8F8F;
+  --fo-danger: #E5484D;
+  --fo-ok: #30A46C;
+  --fo-accent: #FFB224;
+  --fo-info: #3E63DD;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
 }
 
 * {
@@ -35,11 +70,7 @@ body,
 
 body {
   font-family: 'Inter', 'Public Sans', sans-serif;
-  background:
-    radial-gradient(circle at 15% 10%, rgba(59, 130, 246, 0.15), transparent 45%),
-    radial-gradient(circle at 85% 5%, rgba(16, 185, 129, 0.12), transparent 40%),
-    radial-gradient(circle at 50% 90%, rgba(251, 191, 36, 0.08), transparent 50%),
-    linear-gradient(180deg, var(--fo-bg), var(--fo-bg-2));
+  background: var(--fo-bg);
   background-attachment: fixed;
   color: var(--fo-text);
   line-height: 1.5;
@@ -71,165 +102,142 @@ pre {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 14px 24px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(10, 15, 25, 0.6);
-  backdrop-filter: blur(24px) saturate(150%);
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--fo-border);
+  background: var(--fo-bg);
   position: relative;
   z-index: 10;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
 .fo-topbar h1 {
   margin: 0;
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .fo-topbar small {
   color: var(--fo-muted);
+  font-size: 12px;
 }
 
 .fo-loop-strip {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   overflow-x: auto;
-  padding: 10px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-  background: rgba(5, 8, 15, 0.6);
-  backdrop-filter: blur(20px);
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--fo-border);
+  background: var(--fo-bg-2);
 }
 
 .fo-action-strip {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   overflow-x: auto;
-  padding: 10px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-  background: rgba(8, 12, 18, 0.5);
-  backdrop-filter: blur(16px);
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--fo-border);
+  background: var(--fo-bg);
 }
 
 .fo-anomaly-rail {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   overflow-x: auto;
-  padding: 8px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-  background: rgba(12, 16, 26, 0.5);
-  backdrop-filter: blur(16px);
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--fo-border);
+  background: var(--fo-bg-2);
 }
 
 .fo-anomaly-badge {
   border: 1px solid var(--fo-border);
-  border-radius: 999px;
-  padding: 4px 10px;
+  border-radius: 4px;
+  padding: 2px 6px;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   cursor: pointer;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(8px);
-  color: var(--fo-text);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--fo-muted);
   transition: all 120ms easeOut;
   white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 11px;
 }
 
 .fo-anomaly-badge strong {
-  min-width: 20px;
+  min-width: 16px;
   text-align: right;
+  color: var(--fo-text);
+  font-weight: 500;
 }
 
 .fo-anomaly-badge:hover {
-  transform: translateY(-1px) scale(1.02);
+  border-color: rgba(255, 255, 255, 0.15);
   background: rgba(255, 255, 255, 0.05);
+  color: var(--fo-text);
 }
 
 .fo-anomaly-badge-blocked {
-  border-color: rgba(239, 68, 68, 0.3);
-  box-shadow: 0 0 10px rgba(239, 68, 68, 0.1);
-}
-
-.fo-anomaly-badge-blocked:hover {
-  border-color: rgba(239, 68, 68, 0.8);
-  box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
+  border-left: 2px solid var(--fo-danger);
 }
 
 .fo-anomaly-badge-failed {
-  border-color: rgba(245, 158, 11, 0.3);
-  box-shadow: 0 0 10px rgba(245, 158, 11, 0.1);
-}
-
-.fo-anomaly-badge-failed:hover {
-  border-color: rgba(245, 158, 11, 0.8);
-  box-shadow: 0 0 15px rgba(245, 158, 11, 0.2);
+  border-left: 2px solid var(--fo-accent);
 }
 
 .fo-anomaly-badge-rollback {
-  border-color: rgba(59, 130, 246, 0.3);
-  box-shadow: 0 0 10px rgba(59, 130, 246, 0.1);
-}
-
-.fo-anomaly-badge-rollback:hover {
-  border-color: rgba(59, 130, 246, 0.8);
-  box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
+  border-left: 2px solid var(--fo-info);
 }
 
 .fo-action-chip {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
+  border: 1px solid var(--fo-border);
+  border-radius: 4px;
   background: rgba(255, 255, 255, 0.02);
-  backdrop-filter: blur(12px);
-  color: var(--fo-text);
-  padding: 6px 12px;
+  color: var(--fo-muted);
+  padding: 4px 8px;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   cursor: pointer;
-  transition: all 150ms easeOut;
+  transition: all 100ms easeOut;
   white-space: nowrap;
   font-weight: 500;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .fo-action-chip:hover {
-  border-color: rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.06);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--fo-text);
 }
 
 .fo-loop-chip {
-  border: 1px solid transparent;
+  border: none;
   background: transparent;
   color: var(--fo-muted);
-  border-radius: 999px;
-  padding: 6px 14px;
+  border-radius: 4px;
+  padding: 4px 8px;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   cursor: pointer;
-  transition: all 180ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 100ms easeOut;
   white-space: nowrap;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .fo-loop-chip:hover {
   color: var(--fo-text);
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .fo-loop-chip-active {
-  border-color: rgba(16, 185, 129, 0.6);
-  background: rgba(16, 185, 129, 0.12);
   color: var(--fo-text);
-  box-shadow: 0 0 20px rgba(16, 185, 129, 0.2), inset 0 0 10px rgba(16, 185, 129, 0.1);
-  text-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .fo-kbd {
@@ -271,37 +279,31 @@ pre {
 }
 
 .fo-panel {
-  background: rgba(13, 18, 30, 0.45);
-  backdrop-filter: blur(28px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
+  background: var(--fo-panel);
+  backdrop-filter: blur(24px);
+  border: 1px solid var(--fo-border);
+  border-radius: 8px;
+  /* Tighter radius */
   padding: 16px;
+  /* High density padding */
   display: grid;
-  gap: 14px;
-  box-shadow:
-    0 8px 32px -4px rgba(0, 0, 0, 0.4),
-    inset 0 1px 1px rgba(255, 255, 255, 0.06);
+  gap: 16px;
+  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.5);
+  /* Minimal shadow */
   position: relative;
   overflow: hidden;
-  transition: border-color 220ms easeOut, box-shadow 220ms easeOut;
+  transition: all 150ms easeOut;
 }
 
 .fo-panel:hover {
-  border-color: rgba(255, 255, 255, 0.15);
-  box-shadow:
-    0 12px 40px -4px rgba(0, 0, 0, 0.5),
-    inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.6);
+  transform: translateY(-1px);
 }
 
 .fo-panel::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
-  opacity: 0.5;
+  display: none;
+  /* Removed garish faux-light strip */
 }
 
 .fo-panel-header {
@@ -350,7 +352,8 @@ pre {
 .fo-input:focus {
   outline: none;
   border-color: var(--fo-info);
-  box-shadow: 0 0 0 1px var(--fo-info), 0 0 10px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 0 0 1px var(--fo-info);
+  /* Removed neon glow */
 }
 
 .fo-btn,
@@ -386,49 +389,50 @@ pre {
 
 .fo-hints code {
   border: 1px solid var(--fo-border);
-  border-radius: 999px;
-  padding: 2px 7px;
-  color: var(--fo-info);
+  border-radius: 4px;
+  padding: 2px 6px;
+  color: var(--fo-muted);
+  font-size: 11px;
 }
 
 .fo-log-list {
   display: grid;
-  gap: 7px;
+  gap: 4px;
 }
 
 .fo-log {
   border: 1px solid var(--fo-border);
-  border-radius: 8px;
-  padding: 7px;
+  border-radius: 4px;
+  padding: 6px;
   display: grid;
-  gap: 3px;
+  gap: 2px;
+  font-family: var(--font-mono);
+  font-size: 12px;
 }
 
 .fo-log-error {
-  border-color: var(--fo-danger);
+  border-left: 2px solid var(--fo-danger);
 }
 
 .fo-log-live {
-  border-color: var(--fo-ok);
+  border-left: 2px solid var(--fo-ok);
 }
 
 .fo-card {
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 12px;
+  border: 1px solid var(--fo-border);
+  border-radius: 6px;
   background: rgba(255, 255, 255, 0.02);
-  backdrop-filter: blur(16px);
   padding: 12px;
   display: grid;
   gap: 6px;
-  transition: all 180ms cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.2);
+  transition: all 150ms easeOut;
+  box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.3);
 }
 
 .fo-card:hover {
   background: rgba(255, 255, 255, 0.04);
   border-color: rgba(255, 255, 255, 0.1);
-  transform: translateY(-1px);
-  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.4);
 }
 
 .fo-activity-filters {
@@ -887,11 +891,13 @@ pre {
 .fo-palette {
   width: min(760px, 92vw);
   border: 1px solid var(--fo-border);
-  border-radius: 14px;
-  background: rgba(3, 5, 8, 0.6);
-  backdrop-filter: blur(24px);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-  padding: 12px;
+  border-radius: 8px;
+  /* Tighter radius */
+  background: rgba(12, 13, 15, 0.85);
+  /* Solid slate base */
+  backdrop-filter: blur(12px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+  padding: 8px;
 }
 
 .fo-palette [cmdk-root] {
@@ -900,11 +906,13 @@ pre {
 }
 
 .fo-palette [cmdk-input] {
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--fo-border);
+  background: rgba(255, 255, 255, 0.02);
   color: var(--fo-text);
-  border-radius: 8px;
-  padding: 9px 10px;
+  border-radius: 4px;
+  /* Tighter radius */
+  padding: 8px 10px;
+  font-size: 14px;
 }
 
 .fo-palette [cmdk-list] {
@@ -914,16 +922,16 @@ pre {
 
 .fo-palette [cmdk-item] {
   border: 1px solid transparent;
-  border-radius: 8px;
-  padding: 8px 10px;
+  border-radius: 4px;
+  padding: 6px 10px;
   display: flex;
   align-items: center;
   gap: 8px;
+  font-size: 13px;
 }
 
 .fo-palette [cmdk-item][data-selected='true'] {
-  border-color: var(--fo-border);
-  background: #1a2f49;
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .fo-run-drawer-overlay {
@@ -939,7 +947,8 @@ pre {
   width: min(680px, 96vw);
   height: 100%;
   border-left: 1px solid var(--fo-border);
-  background: linear-gradient(180deg, #0f1d2d, #13253b);
+  background: var(--fo-bg);
+  /* Flat dark slate */
   padding: 14px;
   display: grid;
   grid-template-rows: auto auto 1fr auto;
@@ -956,9 +965,9 @@ pre {
 
 .fo-run-drawer-grid {
   border: 1px solid var(--fo-border);
-  border-radius: 10px;
-  background: rgba(10, 19, 30, 0.72);
-  padding: 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.015);
+  padding: 8px;
   display: grid;
   gap: 6px 10px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -979,9 +988,9 @@ pre {
 
 .fo-run-drawer-item {
   border: 1px solid var(--fo-border);
-  border-radius: 8px;
-  background: rgba(11, 22, 36, 0.78);
-  padding: 7px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.01);
+  padding: 6px;
   display: grid;
   gap: 4px;
 }
@@ -990,9 +999,10 @@ pre {
   display: inline-flex;
   align-items: center;
   border: 1px solid var(--fo-border);
-  border-radius: 999px;
-  padding: 1px 7px;
+  border-radius: 4px;
+  padding: 1px 6px;
   text-transform: lowercase;
+  font-size: 11px;
 }
 
 .fo-run-drawer-footer {
@@ -1017,11 +1027,11 @@ pre {
 
 .fo-spatial-hud {
   border: 1px solid var(--fo-border);
-  border-radius: 10px;
+  border-radius: 6px;
   padding: 10px;
   display: grid;
   gap: 8px;
-  background: rgba(12, 23, 36, 0.7);
+  background: rgba(255, 255, 255, 0.01);
 }
 
 .fo-spatial-metric-grid {
@@ -1044,10 +1054,10 @@ pre {
 
 .fo-spatial-bar-track {
   width: 100%;
-  height: 6px;
-  border-radius: 999px;
+  height: 4px;
+  border-radius: 2px;
   overflow: hidden;
-  background: rgba(10, 19, 30, 0.9);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .fo-spatial-bar-fill {
@@ -1067,11 +1077,11 @@ pre {
 
 .fo-spatial-checkpoint {
   border: 1px solid var(--fo-border);
-  border-radius: 8px;
-  padding: 7px;
+  border-radius: 4px;
+  padding: 6px;
   display: grid;
   gap: 4px;
-  background: rgba(10, 19, 30, 0.68);
+  background: rgba(255, 255, 255, 0.015);
 }
 
 .fo-spatial-checkpoint-pass {
@@ -1218,6 +1228,119 @@ pre {
 
 .fo-temporal-lane-info {
   border-left-color: var(--fo-info);
+}
+
+/* Ops Activity Panel */
+.fo-activity-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fo-chip {
+  background: transparent;
+  color: var(--fo-muted);
+  border: 1px solid var(--fo-border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 100ms ease;
+}
+
+.fo-chip:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--fo-text);
+}
+
+.fo-chip-active {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--fo-text);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.fo-activity-list {
+  display: grid;
+  gap: 6px;
+}
+
+.fo-activity-item {
+  border: 1px solid var(--fo-border);
+  border-radius: 4px;
+  padding: 8px;
+  display: grid;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.fo-activity-critical {
+  border-left: 2px solid var(--fo-danger);
+}
+
+.fo-activity-warn {
+  border-left: 2px solid var(--fo-accent);
+}
+
+.fo-activity-info {
+  border-left: 2px solid var(--fo-info);
+}
+
+/* Close Loop Panel */
+.fo-close-health {
+  border: 1px solid var(--fo-border);
+  border-radius: 4px;
+  padding: 10px;
+  display: grid;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.fo-close-health-stable {
+  border-top: 2px solid var(--fo-ok);
+}
+
+.fo-close-health-warn {
+  border-top: 2px solid var(--fo-accent);
+}
+
+.fo-close-health-critical {
+  border-top: 2px solid var(--fo-danger);
+}
+
+.fo-close-stage-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.fo-close-stage {
+  border: 1px solid var(--fo-border);
+  border-radius: 4px;
+  padding: 8px;
+  display: grid;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.fo-close-stage-stable {
+  border-left: 2px solid var(--fo-ok);
+}
+
+.fo-close-stage-warn {
+  border-left: 2px solid var(--fo-accent);
+}
+
+.fo-close-stage-critical {
+  border-left: 2px solid var(--fo-danger);
+}
+
+.fo-close-run-resolved {
+  opacity: 0.6;
+}
+
+.fo-close-run-unresolved {
+  border-left: 2px solid var(--fo-danger);
 }
 
 @media (max-width: 1200px) {
