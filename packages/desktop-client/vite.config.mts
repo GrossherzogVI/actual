@@ -1,5 +1,6 @@
 import * as path from 'path';
 
+import tailwindcss from '@tailwindcss/vite';
 import inject from '@rollup/plugin-inject';
 import basicSsl from '@vitejs/plugin-basic-ssl';
 import react from '@vitejs/plugin-react';
@@ -164,6 +165,7 @@ export default defineConfig(async ({ mode }) => {
       extensions: resolveExtensions,
     },
     plugins: [
+      tailwindcss(),
       // electron (desktop) builds do not support PWA
       mode === 'desktop'
         ? undefined
