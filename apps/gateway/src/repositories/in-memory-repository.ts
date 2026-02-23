@@ -14,9 +14,18 @@ import type {
   WorkflowPlaybook,
 } from '../types';
 
+import {
+  decodeLedgerCursor,
+  encodeLedgerCursor,
+} from './ledger-cursor';
 import type { GatewayRepository } from './types';
 
 const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 16);
+
+type StoredLedgerEvent = {
+  event: LedgerEvent;
+  streamPosition: number;
+};
 
 export class InMemoryGatewayRepository implements GatewayRepository {
   readonly kind = 'memory' as const;
@@ -33,8 +42,9 @@ export class InMemoryGatewayRepository implements GatewayRepository {
 
   private readonly egressAudit: EgressAuditEntry[] = [];
   private readonly corrections = new Map<string, Correction>();
-  private readonly ledgerEvents: LedgerEvent[] = [];
+  private readonly ledgerEvents: StoredLedgerEvent[] = [];
   private readonly ledgerStreamVersions = new Map<string, number>();
+  private nextLedgerStreamPosition = 1;
 
   private opsState: OpsState = {
     pendingReviews: 7,
@@ -271,7 +281,12 @@ export class InMemoryGatewayRepository implements GatewayRepository {
       version: nextVersion,
     };
 
-    this.ledgerEvents.push(versionedEvent);
+    this.ledgerEvents.push({
+      event: versionedEvent,
+      streamPosition: this.nextLedgerStreamPosition,
+    });
+    this.nextLedgerStreamPosition += 1;
+
     return versionedEvent;
   }
 
@@ -280,16 +295,47 @@ export class InMemoryGatewayRepository implements GatewayRepository {
     cursor?: string;
     limit: number;
   }): Promise<{ events: LedgerEvent[]; nextCursor?: string }> {
-    const all = this.ledgerEvents
-      .filter(event => event.workspaceId === input.workspaceId)
-      .sort((a, b) => b.occurredAtMs - a.occurredAtMs);
+    const cursor = decodeLedgerCursor(input.cursor);
 
-    const start = input.cursor ? Number(input.cursor) : 0;
-    const slice = all.slice(start, start + input.limit);
-    const nextCursor = start + slice.length < all.length ? String(start + slice.length) : undefined;
+    const all = this.ledgerEvents
+      .filter(item => item.event.workspaceId === input.workspaceId)
+      .sort((a, b) => {
+        const occurredAtDiff = b.event.occurredAtMs - a.event.occurredAtMs;
+        if (occurredAtDiff !== 0) {
+          return occurredAtDiff;
+        }
+
+        return b.streamPosition - a.streamPosition;
+      });
+
+    const filtered = cursor
+      ? all.filter(item => {
+          if (item.event.occurredAtMs < cursor.occurredAtMs) {
+            return true;
+          }
+
+          if (item.event.occurredAtMs > cursor.occurredAtMs) {
+            return false;
+          }
+
+          return item.streamPosition < cursor.streamPosition;
+        })
+      : all;
+
+    const page = filtered.slice(0, input.limit + 1);
+    const hasMore = page.length > input.limit;
+    const items = hasMore ? page.slice(0, input.limit) : page;
+    const lastItem = items[items.length - 1];
+    const nextCursor =
+      hasMore && lastItem
+        ? encodeLedgerCursor({
+            occurredAtMs: lastItem.event.occurredAtMs,
+            streamPosition: lastItem.streamPosition,
+          })
+        : undefined;
 
     return {
-      events: slice,
+      events: items.map(item => item.event),
       nextCursor,
     };
   }

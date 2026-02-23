@@ -98,8 +98,10 @@ export const POSTGRES_MIGRATIONS: string[] = [
       payload_json JSONB NOT NULL,
       actor_id TEXT NOT NULL,
       occurred_at_ms BIGINT NOT NULL,
+      stream_position BIGSERIAL UNIQUE,
       version INTEGER NOT NULL
     );`,
+  `ALTER TABLE ledger_events ADD COLUMN IF NOT EXISTS stream_position BIGSERIAL;`,
   `CREATE TABLE IF NOT EXISTS ledger_stream_versions (
       workspace_id TEXT NOT NULL,
       aggregate_id TEXT NOT NULL,
@@ -107,6 +109,8 @@ export const POSTGRES_MIGRATIONS: string[] = [
       PRIMARY KEY (workspace_id, aggregate_id)
     );`,
   `CREATE INDEX IF NOT EXISTS idx_ledger_events_workspace_time ON ledger_events(workspace_id, occurred_at_ms DESC);`,
+  `CREATE INDEX IF NOT EXISTS idx_ledger_events_workspace_time_position
+    ON ledger_events(workspace_id, occurred_at_ms DESC, stream_position DESC);`,
   `CREATE INDEX IF NOT EXISTS idx_ledger_events_workspace_aggregate_version
     ON ledger_events(workspace_id, aggregate_id, version DESC);`,
 ];

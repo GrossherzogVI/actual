@@ -14,6 +14,10 @@ import type {
   WorkflowPlaybook,
 } from '../types';
 
+import {
+  decodeLedgerCursor,
+  encodeLedgerCursor,
+} from './ledger-cursor';
 import { POSTGRES_MIGRATIONS } from './postgres-migrations';
 import type { GatewayRepository } from './types';
 
@@ -645,33 +649,58 @@ export class PostgresGatewayRepository implements GatewayRepository {
     cursor?: string;
     limit: number;
   }): Promise<{ events: LedgerEvent[]; nextCursor?: string }> {
-    const offset = input.cursor ? Number(input.cursor) : 0;
+    const cursor = decodeLedgerCursor(input.cursor);
+    const params: unknown[] = [input.workspaceId];
+
+    let cursorPredicate = '';
+    if (cursor) {
+      const occurredAtParam = params.push(cursor.occurredAtMs);
+      const streamPositionParam = params.push(cursor.streamPosition);
+      cursorPredicate =
+        ` AND (occurred_at_ms < $${occurredAtParam} ` +
+        `OR (occurred_at_ms = $${occurredAtParam} AND stream_position < $${streamPositionParam}))`;
+    }
+
+    const limitParam = params.push(input.limit + 1);
     const result = await this.pool.query(
       `SELECT event_id, workspace_id, aggregate_id, aggregate_type, event_type, payload_json,
-              actor_id, occurred_at_ms, version
+              actor_id, occurred_at_ms, version, stream_position
        FROM ledger_events
        WHERE workspace_id = $1
-       ORDER BY occurred_at_ms DESC
-       OFFSET $2 LIMIT $3`,
-      [input.workspaceId, offset, input.limit],
+       ${cursorPredicate}
+       ORDER BY occurred_at_ms DESC, stream_position DESC
+       LIMIT $${limitParam}`,
+      params,
     );
 
-    const rows = result.rows.map(row => ({
-      eventId: String(row.event_id),
-      workspaceId: String(row.workspace_id),
-      aggregateId: String(row.aggregate_id),
-      aggregateType: String(row.aggregate_type),
-      type: String(row.event_type),
-      payload: asRecord(row.payload_json),
-      actorId: String(row.actor_id),
-      occurredAtMs: Number(row.occurred_at_ms),
-      version: Number(row.version),
+    const mapped = result.rows.map(row => ({
+      event: {
+        eventId: String(row.event_id),
+        workspaceId: String(row.workspace_id),
+        aggregateId: String(row.aggregate_id),
+        aggregateType: String(row.aggregate_type),
+        type: String(row.event_type),
+        payload: asRecord(row.payload_json),
+        actorId: String(row.actor_id),
+        occurredAtMs: Number(row.occurred_at_ms),
+        version: Number(row.version),
+      },
+      streamPosition: Number(row.stream_position),
     }));
 
-    const nextCursor = rows.length === input.limit ? String(offset + rows.length) : undefined;
+    const hasMore = mapped.length > input.limit;
+    const items = hasMore ? mapped.slice(0, input.limit) : mapped;
+    const last = items[items.length - 1];
+    const nextCursor =
+      hasMore && last
+        ? encodeLedgerCursor({
+            occurredAtMs: last.event.occurredAtMs,
+            streamPosition: last.streamPosition,
+          })
+        : undefined;
 
     return {
-      events: rows,
+      events: items.map(item => item.event),
       nextCursor,
     };
   }

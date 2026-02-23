@@ -114,6 +114,7 @@ CREATE TABLE IF NOT EXISTS ledger_events (
   payload_json JSONB NOT NULL,
   actor_id TEXT NOT NULL,
   occurred_at_ms BIGINT NOT NULL,
+  stream_position BIGSERIAL UNIQUE,
   version INTEGER NOT NULL
 );
 
@@ -126,6 +127,9 @@ CREATE TABLE IF NOT EXISTS ledger_stream_versions (
 
 CREATE INDEX IF NOT EXISTS idx_ledger_events_workspace_time
   ON ledger_events(workspace_id, occurred_at_ms DESC);
+
+CREATE INDEX IF NOT EXISTS idx_ledger_events_workspace_time_position
+  ON ledger_events(workspace_id, occurred_at_ms DESC, stream_position DESC);
 
 CREATE INDEX IF NOT EXISTS idx_ledger_events_workspace_aggregate_version
   ON ledger_events(workspace_id, aggregate_id, version DESC);

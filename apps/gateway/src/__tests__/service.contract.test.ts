@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { InMemoryGatewayQueue } from '../queue/in-memory-queue';
 import { InMemoryGatewayRepository } from '../repositories/in-memory-repository';
 import { createGatewayService } from '../services/gateway-service';
+import type { LedgerEvent } from '../types';
 
 describe('gateway service contract behavior', () => {
   async function createHarness() {
@@ -123,5 +124,64 @@ describe('gateway service contract behavior', () => {
     expect(firstA2.version).toBe(1);
     expect(secondA1.version).toBe(2);
     expect(firstOtherWorkspace.version).toBe(1);
+  });
+
+  it('streams ledger events with deterministic newest-first keyset pagination', async () => {
+    const { service } = await createHarness();
+
+    const originalNow = Date.now;
+    Date.now = () => 1_771_000_000_000;
+
+    try {
+      const submitted: LedgerEvent[] = [];
+
+      for (let index = 1; index <= 5; index += 1) {
+        submitted.push(
+          await service.submitLedgerCommand({
+            workspaceId: 'workspace-pagination',
+            actorId: 'tester',
+            commandType: `ledger.transaction.event-${index}`,
+            aggregateId: `aggregate-${index}`,
+            aggregateType: 'transaction',
+            payload: { index },
+          }),
+        );
+      }
+
+      const expectedNewestFirst = [...submitted]
+        .reverse()
+        .map(event => event.eventId);
+
+      const page1 = await service.streamLedgerEvents({
+        workspaceId: 'workspace-pagination',
+        limit: 2,
+      });
+      expect(page1.events.map(event => event.eventId)).toEqual(
+        expectedNewestFirst.slice(0, 2),
+      );
+      expect(page1.nextCursor).toBeTruthy();
+
+      const page2 = await service.streamLedgerEvents({
+        workspaceId: 'workspace-pagination',
+        cursor: page1.nextCursor,
+        limit: 2,
+      });
+      expect(page2.events.map(event => event.eventId)).toEqual(
+        expectedNewestFirst.slice(2, 4),
+      );
+      expect(page2.nextCursor).toBeTruthy();
+
+      const page3 = await service.streamLedgerEvents({
+        workspaceId: 'workspace-pagination',
+        cursor: page2.nextCursor,
+        limit: 2,
+      });
+      expect(page3.events.map(event => event.eventId)).toEqual(
+        expectedNewestFirst.slice(4),
+      );
+      expect(page3.nextCursor).toBeUndefined();
+    } finally {
+      Date.now = originalNow;
+    }
   });
 });
