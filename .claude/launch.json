@@ -1,0 +1,29 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "desktop-client",
+      "runtimeExecutable": "/Users/admin/homebrew/bin/node",
+      "runtimeArgs": [".yarn/releases/yarn-4.10.3.cjs", "start"],
+      "port": 5006
+    },
+    {
+      "name": "desktop-with-sync",
+      "runtimeExecutable": "/Users/admin/homebrew/bin/node",
+      "runtimeArgs": [".yarn/releases/yarn-4.10.3.cjs", "start:server-dev"],
+      "port": 5006
+    },
+    {
+      "name": "finance-os-web",
+      "runtimeExecutable": "/Users/admin/homebrew/bin/node",
+      "runtimeArgs": [".yarn/releases/yarn-4.10.3.cjs", "start:level5:web"],
+      "port": 5176
+    },
+    {
+      "name": "storybook",
+      "runtimeExecutable": "/Users/admin/homebrew/bin/node",
+      "runtimeArgs": [".yarn/releases/yarn-4.10.3.cjs", "workspace", "@actual-app/components", "start:storybook"],
+      "port": 6006
+    }
+  ]
+}
