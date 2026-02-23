@@ -69,6 +69,10 @@ function dueLabel(signal: TemporalLaneSignal): string {
   return `due in ${signal.daysUntilDue}d`;
 }
 
+function todayKey(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export function TemporalIntelligencePanel({
   onStatus,
   onRoute,
@@ -137,6 +141,51 @@ export function TemporalIntelligencePanel({
     },
     onError: error => {
       onStatus(errorMessage(error, 'Temporal chain execution failed'));
+    },
+  });
+
+  const simulateChain = useMutation({
+    mutationFn: async (chain: TemporalRecommendedChain) => {
+      const branches = await apiClient.listScenarioBranches();
+      const preferredBase =
+        branches
+          .filter(branch => branch.status === 'adopted')
+          .sort(
+            (left, right) =>
+              (right.adoptedAtMs || 0) - (left.adoptedAtMs || 0) ||
+              right.updatedAtMs - left.updatedAtMs,
+          )[0] ||
+        branches.slice().sort((left, right) => right.updatedAtMs - left.updatedAtMs)[0] ||
+        null;
+
+      const created = await apiClient.createScenarioBranch(
+        `${chain.label} ${todayKey()}`,
+        preferredBase?.id,
+        `Generated from temporal intelligence. Chain: ${chain.chain}`,
+      );
+
+      await apiClient.applyScenarioMutation(created.id, 'manual-adjustment', {
+        amountDelta: chain.amountDelta,
+        riskDelta: chain.riskDelta,
+        source: 'temporal-intelligence',
+        chain: chain.chain,
+      });
+
+      return created;
+    },
+    onSuccess: async branch => {
+      onRoute('/ops#spatial-twin');
+      onStatus(`Temporal simulation branch ready: ${branch.name}`);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['scenario-branches'] }),
+        queryClient.invalidateQueries({ queryKey: ['scenario-mutations'] }),
+        queryClient.invalidateQueries({ queryKey: ['scenario-compare'] }),
+        queryClient.invalidateQueries({ queryKey: ['scenario-adoption-check'] }),
+        queryClient.invalidateQueries({ queryKey: ['scenario-lineage'] }),
+      ]);
+    },
+    onError: error => {
+      onStatus(errorMessage(error, 'Temporal simulation failed'));
     },
   });
 
@@ -272,26 +321,44 @@ export function TemporalIntelligencePanel({
               <article className="fo-card">
                 <strong>{selectedChain.label}</strong>
                 <small>{selectedChain.reason}</small>
+                <small>
+                  projected: amount +{selectedChain.amountDelta} / risk {selectedChain.riskDelta}
+                </small>
                 <code>{selectedChain.chain}</code>
               </article>
             ) : (
               <small>No temporal recommendation chain available.</small>
             )}
-            <button
-              className="fo-btn"
-              type="button"
-              disabled={!selectedChain || executeChain.isPending}
-              onClick={() => {
-                if (!selectedChain) return;
-                executeChain.mutate(selectedChain.chain);
-              }}
-            >
-              {executeChain.isPending
-                ? 'Executing...'
-                : executionMode === 'live'
-                  ? 'Execute live temporal chain'
-                  : 'Dry-run temporal chain'}
-            </button>
+            <div className="fo-row">
+              <button
+                className="fo-btn"
+                type="button"
+                disabled={!selectedChain || executeChain.isPending}
+                onClick={() => {
+                  if (!selectedChain) return;
+                  executeChain.mutate(selectedChain.chain);
+                }}
+              >
+                {executeChain.isPending
+                  ? 'Executing...'
+                  : executionMode === 'live'
+                    ? 'Execute live temporal chain'
+                    : 'Dry-run temporal chain'}
+              </button>
+              <button
+                className="fo-btn-secondary"
+                type="button"
+                disabled={!selectedChain || simulateChain.isPending}
+                onClick={() => {
+                  if (!selectedChain) return;
+                  simulateChain.mutate(selectedChain);
+                }}
+              >
+                {simulateChain.isPending
+                  ? 'Simulating...'
+                  : 'Simulate chain in spatial twin'}
+              </button>
+            </div>
           </div>
 
           <div className="fo-temporal-lanes">

@@ -11,6 +11,7 @@ import type {
 } from '../../core/types';
 
 import { dispatchRuntimeCommand } from './runtime-commands';
+import { Button } from '@/components/ui/button';
 
 type RuntimeIncidentTimelinePanelProps = {
   onRoute: (route: string) => void;
@@ -331,46 +332,50 @@ export function RuntimeIncidentTimelinePanel({
       </div>
 
       <div className="fo-incident-toolbar">
-        <button
-          className={`fo-chip ${filter === 'all' ? 'fo-chip-active' : ''}`}
-          type="button"
+        <Button
+          variant={filter === 'all' ? 'default' : 'secondary'}
+          className="fo-chip"
+          size="sm"
           onClick={() => setFilter('all')}
         >
           all
-        </button>
-        <button
-          className={`fo-chip ${filter === 'critical' ? 'fo-chip-active' : ''}`}
-          type="button"
+        </Button>
+        <Button
+          variant={filter === 'critical' ? 'destructive' : 'secondary'}
+          className="fo-chip"
+          size="sm"
           onClick={() => setFilter('critical')}
         >
           critical
-        </button>
-        <button
-          className={`fo-chip ${filter === 'warn' ? 'fo-chip-active' : ''}`}
-          type="button"
+        </Button>
+        <Button
+          variant={filter === 'warn' ? 'default' : 'secondary'}
+          className="fo-chip"
+          size="sm"
           onClick={() => setFilter('warn')}
         >
           warn
-        </button>
-        <button
-          className={`fo-chip ${filter === 'info' ? 'fo-chip-active' : ''}`}
-          type="button"
+        </Button>
+        <Button
+          variant={filter === 'info' ? 'default' : 'secondary'}
+          className="fo-chip"
+          size="sm"
           onClick={() => setFilter('info')}
         >
           info
-        </button>
+        </Button>
       </div>
 
       <div className="fo-row">
-        <button className="fo-btn-secondary" type="button" onClick={() => runTimelineCommand('stabilize')}>
+        <Button variant="secondary" onClick={() => runTimelineCommand('stabilize')}>
           Stabilize
-        </button>
-        <button className="fo-btn-secondary" type="button" onClick={() => runTimelineCommand('requeue-expired')}>
+        </Button>
+        <Button variant="secondary" onClick={() => runTimelineCommand('requeue-expired')}>
           Requeue Expired
-        </button>
-        <button className="fo-btn-secondary" type="button" onClick={() => runTimelineCommand('replay-dead-letters')}>
+        </Button>
+        <Button variant="secondary" onClick={() => runTimelineCommand('replay-dead-letters')}>
           Replay Dead Letters
-        </button>
+        </Button>
       </div>
 
       <div className="fo-incident-list">
@@ -388,14 +393,14 @@ export function RuntimeIncidentTimelinePanel({
               <small>
                 {incident.source} | {new Date(incident.createdAtMs).toLocaleTimeString()}
               </small>
-              <button
-                className="fo-btn-secondary"
-                type="button"
+              <Button
+                size="sm"
+                variant="secondary"
                 disabled={replayDeadLetter.isPending && incident.action === 'replay-dead-letter'}
                 onClick={() => handleIncidentAction(incident)}
               >
                 {incident.actionLabel || 'Execute'}
-              </button>
+              </Button>
             </div>
           </article>
         ))}

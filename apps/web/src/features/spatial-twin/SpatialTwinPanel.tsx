@@ -2,6 +2,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { apiClient } from '../../core/api/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 type SpatialTwinPanelProps = {
   onStatus?: (status: string) => void;
@@ -372,10 +381,9 @@ export function SpatialTwinPanel({ onStatus }: SpatialTwinPanelProps) {
           ))}
         </div>
 
-        <div className="fo-row">
-          <button
-            className="fo-btn-secondary"
-            type="button"
+        <div className="fo-row mt-2">
+          <Button
+            variant="secondary"
             disabled={safeAdoptDisabled}
             onClick={() => {
               if (!selectedBranch) {
@@ -385,10 +393,9 @@ export function SpatialTwinPanel({ onStatus }: SpatialTwinPanelProps) {
             }}
           >
             Adopt Selected
-          </button>
-          <button
-            className="fo-btn-secondary"
-            type="button"
+          </Button>
+          <Button
+            variant="secondary"
             disabled={forceAdoptDisabled}
             onClick={() => {
               if (!selectedBranch) {
@@ -398,44 +405,45 @@ export function SpatialTwinPanel({ onStatus }: SpatialTwinPanelProps) {
             }}
           >
             Force Adopt
-          </button>
+          </Button>
         </div>
       </article>
 
       <div className="fo-row">
-        <input
-          className="fo-input"
+        <Input
           value={branchName}
           onChange={event => setBranchName(event.target.value)}
           placeholder="Create scenario branch"
         />
-        <button
-          className="fo-btn"
-          type="button"
-          onClick={() => createBranch.mutate()}
+        <Button
           disabled={createBranch.isPending}
+          onClick={() => createBranch.mutate()}
         >
           {createBranch.isPending ? 'Creating' : 'Branch'}
-        </button>
+        </Button>
       </div>
 
       <div className="fo-row">
-        <label className="fo-space-between fo-spatial-compare-select">
-          <small>Compare target</small>
-          <select
-            className="fo-input"
-            value={compareTargetId || ''}
-            onChange={event => setCompareTargetId(event.target.value || null)}
+        <label className="fo-space-between fo-spatial-compare-select w-full max-w-[300px]">
+          <small className="mr-4">Compare target</small>
+          <Select
+            value={compareTargetId || 'baseline'}
+            onValueChange={value => setCompareTargetId(value === 'baseline' ? null : value)}
           >
-            <option value="">baseline</option>
-            {branches
-              .filter(branch => branch.id !== selectedBranchId)
-              .map(branch => (
-                <option key={branch.id} value={branch.id}>
-                  {branch.name}
-                </option>
-              ))}
-          </select>
+            <SelectTrigger className="flex-1">
+              <SelectValue placeholder="Compare target" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="baseline">baseline</SelectItem>
+              {branches
+                .filter(branch => branch.id !== selectedBranchId)
+                .map(branch => (
+                  <SelectItem key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
         </label>
       </div>
 
@@ -478,17 +486,17 @@ export function SpatialTwinPanel({ onStatus }: SpatialTwinPanelProps) {
             <small>
               {node.branch.status} · {new Date(node.branch.updatedAtMs).toLocaleDateString()}
             </small>
-            <div className="fo-row">
-              <button
-                className="fo-btn-secondary"
-                type="button"
+            <div className="fo-row mt-2">
+              <Button
+                size="sm"
+                variant="secondary"
                 onClick={() => setSelectedBranchId(node.branch.id)}
               >
                 Select
-              </button>
-              <button
-                className="fo-btn-secondary"
-                type="button"
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
                 onClick={() =>
                   adoptBranch.mutate({
                     branchId: node.branch.id,
@@ -506,7 +514,7 @@ export function SpatialTwinPanel({ onStatus }: SpatialTwinPanelProps) {
                 }
               >
                 {selectedBranchId === node.branch.id && forceAdopt ? 'Force Adopt' : 'Adopt'}
-              </button>
+              </Button>
             </div>
           </article>
         ))}
@@ -520,26 +528,22 @@ export function SpatialTwinPanel({ onStatus }: SpatialTwinPanelProps) {
       </div>
 
       <div className="fo-row">
-        <input
-          className="fo-input"
+        <Input
           value={amountDelta}
           onChange={event => setAmountDelta(event.target.value)}
           placeholder="Amount delta"
         />
-        <input
-          className="fo-input"
+        <Input
           value={riskDelta}
           onChange={event => setRiskDelta(event.target.value)}
           placeholder="Risk delta"
         />
-        <button
-          className="fo-btn"
-          type="button"
+        <Button
           disabled={!selectedBranch || applyMutation.isPending}
           onClick={() => applyMutation.mutate()}
         >
           {applyMutation.isPending ? 'Applying' : 'Apply Mutation'}
-        </button>
+        </Button>
       </div>
 
       <article className="fo-card">

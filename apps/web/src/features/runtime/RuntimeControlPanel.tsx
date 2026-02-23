@@ -8,6 +8,15 @@ import {
   RUNTIME_COMMAND_EVENT,
   type RuntimeCommandEventDetail,
 } from './runtime-commands';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 type RuntimeControlPanelProps = {
   onStatus: (status: string) => void;
@@ -469,17 +478,14 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
               : 'No active queue, contention, or dead-letter alerts.'}
           </small>
           <div className="fo-row">
-            <button
-              className="fo-btn"
-              type="button"
+            <Button
               disabled={controlsLocked}
               onClick={() => stabilizeRuntime.mutate()}
             >
               {stabilizeRuntime.isPending ? 'Stabilizing...' : 'Stabilize Runtime'}
-            </button>
-            <button
-              className="fo-btn-secondary"
-              type="button"
+            </Button>
+            <Button
+              variant="secondary"
               disabled={
                 startPipeline.isPending ||
                 pipelineStatus.data?.orchestrator.running === true
@@ -487,7 +493,7 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
               onClick={() => startPipeline.mutate()}
             >
               {startPipeline.isPending ? 'Starting...' : 'Start Pipeline'}
-            </button>
+            </Button>
           </div>
           <div className="fo-hints">
             <code>alt+shift+s stabilize</code>
@@ -571,20 +577,18 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
             </strong>
           </div>
           <small>Expired claim requeue limit</small>
-          <input
-            className="fo-input"
+          <Input
             value={requeueLimit}
             onChange={event => setRequeueLimit(event.target.value)}
             inputMode="numeric"
           />
-          <button
-            className="fo-btn-secondary"
-            type="button"
+          <Button
+            variant="secondary"
             disabled={requeueExpired.isPending}
             onClick={() => requeueExpired.mutate()}
           >
             {requeueExpired.isPending ? 'Requeueing...' : 'Requeue Expired Claims'}
-          </button>
+          </Button>
           <div className="fo-space-between">
             <small>Queue throughput/min</small>
             <strong>{queueHealth.data?.throughputPerMinute ?? '-'}</strong>
@@ -620,9 +624,8 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
             <small>Last pipeline error</small>
             <strong>{pipelineStatus.data?.orchestrator.lastError || 'none'}</strong>
           </div>
-          <button
-            className="fo-btn-secondary"
-            type="button"
+          <Button
+            variant="secondary"
             disabled={
               startPipeline.isPending ||
               pipelineStatus.data?.orchestrator.running === true
@@ -630,45 +633,40 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
             onClick={() => startPipeline.mutate()}
           >
             {startPipeline.isPending ? 'Starting...' : 'Start Async Pipeline'}
-          </button>
+          </Button>
         </article>
 
         <article className="fo-card">
           <small>Backfill limit per plane</small>
-          <input
-            className="fo-input"
+          <Input
             value={limitPerPlane}
             onChange={event => setLimitPerPlane(event.target.value)}
             inputMode="numeric"
           />
-          <button
-            className="fo-btn-secondary"
-            type="button"
+          <Button
+            variant="secondary"
             disabled={backfill.isPending || pipelineStatus.data?.backfill.running === true}
             onClick={() => backfill.mutate()}
           >
             {backfill.isPending ? 'Backfilling...' : 'Run Backfill'}
-          </button>
+          </Button>
         </article>
 
         <article className="fo-card">
           <small>Retention days</small>
-          <input
-            className="fo-input"
+          <Input
             value={retentionDays}
             onChange={event => setRetentionDays(event.target.value)}
             inputMode="decimal"
           />
           <small>Max rows</small>
-          <input
-            className="fo-input"
+          <Input
             value={maxRows}
             onChange={event => setMaxRows(event.target.value)}
             inputMode="numeric"
           />
-          <button
-            className="fo-btn-secondary"
-            type="button"
+          <Button
+            variant="secondary"
             disabled={
               maintenance.isPending ||
               pipelineStatus.data?.maintenance.running === true
@@ -676,7 +674,7 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
             onClick={() => maintenance.mutate()}
           >
             {maintenance.isPending ? 'Running...' : 'Run Maintenance'}
-          </button>
+          </Button>
         </article>
 
         <article className="fo-card">
@@ -685,19 +683,23 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
             <strong>{deadLetters.data?.length ?? 0}</strong>
           </div>
           <small>Status filter</small>
-          <select
-            className="fo-input"
+          <Select
             value={deadLetterStatus}
-            onChange={event =>
+            onValueChange={value =>
               setDeadLetterStatus(
-                event.target.value as 'open' | 'replayed' | 'resolved',
+                value as 'open' | 'replayed' | 'resolved',
               )
             }
           >
-            <option value="open">open</option>
-            <option value="replayed">replayed</option>
-            <option value="resolved">resolved</option>
-          </select>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="open">open</SelectItem>
+              <SelectItem value="replayed">replayed</SelectItem>
+              <SelectItem value="resolved">resolved</SelectItem>
+            </SelectContent>
+          </Select>
           {deadLetters.data && deadLetters.data.length > 0 ? (
             <div className="fo-stack">
               {deadLetters.data.map(entry => (
@@ -712,33 +714,33 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
                     <small>replays: {entry.replayCount}</small>
                     <small>{entry.errorMessage || 'dropped'}</small>
                   </div>
-                  <div className="fo-space-between">
-                    <button
-                      className="fo-btn-secondary"
-                      type="button"
+                  <div className="fo-space-between mt-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
                       disabled={replaySingleDeadLetter.isPending}
                       onClick={() => replaySingleDeadLetter.mutate(entry.id)}
                     >
                       Replay
-                    </button>
+                    </Button>
                     {entry.status === 'resolved' ? (
-                      <button
-                        className="fo-btn-secondary"
-                        type="button"
+                      <Button
+                        size="sm"
+                        variant="secondary"
                         disabled={reopenDeadLetter.isPending}
                         onClick={() => reopenDeadLetter.mutate(entry.id)}
                       >
                         Reopen
-                      </button>
+                      </Button>
                     ) : (
-                      <button
-                        className="fo-btn-secondary"
-                        type="button"
+                      <Button
+                        size="sm"
+                        variant="secondary"
                         disabled={resolveDeadLetter.isPending}
                         onClick={() => resolveDeadLetter.mutate(entry.id)}
                       >
                         Resolve
-                      </button>
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -748,27 +750,24 @@ export function RuntimeControlPanel({ onStatus }: RuntimeControlPanelProps) {
             <small>No worker dead letters.</small>
           )}
           <small>Replay limit</small>
-          <input
-            className="fo-input"
+          <Input
             value={replayLimit}
             onChange={event => setReplayLimit(event.target.value)}
             inputMode="numeric"
           />
           <small>Replay max attempt</small>
-          <input
-            className="fo-input"
+          <Input
             value={replayMaxAttempt}
             onChange={event => setReplayMaxAttempt(event.target.value)}
             inputMode="numeric"
           />
-          <button
-            className="fo-btn-secondary"
-            type="button"
+          <Button
+            variant="secondary"
             disabled={replayDeadLetters.isPending}
             onClick={() => replayDeadLetters.mutate()}
           >
             {replayDeadLetters.isPending ? 'Replaying...' : 'Replay Dead Letters'}
-          </button>
+          </Button>
         </article>
       </div>
     </section>

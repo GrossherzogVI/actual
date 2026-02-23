@@ -276,6 +276,8 @@ export type TemporalRecommendedChain = {
   label: string;
   chain: string;
   reason: string;
+  amountDelta: number;
+  riskDelta: number;
 };
 
 export type TemporalSignals = {

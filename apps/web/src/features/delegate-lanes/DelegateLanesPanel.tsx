@@ -3,6 +3,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type { DelegateLane } from '../../core/types';
 import { apiClient } from '../../core/api/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 type DelegateLanesPanelProps = {
   onStatus: (status: string) => void;
@@ -289,7 +298,7 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
       if (result.successCount > 0) {
         onStatus(
           `${transitionLabel(result.next)} batch: ${result.successCount} succeeded` +
-            (result.failureCount > 0 ? ` / ${result.failureCount} failed` : ''),
+          (result.failureCount > 0 ? ` / ${result.failureCount} failed` : ''),
         );
       } else {
         onStatus(`No lanes transitioned (${result.failureCount} failed).`);
@@ -390,8 +399,7 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
 
       <div className="fo-stack">
         <div className="fo-row">
-          <input
-            className="fo-input"
+          <Input
             value={title}
             onChange={event => setTitle(event.target.value)}
             placeholder="Mission title"
@@ -399,111 +407,119 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
         </div>
 
         <div className="fo-row">
-          <input
-            className="fo-input"
+          <Input
             value={assignee}
             onChange={event => setAssignee(event.target.value)}
             placeholder="Assignee"
           />
-          <select
-            className="fo-input"
+          <Select
             value={priority}
-            onChange={event =>
-              setPriority(event.target.value as DelegateLane['priority'])
-            }
+            onValueChange={value => setPriority(value as DelegateLane['priority'])}
           >
-            <option value="low">low</option>
-            <option value="normal">normal</option>
-            <option value="high">high</option>
-            <option value="critical">critical</option>
-          </select>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Priority" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="low">low</SelectItem>
+              <SelectItem value="normal">normal</SelectItem>
+              <SelectItem value="high">high</SelectItem>
+              <SelectItem value="critical">critical</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="fo-row">
-          <input
-            className="fo-input"
+          <Input
             type="date"
             value={dueDate}
             onChange={event => setDueDate(event.target.value)}
+            className="w-[180px]"
           />
-          <button
-            className="fo-btn"
+          <Button
             disabled={!title.trim() || !assignee.trim() || assign.isPending}
             onClick={() => assign.mutate()}
-            type="button"
           >
             {assign.isPending ? 'Assigning...' : 'Assign lane'}
-          </button>
+          </Button>
         </div>
       </div>
 
       <div className="fo-mission-toolbar">
-        <input
-          className="fo-input"
+        <Input
           value={searchFilter}
           onChange={event => setSearchFilter(event.target.value)}
           placeholder="Search title/assignee"
+          className="w-[200px]"
         />
-        <select
-          className="fo-input"
+        <Select
           value={statusFilter}
-          onChange={event => setStatusFilter(event.target.value as LaneStatusFilter)}
+          onValueChange={value => setStatusFilter(value as LaneStatusFilter)}
         >
-          <option value="all">all statuses</option>
-          {laneStatusOrder.map(status => (
-            <option key={status} value={status}>
-              {status}
-            </option>
-          ))}
-        </select>
-        <select
-          className="fo-input"
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">all statuses</SelectItem>
+            {laneStatusOrder.map(status => (
+              <SelectItem key={status} value={status}>
+                {status}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
           value={priorityFilter}
-          onChange={event =>
-            setPriorityFilter(event.target.value as LanePriorityFilter)
-          }
+          onValueChange={value => setPriorityFilter(value as LanePriorityFilter)}
         >
-          <option value="all">all priorities</option>
-          <option value="low">low</option>
-          <option value="normal">normal</option>
-          <option value="high">high</option>
-          <option value="critical">critical</option>
-        </select>
-        <select
-          className="fo-input"
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="Priority" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">all priorities</SelectItem>
+            <SelectItem value="low">low</SelectItem>
+            <SelectItem value="normal">normal</SelectItem>
+            <SelectItem value="high">high</SelectItem>
+            <SelectItem value="critical">critical</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select
           value={riskFilter}
-          onChange={event => setRiskFilter(event.target.value as LaneRiskFilter)}
+          onValueChange={value => setRiskFilter(value as LaneRiskFilter)}
         >
-          <option value="all">all risk</option>
-          <option value="critical">critical</option>
-          <option value="high">high</option>
-          <option value="medium">medium</option>
-          <option value="low">low</option>
-          <option value="overdue">overdue</option>
-          <option value="due-soon">due soon</option>
-        </select>
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="Risk" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">all risk</SelectItem>
+            <SelectItem value="critical">critical</SelectItem>
+            <SelectItem value="high">high</SelectItem>
+            <SelectItem value="medium">medium</SelectItem>
+            <SelectItem value="low">low</SelectItem>
+            <SelectItem value="overdue">overdue</SelectItem>
+            <SelectItem value="due-soon">due soon</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="fo-row">
-        <input
-          className="fo-input"
+        <Input
           value={assigneeFilter}
           onChange={event => setAssigneeFilter(event.target.value)}
           placeholder="Filter assignee"
+          className="w-[200px]"
         />
-        <button className="fo-btn-secondary" type="button" onClick={selectAllVisible}>
+        <Button variant="secondary" onClick={selectAllVisible}>
           Select all visible
-        </button>
-        <button className="fo-btn-secondary" type="button" onClick={clearSelection}>
+        </Button>
+        <Button variant="secondary" onClick={clearSelection}>
           Clear
-        </button>
+        </Button>
       </div>
 
       <div className="fo-mission-toolbar">
         <small>{selectedLaneIds.length} selected</small>
-        <button
-          className="fo-btn-secondary"
-          type="button"
+        <Button
+          variant="secondary"
           disabled={batchCandidates.accepted.length === 0 || batchTransition.isPending}
           onClick={() =>
             batchTransition.mutate({
@@ -513,10 +529,9 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
           }
         >
           Batch accept ({batchCandidates.accepted.length})
-        </button>
-        <button
-          className="fo-btn-secondary"
-          type="button"
+        </Button>
+        <Button
+          variant="secondary"
           disabled={batchCandidates.completed.length === 0 || batchTransition.isPending}
           onClick={() =>
             batchTransition.mutate({
@@ -526,10 +541,9 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
           }
         >
           Batch complete ({batchCandidates.completed.length})
-        </button>
-        <button
-          className="fo-btn-secondary"
-          type="button"
+        </Button>
+        <Button
+          variant="secondary"
           disabled={batchCandidates.rejected.length === 0 || batchTransition.isPending}
           onClick={() =>
             batchTransition.mutate({
@@ -539,10 +553,9 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
           }
         >
           Batch reject ({batchCandidates.rejected.length})
-        </button>
-        <button
-          className="fo-btn-secondary"
-          type="button"
+        </Button>
+        <Button
+          variant="secondary"
           disabled={batchCandidates.assigned.length === 0 || batchTransition.isPending}
           onClick={() =>
             batchTransition.mutate({
@@ -552,7 +565,7 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
           }
         >
           Batch reopen ({batchCandidates.assigned.length})
-        </button>
+        </Button>
       </div>
 
       <div className="fo-delegate-grid">
@@ -561,9 +574,8 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
           {visibleLanes.map(({ lane, risk }) => (
             <article
               key={lane.id}
-              className={`fo-card fo-lane-card fo-lane-${lane.status} ${
-                selectedLaneId === lane.id ? 'fo-lane-selected' : ''
-              } ${risk.overdue ? 'fo-lane-overdue' : ''}`}
+              className={`fo-card fo-lane-card fo-lane-${lane.status} ${selectedLaneId === lane.id ? 'fo-lane-selected' : ''
+                } ${risk.overdue ? 'fo-lane-overdue' : ''}`}
               onClick={() => setSelectedLaneId(lane.id)}
               role="button"
               tabIndex={0}
@@ -604,12 +616,12 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
               </small>
               <small>updated: {formatDateTime(lane.updatedAtMs)}</small>
 
-              <div className="fo-row">
+              <div className="fo-row mt-2">
                 {lane.status === 'assigned' ? (
                   <>
-                    <button
-                      className="fo-btn-secondary"
-                      type="button"
+                    <Button
+                      size="sm"
+                      variant="secondary"
                       onClick={event => {
                         event.stopPropagation();
                         transition.mutate({
@@ -621,10 +633,10 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
                       disabled={transition.isPending}
                     >
                       Accept
-                    </button>
-                    <button
-                      className="fo-btn-secondary"
-                      type="button"
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
                       onClick={event => {
                         event.stopPropagation();
                         transition.mutate({
@@ -636,15 +648,15 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
                       disabled={transition.isPending}
                     >
                       Reject
-                    </button>
+                    </Button>
                   </>
                 ) : null}
 
                 {lane.status === 'accepted' ? (
                   <>
-                    <button
-                      className="fo-btn-secondary"
-                      type="button"
+                    <Button
+                      size="sm"
+                      variant="secondary"
                       onClick={event => {
                         event.stopPropagation();
                         transition.mutate({
@@ -656,10 +668,10 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
                       disabled={transition.isPending}
                     >
                       Complete
-                    </button>
-                    <button
-                      className="fo-btn-secondary"
-                      type="button"
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
                       onClick={event => {
                         event.stopPropagation();
                         transition.mutate({
@@ -671,14 +683,14 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
                       disabled={transition.isPending}
                     >
                       Reject
-                    </button>
+                    </Button>
                   </>
                 ) : null}
 
                 {lane.status === 'completed' || lane.status === 'rejected' ? (
-                  <button
-                    className="fo-btn-secondary"
-                    type="button"
+                  <Button
+                    size="sm"
+                    variant="secondary"
                     onClick={event => {
                       event.stopPropagation();
                       transition.mutate({
@@ -690,7 +702,7 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
                     disabled={transition.isPending}
                   >
                     Reopen
-                  </button>
+                  </Button>
                 ) : null}
               </div>
             </article>
@@ -717,12 +729,12 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
               <small>completed: {formatDateTime(selectedLane.completedAtMs)}</small>
               <small>rejected: {formatDateTime(selectedLane.rejectedAtMs)}</small>
 
-              <div className="fo-row">
+              <div className="fo-row mt-2">
                 {(['accepted', 'completed', 'rejected', 'assigned'] as const).map(next => (
-                  <button
+                  <Button
                     key={next}
-                    className="fo-btn-secondary"
-                    type="button"
+                    size="sm"
+                    variant="secondary"
                     disabled={
                       !canTransition(selectedLane.status, next) || transition.isPending
                     }
@@ -735,7 +747,7 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
                     }
                   >
                     {transitionLabel(next)}
-                  </button>
+                  </Button>
                 ))}
               </div>
 
@@ -775,14 +787,12 @@ export function DelegateLanesPanel({ onStatus }: DelegateLanesPanelProps) {
                     }
                   }}
                 />
-                <button
-                  className="fo-btn"
-                  type="button"
+                <Button
                   disabled={!comment.trim() || addComment.isPending}
                   onClick={() => addComment.mutate(selectedLane.id)}
                 >
                   Add note
-                </button>
+                </Button>
               </div>
             </>
           ) : (

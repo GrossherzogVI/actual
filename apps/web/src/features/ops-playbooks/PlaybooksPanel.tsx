@@ -15,6 +15,15 @@ import {
   type RunDetailsSelector,
   RUN_DETAILS_COMMAND_EVENT,
 } from '../runtime/run-details-commands';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 type PlaybooksPanelProps = {
   onStatus: (status: string) => void;
@@ -99,22 +108,22 @@ const PLAYBOOK_TEMPLATES: Array<{
   label: string;
   tokens: string[];
 }> = [
-  {
-    id: 'morning',
-    label: 'Morning Loop',
-    tokens: ['triage', 'open-review', 'close-weekly', 'refresh'],
-  },
-  {
-    id: 'expiring-contracts',
-    label: 'Contract Pressure',
-    tokens: ['triage', 'expiring<30d', 'batch-renegotiate', 'refresh'],
-  },
-  {
-    id: 'close-weekly',
-    label: 'Close Sprint',
-    tokens: ['triage', 'close-weekly', 'refresh'],
-  },
-];
+    {
+      id: 'morning',
+      label: 'Morning Loop',
+      tokens: ['triage', 'open-review', 'close-weekly', 'refresh'],
+    },
+    {
+      id: 'expiring-contracts',
+      label: 'Contract Pressure',
+      tokens: ['triage', 'expiring<30d', 'batch-renegotiate', 'refresh'],
+    },
+    {
+      id: 'close-weekly',
+      label: 'Close Sprint',
+      tokens: ['triage', 'close-weekly', 'refresh'],
+    },
+  ];
 
 function tokenizeChain(chain: string): string[] {
   return chain
@@ -270,7 +279,7 @@ export function PlaybooksPanel({ onStatus }: PlaybooksPanelProps) {
               ? 'failed'
               : runModeFilter === 'rolled_back'
                 ? 'rolled_back'
-              : undefined,
+                : undefined,
         hasErrors: runModeFilter === 'errors' ? true : undefined,
       }),
     refetchInterval: 20_000,
@@ -423,12 +432,12 @@ export function PlaybooksPanel({ onStatus }: PlaybooksPanelProps) {
           : pendingRunDetailsSelector === 'latest-blocked'
             ? runs.find(runItem => runItem.status === 'blocked')
             : runs.find(
-                runItem =>
-                  runItem.rollbackEligible &&
-                  (runItem.status === 'completed' || runItem.status === 'failed') &&
-                  typeof runItem.rollbackWindowUntilMs === 'number' &&
-                  runItem.rollbackWindowUntilMs > now,
-              );
+              runItem =>
+                runItem.rollbackEligible &&
+                (runItem.status === 'completed' || runItem.status === 'failed') &&
+                typeof runItem.rollbackWindowUntilMs === 'number' &&
+                runItem.rollbackWindowUntilMs > now,
+            );
 
     if (!candidate) {
       onStatus(`No ${pendingRunDetailsSelector.replace('latest-', '')} playbook run found.`);
@@ -454,8 +463,7 @@ export function PlaybooksPanel({ onStatus }: PlaybooksPanelProps) {
       </header>
 
       <div className="fo-stack">
-        <input
-          className="fo-input"
+        <Input
           value={playbookName}
           onChange={event => setPlaybookName(event.target.value)}
           placeholder="Playbook name"
@@ -531,29 +539,33 @@ export function PlaybooksPanel({ onStatus }: PlaybooksPanelProps) {
         </small>
 
         <div className="fo-row">
-          <select
-            className="fo-input"
-            aria-label="playbook execution mode"
+          <Select
             value={executionMode}
-            onChange={event => setExecutionMode(event.target.value as ExecutionMode)}
+            onValueChange={value => setExecutionMode(value as ExecutionMode)}
           >
-            <option value="dry-run">dry-run</option>
-            <option value="live">live</option>
-          </select>
-          <select
-            className="fo-input"
-            aria-label="playbook guardrail profile"
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Mode" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="dry-run">dry-run</SelectItem>
+              <SelectItem value="live">live</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
             value={guardrailProfile}
-            onChange={event =>
-              setGuardrailProfile(event.target.value as GuardrailProfile)
-            }
+            onValueChange={value => setGuardrailProfile(value as GuardrailProfile)}
           >
-            <option value="strict">strict</option>
-            <option value="balanced">balanced</option>
-            <option value="off">off</option>
-          </select>
-          <input
-            className="fo-input"
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Guardrail" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="strict">strict</SelectItem>
+              <SelectItem value="balanced">balanced</SelectItem>
+              <SelectItem value="off">off</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input
+            className="w-[120px]"
             aria-label="playbook rollback window minutes"
             type="number"
             min={1}
@@ -577,8 +589,7 @@ export function PlaybooksPanel({ onStatus }: PlaybooksPanelProps) {
           </label>
         </div>
 
-        <input
-          className="fo-input"
+        <Input
           aria-label="playbook idempotency key"
           placeholder="idempotency key (optional)"
           value={idempotencyKey}
@@ -586,18 +597,15 @@ export function PlaybooksPanel({ onStatus }: PlaybooksPanelProps) {
         />
 
         <div className="fo-row">
-          <button
-            className="fo-btn-secondary"
-            type="button"
+          <Button
+            variant="secondary"
             disabled={!canPreview || preview.isPending}
             onClick={() => preview.mutate(normalizedChain)}
           >
             {preview.isPending ? 'Previewing...' : 'Run Dry-run Preview'}
-          </button>
+          </Button>
 
-          <button
-            className="fo-btn"
-            type="button"
+          <Button
             disabled={
               !playbookName.trim() ||
               parsed.commands.length === 0 ||
@@ -612,7 +620,7 @@ export function PlaybooksPanel({ onStatus }: PlaybooksPanelProps) {
             }
           >
             {create.isPending ? 'Creating...' : 'Create Playbook'}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -647,32 +655,31 @@ export function PlaybooksPanel({ onStatus }: PlaybooksPanelProps) {
             </div>
             <small>{playbook.description}</small>
             <small>{playbook.commands.map(command => String(command.verb || '?')).join(' -> ')}</small>
-            <div className="fo-row">
-              <button
-                className="fo-btn-secondary"
-                type="button"
+            <div className="fo-row mt-2">
+              <Button
+                size="sm"
+                variant="secondary"
                 onClick={() => setSelectedPlaybookId(playbook.id)}
               >
                 History
-              </button>
-              <button
-                className="fo-btn-secondary"
-                type="button"
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
                 onClick={() =>
                   run.mutate({ playbookId: playbook.id, executionMode: 'dry-run' })
                 }
               >
                 Dry-run
-              </button>
-              <button
-                className="fo-btn"
-                type="button"
+              </Button>
+              <Button
+                size="sm"
                 onClick={() =>
                   run.mutate({ playbookId: playbook.id, executionMode: 'live' })
                 }
               >
                 Execute Live
-              </button>
+              </Button>
             </div>
           </article>
         ))}
@@ -681,20 +688,23 @@ export function PlaybooksPanel({ onStatus }: PlaybooksPanelProps) {
       <div className="fo-space-between">
         <strong>Playbook run timeline</strong>
         <div className="fo-row">
-          <select
-            className="fo-input"
-            aria-label="playbook run mode filter"
+          <Select
             value={runModeFilter}
-            onChange={event => setRunModeFilter(event.target.value as RunModeFilter)}
+            onValueChange={value => setRunModeFilter(value as RunModeFilter)}
           >
-            <option value="all">all</option>
-            <option value="dry-run">dry-run</option>
-            <option value="live">live</option>
-            <option value="errors">errors</option>
-            <option value="blocked">blocked</option>
-            <option value="failed">failed</option>
-            <option value="rolled_back">rolled_back</option>
-          </select>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Mode" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">all</SelectItem>
+              <SelectItem value="dry-run">dry-run</SelectItem>
+              <SelectItem value="live">live</SelectItem>
+              <SelectItem value="errors">errors</SelectItem>
+              <SelectItem value="blocked">blocked</SelectItem>
+              <SelectItem value="failed">failed</SelectItem>
+              <SelectItem value="rolled_back">rolled_back</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -727,8 +737,8 @@ export function PlaybooksPanel({ onStatus }: PlaybooksPanelProps) {
             <small>
               rollback:{' '}
               {runItem.rollbackEligible &&
-              runItem.rollbackWindowUntilMs &&
-              runItem.rollbackWindowUntilMs > Date.now()
+                runItem.rollbackWindowUntilMs &&
+                runItem.rollbackWindowUntilMs > Date.now()
                 ? `eligible until ${new Date(runItem.rollbackWindowUntilMs).toLocaleTimeString()}`
                 : 'not eligible'}
             </small>
@@ -749,35 +759,35 @@ export function PlaybooksPanel({ onStatus }: PlaybooksPanelProps) {
                   .join(', ')}
               </small>
             ) : null}
-            <div className="fo-row">
-              <button
-                className="fo-btn-secondary"
-                type="button"
+            <div className="fo-row mt-2">
+              <Button
+                size="sm"
+                variant="secondary"
                 onClick={() => setSelectedRunId(runItem.id)}
               >
                 Details
-              </button>
-              <button
-                className="fo-btn-secondary"
-                type="button"
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
                 onClick={() =>
                   replay.mutate({ runId: runItem.id, executionMode: 'dry-run' })
                 }
               >
                 Replay dry-run
-              </button>
-              <button
-                className="fo-btn-secondary"
-                type="button"
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
                 onClick={() =>
                   replay.mutate({ runId: runItem.id, executionMode: 'live' })
                 }
               >
                 Replay live
-              </button>
-              <button
-                className="fo-btn-secondary"
-                type="button"
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
                 disabled={
                   rollback.isPending ||
                   !runItem.rollbackEligible ||
@@ -789,7 +799,7 @@ export function PlaybooksPanel({ onStatus }: PlaybooksPanelProps) {
                 onClick={() => rollback.mutate(runItem.id)}
               >
                 {rollback.isPending ? 'Rolling back...' : 'Rollback'}
-              </button>
+              </Button>
             </div>
           </article>
         ))}

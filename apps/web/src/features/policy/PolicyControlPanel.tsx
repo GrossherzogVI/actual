@@ -3,6 +3,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type { EgressPolicy } from '../../core/types';
 import { apiClient } from '../../core/api/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 type PolicyControlPanelProps = {
   onStatus: (status: string) => void;
@@ -79,8 +88,7 @@ export function PolicyControlPanel({ onStatus }: PolicyControlPanelProps) {
 
         <label className="fo-stack">
           <small>Allowed providers (comma-separated)</small>
-          <input
-            className="fo-input"
+          <Input
             value={providersInput}
             onChange={event => setProvidersInput(event.target.value)}
             placeholder="openai, anthropic"
@@ -89,27 +97,27 @@ export function PolicyControlPanel({ onStatus }: PolicyControlPanelProps) {
 
         <label className="fo-stack">
           <small>Redaction mode</small>
-          <select
-            className="fo-input"
+          <Select
             value={redactionMode}
-            onChange={event =>
-              setRedactionMode(event.target.value as EgressPolicy['redactionMode'])
-            }
+            onValueChange={value => setRedactionMode(value as EgressPolicy['redactionMode'])}
           >
-            <option value="strict">strict</option>
-            <option value="balanced">balanced</option>
-            <option value="off">off</option>
-          </select>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Redaction Mode" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="strict">strict</SelectItem>
+              <SelectItem value="balanced">balanced</SelectItem>
+              <SelectItem value="off">off</SelectItem>
+            </SelectContent>
+          </Select>
         </label>
 
-        <button
-          className="fo-btn"
-          type="button"
+        <Button
           disabled={savePolicy.isPending || policy.isLoading}
           onClick={() => savePolicy.mutate()}
         >
-          Save policy
-        </button>
+          {savePolicy.isPending ? 'Saving...' : 'Save policy'}
+        </Button>
       </div>
 
       <div className="fo-stack">

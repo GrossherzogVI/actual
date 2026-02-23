@@ -11,6 +11,9 @@ import { TemporalIntelligencePanel } from './TemporalIntelligencePanel';
 const apiClientMock = vi.hoisted(() => ({
   getTemporalSignals: vi.fn(),
   executeCommandChain: vi.fn(),
+  listScenarioBranches: vi.fn(),
+  createScenarioBranch: vi.fn(),
+  applyScenarioMutation: vi.fn(),
 }));
 
 vi.mock('../../core/api/client', () => ({
@@ -103,12 +106,16 @@ function createTemporalSignals(
         label: 'Run safe close window',
         chain: 'triage -> close-safe -> refresh',
         reason: 'Next business-day execution window starts 2026-02-24.',
+        amountDelta: 120,
+        riskDelta: -2,
       },
       {
         id: 'temporal-delegate-batch',
         label: 'Batch delegate deadline triage',
         chain: 'triage -> delegate-triage-batch -> apply-batch-policy',
         reason: '1 warning lane needs coordinated action.',
+        amountDelta: 80,
+        riskDelta: -1,
       },
     ],
     summary: {
@@ -146,6 +153,29 @@ describe('TemporalIntelligencePanel', () => {
     vi.clearAllMocks();
     apiClientMock.getTemporalSignals.mockResolvedValue(createTemporalSignals());
     apiClientMock.executeCommandChain.mockResolvedValue(createRun());
+    apiClientMock.listScenarioBranches.mockResolvedValue([
+      {
+        id: 'baseline-1',
+        name: 'Baseline',
+        status: 'adopted',
+        createdAtMs: Date.now() - 10_000,
+        updatedAtMs: Date.now() - 10_000,
+        adoptedAtMs: Date.now() - 9_000,
+      },
+    ]);
+    apiClientMock.createScenarioBranch.mockResolvedValue({
+      id: 'branch-temporal-1',
+      name: 'Run safe close window 2026-02-23',
+      status: 'draft',
+      baseBranchId: 'baseline-1',
+      createdAtMs: Date.now(),
+      updatedAtMs: Date.now(),
+    });
+    apiClientMock.applyScenarioMutation.mockResolvedValue({
+      id: 'mutation-1',
+      branchId: 'branch-temporal-1',
+      kind: 'manual-adjustment',
+    });
   });
 
   it('renders temporal summary and lane pressure cards', async () => {
@@ -193,6 +223,35 @@ describe('TemporalIntelligencePanel', () => {
 
     await waitFor(() => {
       expect(onRoute).toHaveBeenCalledWith('/ops');
+    });
+  });
+
+  it('creates a simulation branch from selected temporal chain', async () => {
+    const { onRoute } = renderPanel();
+
+    await screen.findByRole('button', { name: 'Dry-run temporal chain' });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Simulate chain in spatial twin' }),
+    );
+
+    await waitFor(() => {
+      expect(apiClientMock.createScenarioBranch).toHaveBeenCalledTimes(1);
+    });
+
+    expect(apiClientMock.applyScenarioMutation).toHaveBeenCalledWith(
+      'branch-temporal-1',
+      'manual-adjustment',
+      expect.objectContaining({
+        amountDelta: 120,
+        riskDelta: -2,
+        source: 'temporal-intelligence',
+        chain: 'triage -> close-safe -> refresh',
+      }),
+    );
+
+    await waitFor(() => {
+      expect(onRoute).toHaveBeenCalledWith('/ops#spatial-twin');
     });
   });
 });

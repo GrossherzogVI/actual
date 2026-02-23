@@ -3011,6 +3011,15 @@ export function createGatewayService(
     };
 
     const state = await repository.getOpsState();
+    const criticalWeight = summary.critical;
+    const warnWeight = summary.warn;
+    const urgentWeight = state.urgentReviews;
+    const closeSafeAmountDelta = criticalWeight * 180 + warnWeight * 95;
+    const closeSafeRiskDelta = -Math.max(1, criticalWeight * 2 + warnWeight);
+    const delegateBatchAmountDelta = criticalWeight * 260 + warnWeight * 120;
+    const delegateBatchRiskDelta = -Math.max(1, criticalWeight * 3 + warnWeight);
+    const reviewAmountDelta = urgentWeight * 70;
+    const reviewRiskDelta = -Math.max(1, urgentWeight);
     const recommendedChains = [
       {
         id: 'temporal-close-safe',
@@ -3019,6 +3028,8 @@ export function createGatewayService(
         reason: nextBusinessDay
           ? `Next business-day execution window starts ${nextBusinessDay}.`
           : 'No business-day window detected in horizon.',
+        amountDelta: closeSafeAmountDelta,
+        riskDelta: closeSafeRiskDelta,
       },
       {
         id: 'temporal-delegate-batch',
@@ -3028,6 +3039,8 @@ export function createGatewayService(
           summary.critical + summary.warn > 0
             ? `${summary.critical} critical and ${summary.warn} warning lane(s) need coordinated action.`
             : 'No urgent lane pressure right now.',
+        amountDelta: delegateBatchAmountDelta,
+        riskDelta: delegateBatchRiskDelta,
       },
       {
         id: 'temporal-review-stabilize',
@@ -3037,6 +3050,8 @@ export function createGatewayService(
           state.urgentReviews > 0
             ? `${state.urgentReviews} urgent review item(s) can compound deadline risk.`
             : 'Urgent review pressure is currently low.',
+        amountDelta: reviewAmountDelta,
+        riskDelta: reviewRiskDelta,
       },
     ];
 
