@@ -29,6 +29,7 @@ export type ContractEntity = {
     | 'quarterly'
     | 'semi-annual'
     | 'annual'
+    | 'yearly' // alias for 'annual'
     | 'custom';
   custom_interval_days: number | null;
   payment_account_id: string | null;
@@ -86,6 +87,8 @@ export type ContractHandlers = {
   'contract-create': typeof createContract;
   'contract-update': typeof updateContract;
   'contract-delete': typeof deleteContract;
+  'contract-batch-delete': typeof contractBatchDelete;
+  'contract-batch-update': typeof contractBatchUpdate;
   'contract-summary': typeof contractSummary;
   'contract-expiring': typeof contractExpiring;
   'contract-discover': typeof discoverContracts;
@@ -101,6 +104,8 @@ app.method('contract-get', getContract);
 app.method('contract-create', createContract);
 app.method('contract-update', updateContract);
 app.method('contract-delete', deleteContract);
+app.method('contract-batch-delete', contractBatchDelete);
+app.method('contract-batch-update', contractBatchUpdate);
 app.method('contract-summary', contractSummary);
 app.method('contract-expiring', contractExpiring);
 app.method('contract-discover', discoverContracts);
@@ -197,6 +202,12 @@ async function createContract(data: {
   iban?: string;
   counterparty?: string;
   tags?: string[];
+  payment_method?: string;
+  grace_period_days?: number;
+  soft_shift?: string;
+  hard_shift?: string;
+  lead_time_override?: number;
+  show_hard_deadline?: boolean;
 }): Promise<ContractEntity | { error: string }> {
   const userToken = await asyncStorage.getItem('user-token');
   if (!userToken) return { error: 'not-logged-in' };
@@ -278,6 +289,41 @@ async function deleteContract(args: {
       { 'X-ACTUAL-TOKEN': userToken },
     );
     return result as { deleted: boolean };
+  } catch (err) {
+    return { error: err.reason || err.message || 'unknown' };
+  }
+}
+
+async function contractBatchDelete(args: {
+  ids: string[];
+}): Promise<{ deleted: number } | { error: string }> {
+  const userToken = await asyncStorage.getItem('user-token');
+  if (!userToken) return { error: 'not-logged-in' };
+
+  try {
+    return await post(
+      getServer().BASE_SERVER + '/contracts/batch-delete',
+      { ids: args.ids },
+      { 'X-ACTUAL-TOKEN': userToken },
+    );
+  } catch (err) {
+    return { error: err.reason || err.message || 'unknown' };
+  }
+}
+
+async function contractBatchUpdate(args: {
+  ids: string[];
+  data: Record<string, unknown>;
+}): Promise<{ updated: number } | { error: string }> {
+  const userToken = await asyncStorage.getItem('user-token');
+  if (!userToken) return { error: 'not-logged-in' };
+
+  try {
+    return await post(
+      getServer().BASE_SERVER + '/contracts/batch-update',
+      { ids: args.ids, data: args.data },
+      { 'X-ACTUAL-TOKEN': userToken },
+    );
   } catch (err) {
     return { error: err.reason || err.message || 'unknown' };
   }

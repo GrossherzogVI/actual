@@ -54,7 +54,7 @@ export function ImportAdvisor({ result, onReset }: Props) {
     // Auto-run detection after import completes
     let cancelled = false;
     setDetecting(true);
-    void (send as Function)('import-detect-contracts', {})
+    void send('import-detect-contracts', {})
       .then((res: unknown) => {
         if (cancelled) return;
         if (res && typeof res === 'object' && !('error' in (res as object))) {
@@ -101,7 +101,7 @@ export function ImportAdvisor({ result, onReset }: Props) {
           width: 64,
           height: 64,
           borderRadius: 32,
-          backgroundColor: '#10b98120',
+          backgroundColor: `${theme.noticeTextDark ?? theme.pageTextPositive}20`,
           alignItems: 'center',
           justifyContent: 'center',
           fontSize: 28,
@@ -134,7 +134,7 @@ export function ImportAdvisor({ result, onReset }: Props) {
         <StatCard
           label={t('Imported')}
           value={result.imported}
-          color="#10b981"
+          color={theme.noticeTextDark ?? theme.pageTextPositive}
         />
         <StatCard
           label={t('Skipped')}
@@ -145,7 +145,7 @@ export function ImportAdvisor({ result, onReset }: Props) {
           <StatCard
             label={t('Contracts detected')}
             value={result.contracts_detected}
-            color="#3b82f6"
+            color={theme.pageTextLink}
           />
         )}
       </View>
@@ -180,8 +180,8 @@ export function ImportAdvisor({ result, onReset }: Props) {
           style={{
             width: '100%',
             maxWidth: 500,
-            backgroundColor: `#3b82f608`,
-            border: `1px solid #3b82f640`,
+            backgroundColor: `${theme.pageTextLink}08`,
+            border: `1px solid ${theme.pageTextLink}40`,
             borderRadius: 8,
             padding: '16px 20px',
             gap: 12,

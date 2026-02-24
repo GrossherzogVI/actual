@@ -178,7 +178,7 @@ export function useUpcomingPayments(withinDays = 14): {
 
     let result: unknown;
     try {
-      result = await (send as Function)('contract-list', { status: 'active' });
+      result = await send('contract-list', { status: 'active' });
     } catch (err) {
       setError(String(err));
       setContractPayments([]);

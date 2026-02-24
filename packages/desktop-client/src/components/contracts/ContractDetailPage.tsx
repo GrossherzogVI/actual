@@ -30,6 +30,7 @@ import type {
   PriceHistoryItem,
 } from './types';
 
+import { ConfirmDialog } from '@desktop-client/components/common/ConfirmDialog';
 import { Page } from '@desktop-client/components/Page';
 import { useFeatureFlag } from '@desktop-client/hooks/useFeatureFlag';
 import { useNavigate } from '@desktop-client/hooks/useNavigate';
@@ -54,7 +55,7 @@ function NotesEditor({
 
   const handleSave = useCallback(async () => {
     setSaving(true);
-    await (send as Function)('contract-update', {
+    await send('contract-update', {
       id: contractId,
       data: { notes: value || null },
     });
@@ -475,7 +476,7 @@ function PaymentDeadlineSection({ contractId }: { contractId: string }) {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    (send as Function)('contract-deadlines', { id: contractId })
+    send('contract-deadlines', { id: contractId })
       .then((res: any) => {
         if (cancelled) return;
         if (res && 'error' in res) {
@@ -652,11 +653,15 @@ export function ContractDetailPage() {
   const loadContract = useCallback(async () => {
     if (isNew || !id) return;
     setLoading(true);
-    const result = await (send as Function)('contract-get', { id });
+    const result = await send('contract-get', { id });
     if (result && !('error' in result)) {
       setContract(result as ContractEntity);
     } else {
-      setLoadError(result?.error ?? t('Contract not found'));
+      const errMsg =
+        result && typeof result === 'object' && 'error' in result
+          ? (result as { error: string }).error
+          : t('Contract not found');
+      setLoadError(errMsg);
     }
     setLoading(false);
   }, [id, isNew, t]);
@@ -680,7 +685,7 @@ export function ContractDetailPage() {
         : undefined;
 
       if (isNew) {
-        const result = await (send as Function)('contract-create', {
+        const result = await send('contract-create', {
           name: formData.name.trim(),
           provider: formData.provider.trim() || undefined,
           type: formData.type || undefined,
@@ -711,13 +716,13 @@ export function ContractDetailPage() {
           show_hard_deadline: formData.show_hard_deadline,
         });
         if (result && 'error' in result) {
-          setSaveError(result.error);
+          setSaveError(String(result.error));
           setSaving(false);
           return;
         }
         navigate('/contracts');
       } else {
-        const result = await (send as Function)('contract-update', {
+        const result = await send('contract-update', {
           id,
           data: {
             name: formData.name.trim(),
@@ -748,10 +753,12 @@ export function ContractDetailPage() {
               ? parseInt(formData.lead_time_override, 10)
               : null,
             show_hard_deadline: formData.show_hard_deadline,
-          },
+          } as Partial<
+            Omit<ContractEntity, 'id' | 'created_at' | 'updated_at'>
+          >,
         });
         if (result && 'error' in result) {
-          setSaveError(result.error);
+          setSaveError(String(result.error));
           setSaving(false);
           return;
         }
@@ -763,23 +770,32 @@ export function ContractDetailPage() {
     [id, isNew, navigate, t],
   );
 
-  const handleDelete = useCallback(async () => {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+
+  const handleDelete = useCallback(() => {
     if (!id || isNew) return;
-    if (!window.confirm(t('Are you sure you want to delete this contract?'))) {
-      return;
-    }
-    const result = await (send as Function)('contract-delete', { id });
+    setShowDeleteConfirm(true);
+  }, [id, isNew]);
+
+  const confirmDelete = useCallback(async () => {
+    if (!id) return;
+    const result = await send('contract-delete', { id });
     if (result && 'error' in result) {
       setSaveError(result.error);
       return;
     }
     navigate('/contracts');
-  }, [id, isNew, navigate, t]);
+  }, [id, navigate]);
 
-  const handleCancelContract = useCallback(async () => {
+  const handleCancelContract = useCallback(() => {
     if (!id || isNew) return;
-    if (!window.confirm(t('Mark this contract as cancelled?'))) return;
-    const result = await (send as Function)('contract-update', {
+    setShowCancelConfirm(true);
+  }, [id, isNew]);
+
+  const confirmCancelContract = useCallback(async () => {
+    if (!id) return;
+    const result = await send('contract-update', {
       id,
       data: { status: 'cancelled' },
     });
@@ -788,7 +804,7 @@ export function ContractDetailPage() {
     } else if (result) {
       setContract(result as ContractEntity);
     }
-  }, [id, isNew, t]);
+  }, [id]);
 
   const handleNotesSaved = useCallback((notes: string) => {
     setContract(prev => (prev ? { ...prev, notes: notes || null } : prev));
@@ -1133,6 +1149,24 @@ export function ContractDetailPage() {
           </View>
         </TabsContent>
       </Tabs>
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        title={t('Delete contract')}
+        message={t('Are you sure you want to delete this contract? This cannot be undone.')}
+        confirmLabel={t('Delete')}
+        variant="destructive"
+        onConfirm={confirmDelete}
+      />
+      <ConfirmDialog
+        open={showCancelConfirm}
+        onOpenChange={setShowCancelConfirm}
+        title={t('Cancel contract')}
+        message={t('Mark this contract as cancelled?')}
+        confirmLabel={t('Cancel contract')}
+        onConfirm={confirmCancelContract}
+      />
     </Page>
   );
 }

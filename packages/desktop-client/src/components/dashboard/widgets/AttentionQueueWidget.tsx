@@ -49,7 +49,7 @@ function CountRow({ label, count, color, onClick }: RowProps) {
           alignItems: 'center',
         }}
       >
-        <Text style={{ color: '#fff', fontSize: 11, fontWeight: 600 }}>
+        <Text style={{ color: theme.buttonPrimaryText, fontSize: 11, fontWeight: 600 }}>
           {count}
         </Text>
       </View>
@@ -83,19 +83,19 @@ export function AttentionQueueWidget({ counts, loading }: Props) {
           <CountRow
             label={t('Urgent')}
             count={counts.urgent}
-            color="#ef4444"
+            color={theme.errorText}
             onClick={goToReview}
           />
           <CountRow
             label={t('To review')}
             count={counts.review}
-            color="#f59e0b"
+            color={theme.warningText}
             onClick={goToReview}
           />
           <CountRow
             label={t('Suggestions')}
             count={counts.suggestion}
-            color="#3b82f6"
+            color={theme.pageTextLink}
             onClick={goToReview}
           />
           {counts.pending > 0 && (

@@ -75,7 +75,7 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
 
   // Load categories once on mount
   useEffect(() => {
-    void (send as Function)('get-categories', {})
+    void send('get-categories')
       .then((result: unknown) => {
         if (result && Array.isArray((result as { list?: unknown[] }).list)) {
           const raw = (
@@ -94,7 +94,7 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
   // Load 5 most recent transactions for Recent Templates (6.6)
   useEffect(() => {
     if (!isOpen) return;
-    void (send as Function)('transactions-get', {
+    void send('transactions-get', {
       accountId: null,
       options: { limit: 5, sort: [{ field: 'date', order: 'desc' }] },
     })
@@ -127,7 +127,7 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
       return;
     }
 
-    void (send as Function)('transactions-get', {
+    void send('transactions-get', {
       categoryId: form.categoryId,
       limit: 10,
     })
@@ -338,7 +338,7 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
     if (submitting || form.evaluatedAmount == null) return;
     setSubmitting(true);
     try {
-      await (send as Function)('review-create', {
+      await send('review-create', {
         type: 'parked_expense',
         priority: 'review',
         amount: form.evaluatedAmount,

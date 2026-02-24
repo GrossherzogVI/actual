@@ -25,6 +25,8 @@ type UseContractsReturn = {
     data: Partial<Omit<ContractEntity, 'id' | 'created_at' | 'updated_at'>>,
   ) => Promise<ContractEntity | null>;
   deleteContract: (id: string) => Promise<boolean>;
+  batchDelete: (ids: string[]) => Promise<boolean>;
+  batchUpdate: (ids: string[], data: Record<string, unknown>) => Promise<boolean>;
   recordPriceChange: (
     id: string,
     oldAmount: number,
@@ -52,7 +54,7 @@ export function useContracts({
       if (status) args.status = status;
       if (type) args.type = type;
 
-      const result = await (send as Function)('contract-list', args);
+      const result = await send('contract-list', args);
 
       if (result && 'error' in result) {
         setError(result.error as string);
@@ -99,7 +101,10 @@ export function useContracts({
         notes: formData.notes.trim() || undefined,
       };
 
-      const result = await (send as Function)('contract-create', payload);
+      const result = await send(
+        'contract-create',
+        payload as { name: string },
+      );
       if (result && 'error' in result) {
         return null;
       }
@@ -113,7 +118,7 @@ export function useContracts({
       id: string,
       data: Partial<Omit<ContractEntity, 'id' | 'created_at' | 'updated_at'>>,
     ): Promise<ContractEntity | null> => {
-      const result = await (send as Function)('contract-update', { id, data });
+      const result = await send('contract-update', { id, data });
       if (result && 'error' in result) {
         return null;
       }
@@ -123,9 +128,30 @@ export function useContracts({
   );
 
   const deleteContract = useCallback(async (id: string): Promise<boolean> => {
-    const result = await (send as Function)('contract-delete', { id });
+    const result = await send('contract-delete', { id });
     return result && !('error' in result);
   }, []);
+
+  const batchDelete = useCallback(async (ids: string[]): Promise<boolean> => {
+    const result = await send('contract-batch-delete', { ids });
+    if (result && !('error' in result)) {
+      await reload();
+      return true;
+    }
+    return false;
+  }, [reload]);
+
+  const batchUpdate = useCallback(
+    async (ids: string[], data: Record<string, unknown>): Promise<boolean> => {
+      const result = await send('contract-batch-update', { ids, data });
+      if (result && !('error' in result)) {
+        await reload();
+        return true;
+      }
+      return false;
+    },
+    [reload],
+  );
 
   const recordPriceChange = useCallback(
     async (
@@ -135,7 +161,7 @@ export function useContracts({
       changeDate: string,
       reason?: string,
     ): Promise<boolean> => {
-      const result = await (send as Function)('contract-price-change', {
+      const result = await send('contract-price-change', {
         id,
         oldAmount,
         newAmount,
@@ -155,6 +181,8 @@ export function useContracts({
     createContract,
     updateContract,
     deleteContract,
+    batchDelete,
+    batchUpdate,
     recordPriceChange,
   };
 }

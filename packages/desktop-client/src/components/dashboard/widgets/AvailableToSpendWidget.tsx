@@ -61,7 +61,7 @@ export function AvailableToSpendWidget({ upcomingPayments, loading }: Props) {
                 fontVariantNumeric: 'tabular-nums',
                 color: isPositive
                   ? theme.noticeText
-                  : (theme.errorText ?? '#ef4444'),
+                  : theme.errorText,
                 letterSpacing: '-0.5px',
               }}
             >
@@ -115,7 +115,7 @@ export function AvailableToSpendWidget({ upcomingPayments, loading }: Props) {
                   fontSize: 12,
                   fontWeight: 500,
                   fontVariantNumeric: 'tabular-nums',
-                  color: theme.errorText ?? '#ef4444',
+                  color: theme.errorText,
                 }}
               >
                 -{formatEur(committedCents)}

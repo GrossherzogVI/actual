@@ -59,7 +59,7 @@ function ProjectionRow({
 }) {
   const textColor =
     isNegative || isBelowThreshold
-      ? (theme.errorText ?? '#ef4444')
+      ? theme.errorText
       : theme.pageText;
 
   return (
@@ -72,7 +72,7 @@ function ProjectionRow({
         borderRadius: 4,
         ...(isBelowThreshold && !isNegative
           ? {
-              backgroundColor: `${theme.errorText ?? '#ef4444'}12`,
+              backgroundColor: `${theme.errorText}12`,
             }
           : {}),
       }}
@@ -170,7 +170,7 @@ export function BalanceProjectionWidget({ upcomingPayments = [] }: Props) {
             fontSize: 13,
             padding: '2px 6px',
             color: thresholdEnabled
-              ? (theme.errorText ?? '#ef4444')
+              ? theme.errorText
               : theme.pageTextSubdued,
           }}
         >
@@ -195,13 +195,13 @@ export function BalanceProjectionWidget({ upcomingPayments = [] }: Props) {
             style={{
               fontSize: 11,
               padding: '2px 8px',
-              border: `1px solid ${thresholdEnabled ? (theme.errorText ?? '#ef4444') : theme.tableBorder}`,
+              border: `1px solid ${thresholdEnabled ? theme.errorText : theme.tableBorder}`,
               borderRadius: 10,
               backgroundColor: thresholdEnabled
-                ? `${theme.errorText ?? '#ef4444'}18`
+                ? `${theme.errorText}18`
                 : 'transparent',
               color: thresholdEnabled
-                ? (theme.errorText ?? '#ef4444')
+                ? theme.errorText
                 : theme.pageTextSubdued,
             }}
           >

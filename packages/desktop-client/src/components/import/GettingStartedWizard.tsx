@@ -42,7 +42,7 @@ export function GettingStartedWizard() {
   const handleSetupGermanCategories = useCallback(async () => {
     setCategorySetupLoading(true);
     setCategorySetupError(null);
-    const res = await (send as Function)('categories-setup-german-tree', {});
+    const res = await send('categories-setup-german-tree', {});
     if (res && 'error' in res) {
       setCategorySetupError(res.error as string);
     } else {

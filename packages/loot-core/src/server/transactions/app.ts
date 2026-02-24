@@ -29,6 +29,7 @@ export type TransactionHandlers = {
   'transactions-merge': typeof mergeTransactions;
   'get-earliest-transaction': typeof getEarliestTransaction;
   'get-latest-transaction': typeof getLatestTransaction;
+  'transactions-get': typeof getTransactions;
 };
 
 async function handleBatchUpdateTransactions({
@@ -118,6 +119,41 @@ async function getLatestTransaction() {
   return data[0] || null;
 }
 
+async function getTransactions(args?: {
+  accountId?: string | null;
+  categoryId?: string | null;
+  limit?: number;
+  options?: {
+    limit?: number;
+    sort?: Array<{ field: string; order: 'asc' | 'desc' }>;
+  };
+}): Promise<TransactionEntity[]> {
+  let qb = q('transactions').options({ splits: 'none' }).select('*');
+
+  if (args?.accountId) {
+    qb = qb.filter({ account: args.accountId });
+  }
+  if (args?.categoryId) {
+    qb = qb.filter({ category: args.categoryId });
+  }
+
+  const sortFields = args?.options?.sort;
+  if (sortFields && sortFields.length > 0) {
+    const orderBy = Object.fromEntries(
+      sortFields.map(s => [s.field, s.order]),
+    );
+    qb = qb.orderBy(orderBy);
+  } else {
+    qb = qb.orderBy({ date: 'desc' });
+  }
+
+  const limit = args?.limit ?? args?.options?.limit ?? 50;
+  qb = qb.limit(limit);
+
+  const { data } = await aqlQuery(qb);
+  return data;
+}
+
 export const app = createApp<TransactionHandlers>();
 
 app.method(
@@ -134,3 +170,4 @@ app.method('transactions-export', mutator(exportTransactions));
 app.method('transactions-export-query', mutator(exportTransactionsQuery));
 app.method('get-earliest-transaction', getEarliestTransaction);
 app.method('get-latest-transaction', getLatestTransaction);
+app.method('transactions-get', getTransactions);

@@ -3,6 +3,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { UpcomingPayment } from './types';
+import { useMoneyPulse } from './hooks/useMoneyPulse';
 
 import { useSyncedPref } from '@desktop-client/hooks/useSyncedPref';
 import { formatEur } from '@desktop-client/utils/german-format';
@@ -19,33 +20,36 @@ function getTodayISO(): string {
 
 export function MoneyPulse({ upcomingPayments }: Props) {
   const { t } = useTranslation();
+  const { count, total, ops } = useMoneyPulse(upcomingPayments);
   const [dismissedDate, setDismissedDate] = useSyncedPref(
     'moneyPulseDismissedDate',
   );
 
   if (dismissedDate === getTodayISO()) return null;
 
-  // Compute bills due in next 7 days
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const sevenDays = new Date(today);
-  sevenDays.setDate(sevenDays.getDate() + 7);
+  const segments: string[] = [];
 
-  const thisWeek = upcomingPayments.filter(p => {
-    const d = new Date(p.date);
-    return d >= today && d <= sevenDays;
-  });
+  if (count > 0) {
+    segments.push(
+      t('{{count}} bill(s) due this week ({{total}})', {
+        count,
+        total: formatEur(total),
+      }),
+    );
+  } else {
+    segments.push(t('No bills due this week'));
+  }
 
-  const total = thisWeek.reduce((sum, p) => sum + (p.amount ?? 0), 0);
-  const count = thisWeek.length;
+  if (ops?.pendingReviews) {
+    segments.push(t('{{n}} review(s) pending', { n: ops.pendingReviews }));
+  }
+  if (ops?.expiringContracts) {
+    segments.push(
+      t('{{n}} contract(s) expiring soon', { n: ops.expiringContracts }),
+    );
+  }
 
-  const message =
-    count > 0
-      ? t('You have {{count}} bill(s) due this week, totalling {{total}}.', {
-          count,
-          total: formatEur(total),
-        })
-      : t('No bills due in the next 7 days. Looking good!');
+  const message = segments.join(' · ');
 
   return (
     <Card className="gap-0 border-0 bg-gradient-to-r from-primary/5 to-primary/10 py-0 shadow-none">

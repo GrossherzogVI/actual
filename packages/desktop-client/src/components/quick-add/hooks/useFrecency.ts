@@ -18,9 +18,10 @@ export function useFrecency(): UseFrecencyReturn {
   const reload = useCallback(async () => {
     setLoading(true);
     try {
-      const result = await (send as Function)('quick-add-frecency-list', {});
+      const result = await send('quick-add-frecency-list');
       if (result && !('error' in result) && Array.isArray(result)) {
-        setFrecency(result as FrecencyEntry[]);
+        // TODO: align loot-core/desktop-client FrecencyEntry types
+        setFrecency(result as unknown as FrecencyEntry[]);
       }
     } catch {
       // Handler not available yet — fall back to empty list

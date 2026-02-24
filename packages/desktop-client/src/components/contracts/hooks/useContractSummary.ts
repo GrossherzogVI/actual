@@ -22,10 +22,10 @@ export function useContractSummary(): UseContractSummaryReturn {
     setError(null);
 
     try {
-      const result = await (send as Function)('contract-summary', {});
+      const result = await send('contract-summary');
 
       if (result && 'error' in result) {
-        setError(result.error as string);
+        setError(String((result as { error: unknown }).error));
         setSummary(null);
       } else {
         setSummary(result as ContractSummary);

@@ -21,6 +21,7 @@ import { AttentionQueueWidget } from './widgets/AttentionQueueWidget';
 import { AvailableToSpendWidget } from './widgets/AvailableToSpendWidget';
 import { BalanceProjectionWidget } from './widgets/BalanceProjectionWidget';
 import { CashRunwayWidget } from './widgets/CashRunwayWidget';
+import { HealthScoreWidget } from './widgets/HealthScoreWidget';
 import { QuickAddWidget } from './widgets/QuickAddWidget';
 import { ThisMonthWidget } from './widgets/ThisMonthWidget';
 import { UpcomingPaymentsWidget } from './widgets/UpcomingPaymentsWidget';
@@ -50,6 +51,7 @@ const ALL_WIDGET_IDS = [
   'attention-queue',
   'balance-projection',
   'cash-runway',
+  'health-score',
 ] as const;
 
 type WidgetId = (typeof ALL_WIDGET_IDS)[number];
@@ -69,8 +71,9 @@ const DEFAULT_LAYOUT: LayoutItem[] = [
   { i: 'this-month', x: 0, y: 5, w: 4, h: 3, minW: 3, minH: 2 },
   { i: 'available-to-spend', x: 4, y: 5, w: 4, h: 3, minW: 3, minH: 2 },
   { i: 'attention-queue', x: 8, y: 5, w: 4, h: 3, minW: 3, minH: 2 },
-  { i: 'balance-projection', x: 0, y: 8, w: 6, h: 4, minW: 4, minH: 3 },
-  { i: 'cash-runway', x: 6, y: 8, w: 6, h: 4, minW: 4, minH: 3 },
+  { i: 'balance-projection', x: 0, y: 8, w: 4, h: 4, minW: 3, minH: 3 },
+  { i: 'cash-runway', x: 4, y: 8, w: 4, h: 4, minW: 3, minH: 3 },
+  { i: 'health-score', x: 8, y: 8, w: 4, h: 4, minW: 3, minH: 3 },
 ];
 
 function parseLayout(raw: string | undefined): LayoutItem[] | null {
@@ -101,13 +104,15 @@ export function DashboardPage() {
       'attention-queue': t('Attention Queue'),
       'balance-projection': t('Balance Projection'),
       'cash-runway': t('Cash Runway'),
+      'health-score': t('Financial Health'),
     }),
     [t],
   );
   const enabled = useFeatureFlag('financeOS');
   const navigate = useNavigate();
 
-  const { contractSummary, reviewCounts, loading, error } = useDashboardData();
+  const { contractSummary, reviewCounts, healthScore, loading, error } =
+    useDashboardData();
 
   const daysLeftInMonth = (() => {
     const now = new Date();
@@ -150,7 +155,7 @@ export function DashboardPage() {
       );
     }
     return new Set(ALL_WIDGET_IDS);
-  }, []);
+  }, [savedLayout]);
 
   const [visibleWidgets, setVisibleWidgets] =
     useState<Set<WidgetId>>(initialVisibleIds);
@@ -245,7 +250,7 @@ export function DashboardPage() {
     return (
       <Page header={t('Dashboard')}>
         <View style={{ padding: 20 }}>
-          <Text style={{ color: theme.errorText ?? '#ef4444' }}>{error}</Text>
+          <Text style={{ color: theme.errorText }}>{error}</Text>
         </View>
       </Page>
     );
@@ -373,7 +378,7 @@ export function DashboardPage() {
               {
                 label: t('Set Up Categories'),
                 onPress: () =>
-                  (send as Function)('categories-setup-german-tree'),
+                  send('categories-setup-german-tree'),
               },
             ]}
           />
@@ -430,8 +435,8 @@ export function DashboardPage() {
                         width: 20,
                         height: 20,
                         borderRadius: '50%',
-                        backgroundColor: theme.errorText ?? '#ef4444',
-                        color: '#fff',
+                        backgroundColor: theme.errorText,
+                        color: theme.buttonPrimaryText,
                         fontSize: 12,
                         lineHeight: '20px',
                         textAlign: 'center',
@@ -453,6 +458,7 @@ export function DashboardPage() {
                       reviewCounts={reviewCounts}
                       currentSheetName={currentSheetName}
                       onOpenQuickAdd={handleOpenQuickAdd}
+                      healthScore={healthScore}
                     />
                   </WidgetErrorBoundary>
                 </div>
@@ -480,6 +486,7 @@ type WidgetRendererProps = {
   reviewCounts: any;
   currentSheetName: string;
   onOpenQuickAdd: () => void;
+  healthScore: any;
 };
 
 function WidgetRenderer({
@@ -493,6 +500,7 @@ function WidgetRenderer({
   reviewCounts,
   currentSheetName,
   onOpenQuickAdd,
+  healthScore,
 }: WidgetRendererProps) {
   switch (id) {
     case 'money-pulse':
@@ -528,6 +536,8 @@ function WidgetRenderer({
       return <BalanceProjectionWidget upcomingPayments={upcomingFlat} />;
     case 'cash-runway':
       return <CashRunwayWidget summary={contractSummary} loading={loading} />;
+    case 'health-score':
+      return <HealthScoreWidget healthScore={healthScore} loading={loading} />;
     default:
       return null;
   }

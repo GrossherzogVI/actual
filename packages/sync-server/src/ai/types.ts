@@ -21,19 +21,19 @@ export type ClassificationStatus =
 
 export type AIClassificationEntity = {
   id: string;
-  file_id: string;
   transaction_id: string;
-  proposed_category: string;
+  normalized_payee: string | null;
+  suggested_category_id: string;
   confidence: number;
-  reasoning: string | null;
+  model_version: string | null;
+  classified_at: string;
   status: ClassificationStatus;
-  created_at: string;
+  reasoning: string | null;
   resolved_at: string | null;
 };
 
 export type AIRuleSuggestionEntity = {
   id: string;
-  file_id: string;
   payee_pattern: string;
   match_field: 'payee' | 'imported_payee' | 'notes';
   match_op: 'is' | 'contains';

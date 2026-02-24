@@ -50,7 +50,7 @@ function AccountRow({ account }: { account: { id: string; name: string } }) {
           fontVariantNumeric: 'tabular-nums',
           color:
             balance != null && balance < 0
-              ? (theme.errorText ?? '#ef4444')
+              ? theme.errorText
               : theme.pageText,
         }}
       >

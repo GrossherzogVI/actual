@@ -1,11 +1,8 @@
 // @ts-strict-ignore
 import * as asyncStorage from '../../platform/server/asyncStorage';
 import { createApp } from '../app';
-import {
-  createGatewayEnvelope,
-  gatewayGet,
-  gatewayPost,
-} from '../financeos-gateway';
+import { get, post } from '../post';
+import { getServer } from '../server-config';
 
 type HandlerError = { error: string };
 
@@ -42,13 +39,18 @@ async function scenarioListBranches(): Promise<
   }
 
   try {
-    return await gatewayGet<Array<Record<string, unknown>>>(
-      '/scenario/v1/branches',
-      userToken,
-    );
+    const res = await get(getServer().BASE_SERVER + '/ops/scenario/branches', {
+      headers: { 'X-ACTUAL-TOKEN': userToken },
+    });
+    if (res) {
+      const parsed = JSON.parse(res);
+      if (parsed.status === 'ok') return parsed.data;
+      return { error: parsed.reason || 'unknown' };
+    }
   } catch (err) {
     return { error: readError(err, 'network-failure') };
   }
+  return { error: 'no-response' };
 }
 
 async function scenarioCreateBranch(args: {
@@ -62,16 +64,16 @@ async function scenarioCreateBranch(args: {
   }
 
   try {
-    return await gatewayPost<Record<string, unknown>>(
-      '/scenario/v1/create-branch',
+    const result = await post(
+      getServer().BASE_SERVER + '/ops/scenario/branches',
       {
-        envelope: createGatewayEnvelope('scenario-create-branch'),
         name: args.name,
         baseBranchId: args.baseBranchId,
         notes: args.notes,
       },
-      userToken,
+      { 'X-ACTUAL-TOKEN': userToken },
     );
+    return result as Record<string, unknown>;
   } catch (err) {
     return { error: readError(err) };
   }
@@ -88,16 +90,16 @@ async function scenarioApplyMutation(args: {
   }
 
   try {
-    return await gatewayPost<Record<string, unknown>>(
-      '/scenario/v1/apply-mutation',
+    const result = await post(
+      getServer().BASE_SERVER +
+        `/ops/scenario/branches/${args.branchId ?? ''}/mutations`,
       {
-        envelope: createGatewayEnvelope('scenario-apply-mutation'),
-        branchId: args.branchId ?? '',
         mutationKind: args.mutationKind ?? '',
         payload: args.payload,
       },
-      userToken,
+      { 'X-ACTUAL-TOKEN': userToken },
     );
+    return result as Record<string, unknown>;
   } catch (err) {
     return { error: readError(err) };
   }
@@ -113,14 +115,15 @@ async function scenarioCompareOutcomes(args: {
   }
 
   try {
-    return await gatewayPost<Record<string, unknown>>(
-      '/scenario/v1/compare-outcomes',
+    const result = await post(
+      getServer().BASE_SERVER + '/ops/scenario/compare-outcomes',
       {
         branchId: args.branchId ?? '',
         againstBranchId: args.againstBranchId,
       },
-      userToken,
+      { 'X-ACTUAL-TOKEN': userToken },
     );
+    return result as Record<string, unknown>;
   } catch (err) {
     return { error: readError(err, 'network-failure') };
   }
@@ -135,14 +138,13 @@ async function scenarioAdoptBranch(args: {
   }
 
   try {
-    return await gatewayPost<Record<string, unknown>>(
-      '/scenario/v1/adopt-branch',
-      {
-        envelope: createGatewayEnvelope('scenario-adopt-branch'),
-        branchId: args.branchId ?? '',
-      },
-      userToken,
+    const result = await post(
+      getServer().BASE_SERVER +
+        `/ops/scenario/branches/${args.branchId ?? ''}/adopt`,
+      {},
+      { 'X-ACTUAL-TOKEN': userToken },
     );
+    return result as Record<string, unknown>;
   } catch (err) {
     return { error: readError(err) };
   }

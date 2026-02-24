@@ -272,20 +272,33 @@ function detectBankFormat(headers: string[]): BankFormat | null {
 }
 
 // Detect recurring patterns in transaction list
+const MAX_PATTERN_TRANSACTIONS = 5000;
+const DEFAULT_MONTHS_BACK = 6;
+
 function detectRecurringPatterns(
   transactions: Array<{ payee: string; amount: number; date: string }>,
+  monthsBack = DEFAULT_MONTHS_BACK,
 ): Array<{
   payee: string;
   amount: number;
   likely_interval: string;
   occurrence_count: number;
 }> {
+  // Apply date window filter to avoid unbounded scans
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - monthsBack);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+
+  const filtered = transactions
+    .filter(tx => tx.date >= cutoffStr)
+    .slice(0, MAX_PATTERN_TRANSACTIONS);
+
   const payeeGroups: Record<
     string,
     { amounts: number[]; dates: string[]; originalPayee: string }
   > = {};
 
-  for (const tx of transactions) {
+  for (const tx of filtered) {
     const key = tx.payee.toLowerCase().trim();
     if (!payeeGroups[key]) {
       payeeGroups[key] = { amounts: [], dates: [], originalPayee: tx.payee };
@@ -990,14 +1003,17 @@ app.post('/camt053', (req, res) => {
 
 /** POST /import/detect-contracts — scan imported transactions for recurring patterns */
 app.post('/detect-contracts', (req, res) => {
-  const { transactions } = req.body ?? {};
+  const { transactions, monthsBack } = req.body ?? {};
 
   if (!Array.isArray(transactions)) {
     res.status(400).json({ status: 'error', reason: 'transactions-required' });
     return;
   }
 
-  const patterns = detectRecurringPatterns(transactions);
+  const patterns = detectRecurringPatterns(
+    transactions,
+    typeof monthsBack === 'number' ? monthsBack : undefined,
+  );
 
   res.json({
     status: 'ok',

@@ -1,11 +1,8 @@
 // @ts-strict-ignore
 import * as asyncStorage from '../../platform/server/asyncStorage';
 import { createApp } from '../app';
-import {
-  createGatewayEnvelope,
-  gatewayGet,
-  gatewayPost,
-} from '../financeos-gateway';
+import { get, post } from '../post';
+import { getServer } from '../server-config';
 
 type HandlerError = { error: string };
 
@@ -40,13 +37,18 @@ async function policyGetEgress(): Promise<
   }
 
   try {
-    return await gatewayGet<Record<string, unknown>>(
-      '/policy/v1/egress-policy',
-      userToken,
-    );
+    const res = await get(getServer().BASE_SERVER + '/ops/policy', {
+      headers: { 'X-ACTUAL-TOKEN': userToken },
+    });
+    if (res) {
+      const parsed = JSON.parse(res);
+      if (parsed.status === 'ok') return parsed.data;
+      return { error: parsed.reason || 'unknown' };
+    }
   } catch (err) {
     return { error: readError(err, 'network-failure') };
   }
+  return { error: 'no-response' };
 }
 
 async function policySetEgress(args: {
@@ -60,18 +62,16 @@ async function policySetEgress(args: {
   }
 
   try {
-    return await gatewayPost<Record<string, unknown>>(
-      '/policy/v1/set-egress-policy',
+    const result = await post(
+      getServer().BASE_SERVER + '/ops/policy/update',
       {
-        envelope: createGatewayEnvelope('set-egress-policy'),
-        policy: {
-          allowCloud: args.allowCloud ?? false,
-          allowedProviders: args.allowedProviders ?? [],
-          redactionMode: args.redactionMode ?? 'strict',
-        },
+        allowCloud: args.allowCloud ?? false,
+        allowedProviders: args.allowedProviders ?? [],
+        redactionMode: args.redactionMode ?? 'strict',
       },
-      userToken,
+      { 'X-ACTUAL-TOKEN': userToken },
     );
+    return result as Record<string, unknown>;
   } catch (err) {
     return { error: readError(err) };
   }
@@ -86,16 +86,21 @@ async function policyListEgressAudit(args?: {
   }
 
   try {
-    return await gatewayPost<Array<Record<string, unknown>>>(
-      '/policy/v1/list-egress-audit',
-      {
-        limit: args?.limit ?? 50,
-      },
-      userToken,
+    const params = new URLSearchParams();
+    params.set('limit', String(args?.limit ?? 50));
+    const res = await get(
+      getServer().BASE_SERVER + `/ops/policy/audit?${params.toString()}`,
+      { headers: { 'X-ACTUAL-TOKEN': userToken } },
     );
+    if (res) {
+      const parsed = JSON.parse(res);
+      if (parsed.status === 'ok') return parsed.data;
+      return { error: parsed.reason || 'unknown' };
+    }
   } catch (err) {
     return { error: readError(err, 'network-failure') };
   }
+  return { error: 'no-response' };
 }
 
 async function policyRecordEgressAudit(args: {
@@ -109,16 +114,16 @@ async function policyRecordEgressAudit(args: {
   }
 
   try {
-    return await gatewayPost<Record<string, unknown>>(
-      '/policy/v1/record-egress-audit',
+    const result = await post(
+      getServer().BASE_SERVER + '/ops/policy/audit',
       {
-        envelope: createGatewayEnvelope('record-egress-audit'),
         eventType: args.eventType ?? 'manual-audit-event',
         provider: args.provider,
         payload: args.payload,
       },
-      userToken,
+      { 'X-ACTUAL-TOKEN': userToken },
     );
+    return result as Record<string, unknown>;
   } catch (err) {
     return { error: readError(err) };
   }
