@@ -29,6 +29,8 @@
     "start:level5:worker": "yarn workspace @finance-os/worker dev",
     "start:level5:ai-policy": "yarn workspace @finance-os/ai-policy dev",
     "start:level5": "yarn npm-run-all --parallel 'start:level5:web' 'start:level5:gateway' 'start:level5:sync' 'start:level5:worker' 'start:level5:ai-policy'",
+    "start:surrealdb": "docker compose -f docker-compose.level5.yml up surrealdb",
+    "schema:apply": "bash schema/apply.sh",
     "start:desktop": "yarn desktop-dependencies && npm-run-all --parallel 'start:desktop-*'",
     "start:docs": "yarn workspace docs start",
     "desktop-dependencies": "npm-run-all --parallel rebuild-electron build:browser-backend build:plugins-service",

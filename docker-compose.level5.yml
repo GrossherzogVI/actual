@@ -1,0 +1,22 @@
+###################################################
+# Level-5 Finance OS services
+# Run: docker compose -f docker-compose.level5.yml up
+###################################################
+
+services:
+  surrealdb:
+    image: surrealdb/surrealdb:v3.0.0
+    command: start --log info --user root --pass root --bind 0.0.0.0:8000 surrealkv://data/finance.db
+    ports:
+      - '8000:8000'
+    volumes:
+      - surrealdb-data:/data
+    healthcheck:
+      test: ['CMD', 'surreal', 'isready', '--conn', 'http://localhost:8000']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  surrealdb-data:
