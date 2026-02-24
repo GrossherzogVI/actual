@@ -12,7 +12,6 @@ COPY yarn.lock package.json .yarnrc.yml ./
 COPY packages/api/package.json packages/api/package.json
 COPY packages/component-library/package.json packages/component-library/package.json
 COPY packages/crdt/package.json packages/crdt/package.json
-COPY packages/desktop-client/package.json packages/desktop-client/package.json
 COPY packages/desktop-electron/package.json packages/desktop-electron/package.json
 COPY packages/eslint-plugin-actual/package.json packages/eslint-plugin-actual/package.json
 COPY packages/loot-core/package.json packages/loot-core/package.json
@@ -31,12 +30,11 @@ WORKDIR /app
 
 COPY packages/sync-server ./packages/sync-server
 
-# Remove symbolic links for @actual-app/web and @actual-app/sync-server
-RUN rm -rf ./node_modules/@actual-app/web ./node_modules/@actual-app/sync-server
+# Remove symbolic links for @actual-app/sync-server
+RUN rm -rf ./node_modules/@actual-app/sync-server
 
-# Copy in the @actual-app/web artifacts manually, so we don't need the entire packages folder
-COPY packages/desktop-client/package.json ./node_modules/@actual-app/web/package.json
-COPY packages/desktop-client/build ./node_modules/@actual-app/web/build
+# Copy Level-5 web build output so sync-server can serve it as static files
+COPY apps/web/dist ./apps/web/dist
 
 FROM alpine:3.22 AS prod
 
@@ -57,6 +55,7 @@ ENV NODE_ENV=production
 COPY --from=builder /app/node_modules /app/node_modules
 COPY --from=builder /app/packages/sync-server/package.json ./
 COPY --from=builder /app/packages/sync-server/build ./
+COPY --from=builder /app/apps/web/dist /app/apps/web/dist
 
 ENTRYPOINT ["/sbin/tini","-g",  "--"]
 EXPOSE 5006
