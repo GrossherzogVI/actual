@@ -83,30 +83,54 @@ jobs:
           script: |
             set -euo pipefail
             DEPLOY_DIR=/opt/finance-os
+            DC="docker compose --env-file .env -f infra/docker-compose.prod.yml"
+
+            # Stop old deployment if it exists (avoids port conflicts)
+            if [ -f /opt/ai-workstation/docker-compose.yml ]; then
+              echo "Stopping old deployment at /opt/ai-workstation..."
+              cd /opt/ai-workstation && docker compose down --remove-orphans 2>/dev/null || true
+            fi
 
             # Create .env with SurrealDB credentials if it doesn't exist
+            mkdir -p "$DEPLOY_DIR"
             if [ ! -f "$DEPLOY_DIR/.env" ]; then
               printf 'SURREALDB_USER=%s\nSURREALDB_PASS=%s\n' '${{ secrets.SURREALDB_USER }}' '${{ secrets.SURREALDB_PASS }}' > "$DEPLOY_DIR/.env"
               chmod 600 "$DEPLOY_DIR/.env"
             fi
 
-            # Pull and start services
             cd "$DEPLOY_DIR"
-            docker compose --env-file .env -f infra/docker-compose.prod.yml pull
-            docker compose --env-file .env -f infra/docker-compose.prod.yml up -d
 
-            # Wait for SurrealDB to be healthy
-            echo "Waiting for SurrealDB..."
+            # Pull images
+            $DC pull
+
+            # Start SurrealDB first (without depends_on blocking)
+            $DC up -d surrealdb
+
+            # Wait for SurrealDB with log output on failure
+            echo "Waiting for SurrealDB to become healthy..."
+            HEALTHY=false
             for i in $(seq 1 30); do
-              if docker compose --env-file .env -f infra/docker-compose.prod.yml exec -T surrealdb surreal isready --conn http://localhost:8000 2>/dev/null; then
-                echo "SurrealDB ready."
+              if $DC exec -T surrealdb surreal isready --conn http://localhost:8000 2>/dev/null; then
+                echo "SurrealDB ready after ${i} attempts."
+                HEALTHY=true
                 break
               fi
               sleep 2
             done
 
+            if [ "$HEALTHY" = false ]; then
+              echo "=== SurrealDB failed to start. Container logs: ==="
+              $DC logs --tail=50 surrealdb
+              echo "=== Container status: ==="
+              docker inspect --format='{{.State.Status}} exit={{.State.ExitCode}}' "$($DC ps -q surrealdb)" 2>/dev/null || true
+              exit 1
+            fi
+
+            # Now start actual-budget
+            $DC up -d actual-budget
+
             # Apply schema (idempotent)
-            SURREAL_CONTAINER=$(docker compose --env-file .env -f infra/docker-compose.prod.yml ps -q surrealdb)
+            SURREAL_CONTAINER=$($DC ps -q surrealdb)
             docker cp schema/. "$SURREAL_CONTAINER":/tmp/schema/
             for f in schema/*.surql; do
               [ -f "$f" ] || continue
