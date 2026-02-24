@@ -110,7 +110,7 @@ jobs:
             echo "Waiting for SurrealDB to become healthy..."
             HEALTHY=false
             for i in $(seq 1 30); do
-              if $DC exec -T surrealdb surreal isready --conn http://localhost:8000 2>/dev/null; then
+              if $DC exec -T surrealdb /surreal isready --conn http://localhost:8000 2>/dev/null; then
                 echo "SurrealDB ready after ${i} attempts."
                 HEALTHY=true
                 break
@@ -136,7 +136,7 @@ jobs:
               [ -f "$f" ] || continue
               echo "Applying $(basename "$f")..."
               docker exec "$SURREAL_CONTAINER" \
-                surreal import \
+                /surreal import \
                   --endpoint http://localhost:8000 \
                   --namespace finance \
                   --database main \
