@@ -38,7 +38,7 @@ export function AIRuleSuggestions() {
         minHitCount: 3,
       });
       if (result && !('error' in result)) {
-        setSuggestions(result as unknown as RuleSuggestion[]);
+        setSuggestions(result as RuleSuggestion[]);
       }
       setLoading(false);
     }

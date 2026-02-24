@@ -7,6 +7,8 @@ import {
   validateSessionMiddleware,
 } from '../util/middlewares.js';
 
+import { safeError } from './error-utils.js';
+
 const app = express();
 
 export { app as handlers };
@@ -26,7 +28,7 @@ app.get('/corrections', (req, res) => {
     );
     res.json({ status: 'ok', data: corrections });
   } catch (err) {
-    res.status(500).json({ status: 'error', reason: String(err) });
+    res.status(500).json({ status: 'error', reason: safeError(err, 'intelligence') });
   }
 });
 
@@ -57,7 +59,7 @@ app.post('/corrections', (req, res) => {
     );
     res.json({ status: 'ok', data: correction });
   } catch (err) {
-    res.status(500).json({ status: 'error', reason: String(err) });
+    res.status(500).json({ status: 'error', reason: safeError(err, 'intelligence') });
   }
 });
 
@@ -88,7 +90,7 @@ app.get('/stats', (req, res) => {
 
     res.json({ status: 'ok', data: { total, byType } });
   } catch (err) {
-    res.status(500).json({ status: 'error', reason: String(err) });
+    res.status(500).json({ status: 'error', reason: safeError(err, 'intelligence') });
   }
 });
 
@@ -115,7 +117,7 @@ app.post('/classify-feedback', (req, res) => {
 
     res.json({ status: 'ok', data: { id } });
   } catch (err) {
-    res.status(500).json({ status: 'error', reason: String(err) });
+    res.status(500).json({ status: 'error', reason: safeError(err, 'intelligence') });
   }
 });
 
@@ -139,6 +141,6 @@ app.delete('/corrections/:id', (req, res) => {
     db.mutate(`DELETE FROM intelligence_corrections WHERE id = ?`, [id]);
     res.json({ status: 'ok', data: {} });
   } catch (err) {
-    res.status(500).json({ status: 'error', reason: String(err) });
+    res.status(500).json({ status: 'error', reason: safeError(err, 'intelligence') });
   }
 });

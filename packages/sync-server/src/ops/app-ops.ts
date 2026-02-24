@@ -7,6 +7,8 @@ import {
   validateSessionMiddleware,
 } from '../util/middlewares.js';
 
+import { safeError } from './error-utils.js';
+
 const app = express();
 
 export { app as handlers };
@@ -37,7 +39,7 @@ app.get('/money-pulse', (req, res) => {
       data: { pendingReviews, expiringContracts },
     });
   } catch (err) {
-    res.status(500).json({ status: 'error', reason: String(err) });
+    res.status(500).json({ status: 'error', reason: safeError(err) });
   }
 });
 
@@ -54,7 +56,7 @@ app.get('/command-runs', (req, res) => {
 
     res.json({ status: 'ok', data: runs });
   } catch (err) {
-    res.status(500).json({ status: 'error', reason: String(err) });
+    res.status(500).json({ status: 'error', reason: safeError(err) });
   }
 });
 
@@ -83,7 +85,7 @@ app.post('/resolve-next-action', (req, res) => {
 
     res.json({ status: 'ok', data: topItem });
   } catch (err) {
-    res.status(500).json({ status: 'error', reason: String(err) });
+    res.status(500).json({ status: 'error', reason: safeError(err) });
   }
 });
 
@@ -96,7 +98,7 @@ app.get('/playbooks', (req, res) => {
     );
     res.json({ status: 'ok', data: playbooks });
   } catch (err) {
-    res.status(500).json({ status: 'error', reason: String(err) });
+    res.status(500).json({ status: 'error', reason: safeError(err) });
   }
 });
 
@@ -123,7 +125,7 @@ app.post('/playbooks', (req, res) => {
     const playbook = db.first(`SELECT * FROM ops_playbooks WHERE id = ?`, [id]);
     res.json({ status: 'ok', data: playbook });
   } catch (err) {
-    res.status(500).json({ status: 'error', reason: String(err) });
+    res.status(500).json({ status: 'error', reason: safeError(err) });
   }
 });
 
@@ -177,7 +179,7 @@ app.post('/run-playbook', (req, res) => {
       data: { id: runId, playbook_id, dry_run: isDryRun, results },
     });
   } catch (err) {
-    res.status(500).json({ status: 'error', reason: String(err) });
+    res.status(500).json({ status: 'error', reason: safeError(err) });
   }
 });
 
@@ -234,7 +236,7 @@ app.post('/run-close-routine', (req, res) => {
 
     res.json({ status: 'ok', data: { id, ...summary } });
   } catch (err) {
-    res.status(500).json({ status: 'error', reason: String(err) });
+    res.status(500).json({ status: 'error', reason: safeError(err) });
   }
 });
 
@@ -276,6 +278,103 @@ app.post('/execute-chain', (req, res) => {
       data: { id: runId, steps: results, dryRun: isDryRun },
     });
   } catch (err) {
-    res.status(500).json({ status: 'error', reason: String(err) });
+    res.status(500).json({ status: 'error', reason: safeError(err) });
+  }
+});
+
+// GET /health-score — compute financial health score 0-100
+app.get('/health-score', (req, res) => {
+  try {
+    const db = getAccountDb();
+
+    const pendingReviews =
+      db.first(
+        `SELECT COUNT(*) as count FROM review_queue WHERE status = 'pending'`,
+      )?.count ?? 0;
+
+    const activeContracts =
+      db.first(
+        `SELECT COUNT(*) as count FROM contracts
+         WHERE tombstone = 0 AND status != 'cancelled'`,
+      )?.count ?? 0;
+
+    const expiringContracts =
+      db.first(
+        `SELECT COUNT(*) as count FROM contracts
+         WHERE cancellation_deadline <= date('now', '+30 days')
+           AND tombstone = 0
+           AND status != 'cancelled'`,
+      )?.count ?? 0;
+
+    let score = 100;
+
+    // Review health: -2 per pending item, max -30
+    const reviewPenalty = Math.min(pendingReviews * 2, 30);
+    score -= reviewPenalty;
+
+    // Contract health: -5 per expiring contract, max -25
+    const contractPenalty = Math.min(expiringContracts * 5, 25);
+    score -= contractPenalty;
+
+    // Tracking health: -10 if no contracts tracked at all
+    const trackingPenalty = activeContracts === 0 ? 10 : 0;
+    score -= trackingPenalty;
+
+    res.json({
+      status: 'ok',
+      data: {
+        score,
+        components: {
+          reviewHealth: 100 - reviewPenalty,
+          contractHealth: 100 - contractPenalty,
+          trackingHealth: 100 - trackingPenalty,
+        },
+        trend: 'stable',
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ status: 'error', reason: safeError(err) });
+  }
+});
+
+// POST /apply-batch-policy — batch update review_queue items
+app.post('/apply-batch-policy', (req, res) => {
+  try {
+    const db = getAccountDb();
+    const { ids, status, resolvedAction } = req.body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      res
+        .status(400)
+        .json({ status: 'error', reason: 'ids must be a non-empty array' });
+      return;
+    }
+
+    if (ids.length > 100) {
+      res
+        .status(400)
+        .json({ status: 'error', reason: 'ids array exceeds maximum of 100' });
+      return;
+    }
+
+    if (!status || !resolvedAction) {
+      res.status(400).json({
+        status: 'error',
+        reason: 'status and resolvedAction required',
+      });
+      return;
+    }
+
+    const placeholders = ids.map(() => '?').join(', ');
+    db.mutate(
+      `UPDATE review_queue
+       SET status = ?, resolved_action = ?, resolved_at = datetime('now')
+       WHERE id IN (${placeholders})`,
+      [status, resolvedAction, ...ids],
+    );
+
+    res.json({ status: 'ok', data: { updated: ids.length } });
+  } catch (err) {
+    res.status(500).json({ status: 'error', reason: safeError(err) });
   }
 });

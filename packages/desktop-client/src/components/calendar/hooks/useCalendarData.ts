@@ -325,6 +325,7 @@ export function useCalendarData(
         status: 'active',
       });
       if (result && !('error' in result)) {
+        // TODO: align ContractEntity/ContractRaw types in handlers.ts
         setContracts(result as unknown as ContractRaw[]);
       } else if (result && 'error' in result) {
         setError(String((result as { error: unknown }).error));

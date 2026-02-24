@@ -20,6 +20,7 @@ export function useFrecency(): UseFrecencyReturn {
     try {
       const result = await send('quick-add-frecency-list');
       if (result && !('error' in result) && Array.isArray(result)) {
+        // TODO: align loot-core/desktop-client FrecencyEntry types
         setFrecency(result as unknown as FrecencyEntry[]);
       }
     } catch {

@@ -45,6 +45,7 @@ async function callHandler<T>(
   name: string,
   args: Record<string, unknown> = {},
 ): Promise<HandlerResult<T>> {
+  // TODO: fix handler return type in handlers.ts — send() lacks generic overloads
   return (
     send as unknown as (
       handlerName: string,

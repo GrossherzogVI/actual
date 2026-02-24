@@ -7,6 +7,8 @@ import {
   validateSessionMiddleware,
 } from '../util/middlewares.js';
 
+import { safeError } from './error-utils.js';
+
 const app = express();
 
 export { app as handlers };
@@ -23,7 +25,7 @@ app.get('/branches', (req, res) => {
     );
     res.json({ status: 'ok', data: branches });
   } catch (err) {
-    res.status(500).json({ status: 'error', reason: String(err) });
+    res.status(500).json({ status: 'error', reason: safeError(err, 'scenario') });
   }
 });
 
@@ -50,7 +52,7 @@ app.post('/branches', (req, res) => {
     ]);
     res.json({ status: 'ok', data: branch });
   } catch (err) {
-    res.status(500).json({ status: 'error', reason: String(err) });
+    res.status(500).json({ status: 'error', reason: safeError(err, 'scenario') });
   }
 });
 
@@ -74,7 +76,7 @@ app.get('/branches/:id/mutations', (req, res) => {
     );
     res.json({ status: 'ok', data: mutations });
   } catch (err) {
-    res.status(500).json({ status: 'error', reason: String(err) });
+    res.status(500).json({ status: 'error', reason: safeError(err, 'scenario') });
   }
 });
 
@@ -113,7 +115,7 @@ app.post('/branches/:id/mutations', (req, res) => {
     );
     res.json({ status: 'ok', data: mutation });
   } catch (err) {
-    res.status(500).json({ status: 'error', reason: String(err) });
+    res.status(500).json({ status: 'error', reason: safeError(err, 'scenario') });
   }
 });
 
@@ -138,6 +140,6 @@ app.delete('/branches/:id', (req, res) => {
 
     res.json({ status: 'ok', data: {} });
   } catch (err) {
-    res.status(500).json({ status: 'error', reason: String(err) });
+    res.status(500).json({ status: 'error', reason: safeError(err, 'scenario') });
   }
 });

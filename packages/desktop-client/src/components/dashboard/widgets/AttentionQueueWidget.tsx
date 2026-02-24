@@ -44,7 +44,7 @@ function CountRow({ label, count, color, onClick }: RowProps) {
           alignItems: 'center',
         }}
       >
-        <Text style={{ color: '#fff', fontSize: 11, fontWeight: 600 }}>
+        <Text style={{ color: theme.buttonPrimaryText, fontSize: 11, fontWeight: 600 }}>
           {count}
         </Text>
       </View>

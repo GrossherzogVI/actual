@@ -753,7 +753,7 @@ export function ContractDetailPage() {
               ? parseInt(formData.lead_time_override, 10)
               : null,
             show_hard_deadline: formData.show_hard_deadline,
-          } as unknown as Partial<
+          } as Partial<
             Omit<ContractEntity, 'id' | 'created_at' | 'updated_at'>
           >,
         });
@@ -762,7 +762,7 @@ export function ContractDetailPage() {
           setSaving(false);
           return;
         }
-        setContract(result as unknown as ContractEntity);
+        setContract(result as ContractEntity);
         setIsEditing(false);
       }
       setSaving(false);

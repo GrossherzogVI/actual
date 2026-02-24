@@ -1,10 +1,9 @@
 // @ts-strict-ignore
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { send } from 'loot-core/platform/client/connection';
-
 import type { UpcomingPayment } from './types';
+import { useMoneyPulse } from './hooks/useMoneyPulse';
 
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -16,11 +15,6 @@ function formatEur(cents: number | null): string {
   }).format(cents / 100);
 }
 
-type OpsSnapshot = {
-  pendingReviews: number;
-  expiringContracts: number;
-};
-
 type Props = {
   upcomingPayments: UpcomingPayment[];
 };
@@ -28,37 +22,10 @@ type Props = {
 export function MoneyPulse({ upcomingPayments }: Props) {
   const { t } = useTranslation();
   const [dismissed, setDismissed] = useState(false);
-  const [ops, setOps] = useState<OpsSnapshot | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    send('workflow-money-pulse')
-      .then(data => {
-        if (!cancelled && data && !('error' in data)) {
-          setOps(data as unknown as OpsSnapshot);
-        }
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, []);
+  const { count, total, ops } = useMoneyPulse(upcomingPayments);
 
   if (dismissed) return null;
 
-  // Compute bills due in next 7 days
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const sevenDays = new Date(today);
-  sevenDays.setDate(sevenDays.getDate() + 7);
-
-  const thisWeek = upcomingPayments.filter(p => {
-    const d = new Date(p.date);
-    return d >= today && d <= sevenDays;
-  });
-
-  const total = thisWeek.reduce((sum, p) => sum + (p.amount ?? 0), 0);
-  const count = thisWeek.length;
-
-  // Build pulse segments
   const segments: string[] = [];
 
   if (count > 0) {
@@ -76,7 +43,9 @@ export function MoneyPulse({ upcomingPayments }: Props) {
     segments.push(t('{{n}} review(s) pending', { n: ops.pendingReviews }));
   }
   if (ops?.expiringContracts) {
-    segments.push(t('{{n}} contract(s) expiring soon', { n: ops.expiringContracts }));
+    segments.push(
+      t('{{n}} contract(s) expiring soon', { n: ops.expiringContracts }),
+    );
   }
 
   const message = segments.join(' · ');

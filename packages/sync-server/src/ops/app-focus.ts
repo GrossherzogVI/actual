@@ -7,6 +7,8 @@ import {
   validateSessionMiddleware,
 } from '../util/middlewares.js';
 
+import { safeError } from './error-utils.js';
+
 const app = express();
 
 export { app as handlers };
@@ -97,7 +99,7 @@ app.get('/adaptive-panel', (req, res) => {
 
     res.json({ status: 'ok', data: actions });
   } catch (err) {
-    res.status(500).json({ status: 'error', reason: String(err) });
+    res.status(500).json({ status: 'error', reason: safeError(err, 'focus') });
   }
 });
 
@@ -123,6 +125,6 @@ app.post('/record-action-outcome', (req, res) => {
 
     res.json({ status: 'ok', data: { id, action_id, outcome, notes } });
   } catch (err) {
-    res.status(500).json({ status: 'error', reason: String(err) });
+    res.status(500).json({ status: 'error', reason: safeError(err, 'focus') });
   }
 });

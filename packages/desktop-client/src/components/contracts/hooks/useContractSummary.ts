@@ -28,7 +28,7 @@ export function useContractSummary(): UseContractSummaryReturn {
         setError(String((result as { error: unknown }).error));
         setSummary(null);
       } else {
-        setSummary(result as unknown as ContractSummary);
+        setSummary(result as ContractSummary);
       }
     } catch (err) {
       setError(String(err));

@@ -7,6 +7,8 @@ import {
   validateSessionMiddleware,
 } from '../util/middlewares.js';
 
+import { safeError } from './error-utils.js';
+
 const app = express();
 
 export { app as handlers };
@@ -23,7 +25,7 @@ app.get('/lanes', (req, res) => {
     );
     res.json({ status: 'ok', data: lanes });
   } catch (err) {
-    res.status(500).json({ status: 'error', reason: String(err) });
+    res.status(500).json({ status: 'error', reason: safeError(err, 'delegate') });
   }
 });
 
@@ -55,7 +57,7 @@ app.post('/lanes', (req, res) => {
     const lane = db.first(`SELECT * FROM delegate_lanes WHERE id = ?`, [id]);
     res.json({ status: 'ok', data: lane });
   } catch (err) {
-    res.status(500).json({ status: 'error', reason: String(err) });
+    res.status(500).json({ status: 'error', reason: safeError(err, 'delegate') });
   }
 });
 
@@ -110,7 +112,7 @@ app.patch('/lanes/:id', (req, res) => {
     const lane = db.first(`SELECT * FROM delegate_lanes WHERE id = ?`, [id]);
     res.json({ status: 'ok', data: lane });
   } catch (err) {
-    res.status(500).json({ status: 'error', reason: String(err) });
+    res.status(500).json({ status: 'error', reason: safeError(err, 'delegate') });
   }
 });
 
@@ -131,6 +133,6 @@ app.delete('/lanes/:id', (req, res) => {
     db.mutate(`DELETE FROM delegate_lanes WHERE id = ?`, [id]);
     res.json({ status: 'ok', data: {} });
   } catch (err) {
-    res.status(500).json({ status: 'error', reason: String(err) });
+    res.status(500).json({ status: 'error', reason: safeError(err, 'delegate') });
   }
 });

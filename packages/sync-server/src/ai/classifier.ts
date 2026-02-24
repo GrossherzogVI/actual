@@ -165,38 +165,50 @@ export async function classifyTransaction(
   return result;
 }
 
+// ─── Concurrency helper ─────────────────────────────────────────────────────
+
 const CONCURRENCY_LIMIT = 3;
+
+async function withConcurrency<T, R>(
+  items: T[],
+  fn: (item: T) => Promise<R>,
+  limit = CONCURRENCY_LIMIT,
+): Promise<R[]> {
+  const results: R[] = [];
+  let index = 0;
+
+  async function worker() {
+    while (index < items.length) {
+      const i = index++;
+      results[i] = await fn(items[i]);
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, () => worker()),
+  );
+  return results;
+}
 
 export async function classifyBatch(
   transactions: TransactionInput[],
   categories: CategoryInfo[],
   _fileId: string,
 ): Promise<ClassificationResult[]> {
-  const results: ClassificationResult[] = [];
-  const queue = [...transactions];
-
-  async function worker() {
-    while (queue.length > 0) {
-      const tx = queue.shift()!;
+  return withConcurrency(
+    transactions,
+    async (tx) => {
       try {
-        const result = await classifyTransaction(tx, categories);
-        results.push(result);
+        return await classifyTransaction(tx, categories);
       } catch {
-        results.push({
+        return {
           transactionId: tx.id,
           categoryId: '',
           confidence: 0,
           reasoning: 'Classification failed',
-        });
+        };
       }
-    }
-  }
-
-  const workers = Array.from(
-    { length: Math.min(CONCURRENCY_LIMIT, transactions.length) },
-    () => worker(),
+    },
+    CONCURRENCY_LIMIT,
   );
-  await Promise.all(workers);
-
-  return results;
 }

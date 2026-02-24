@@ -414,7 +414,7 @@ export function DashboardPage() {
                         height: 20,
                         borderRadius: '50%',
                         backgroundColor: theme.errorText,
-                        color: '#fff',
+                        color: theme.buttonPrimaryText,
                         fontSize: 12,
                         lineHeight: '20px',
                         textAlign: 'center',

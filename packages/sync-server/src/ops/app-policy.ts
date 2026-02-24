@@ -7,6 +7,8 @@ import {
   validateSessionMiddleware,
 } from '../util/middlewares.js';
 
+import { safeError } from './error-utils.js';
+
 const app = express();
 
 export { app as handlers };
@@ -21,7 +23,7 @@ app.get('/', (req, res) => {
     const policy = db.first(`SELECT * FROM policy_egress WHERE id = 'default'`);
     res.json({ status: 'ok', data: policy });
   } catch (err) {
-    res.status(500).json({ status: 'error', reason: String(err) });
+    res.status(500).json({ status: 'error', reason: safeError(err, 'policy') });
   }
 });
 
@@ -62,7 +64,7 @@ app.patch('/', (req, res) => {
     const policy = db.first(`SELECT * FROM policy_egress WHERE id = 'default'`);
     res.json({ status: 'ok', data: policy });
   } catch (err) {
-    res.status(500).json({ status: 'error', reason: String(err) });
+    res.status(500).json({ status: 'error', reason: safeError(err, 'policy') });
   }
 });
 
@@ -78,7 +80,7 @@ app.get('/audit', (req, res) => {
     );
     res.json({ status: 'ok', data: entries });
   } catch (err) {
-    res.status(500).json({ status: 'error', reason: String(err) });
+    res.status(500).json({ status: 'error', reason: safeError(err, 'policy') });
   }
 });
 
@@ -108,6 +110,6 @@ app.post('/audit', (req, res) => {
     );
     res.json({ status: 'ok', data: entry });
   } catch (err) {
-    res.status(500).json({ status: 'error', reason: String(err) });
+    res.status(500).json({ status: 'error', reason: safeError(err, 'policy') });
   }
 });

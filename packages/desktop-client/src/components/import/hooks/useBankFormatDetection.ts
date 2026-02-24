@@ -21,6 +21,7 @@ export function useBankFormatDetection(): UseBankFormatDetectionReturn {
     async function load() {
       const res = await send('import-bank-formats');
       if (res && !('error' in res)) {
+        // TODO: align handler return type with BankFormat[] in handlers.ts
         setFormats((res as unknown as BankFormat[]) ?? []);
       }
       setLoading(false);

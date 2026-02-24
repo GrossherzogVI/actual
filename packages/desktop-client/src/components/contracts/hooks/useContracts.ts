@@ -108,7 +108,7 @@ export function useContracts({
       if (result && 'error' in result) {
         return null;
       }
-      return result as unknown as ContractEntity;
+      return result as ContractEntity;
     },
     [],
   );
