@@ -2,6 +2,7 @@ import { motion } from 'motion/react';
 import ReactECharts from 'echarts-for-react';
 
 import { useBalanceProjection } from './useBalanceProjection';
+import { WidgetError } from './WidgetError';
 
 const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
 
@@ -92,7 +93,7 @@ function buildChartOption(points: { date: string; balance: number }[]) {
 }
 
 export function BalanceProjectionWidget() {
-  const { data: points, isLoading } = useBalanceProjection(30);
+  const { data: points, isLoading, isError, refetch } = useBalanceProjection(30);
 
   if (isLoading) {
     return (
@@ -106,6 +107,22 @@ export function BalanceProjectionWidget() {
           <h2>Kontostandsentwicklung</h2>
         </header>
         <div className="h-[200px] rounded-md bg-[var(--fo-bg)] animate-pulse" />
+      </motion.section>
+    );
+  }
+
+  if (isError) {
+    return (
+      <motion.section
+        className="fo-panel"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, delay: 0.18 }}
+      >
+        <header className="fo-panel-header">
+          <h2>Kontostandsentwicklung</h2>
+        </header>
+        <WidgetError message="Prognose konnte nicht geladen werden" onRetry={() => void refetch()} />
       </motion.section>
     );
   }

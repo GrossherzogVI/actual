@@ -1,0 +1,44 @@
+###################################################
+# Production: Finance OS (actual-budget + SurrealDB)
+# Deployed to VPS by .github/workflows/deploy.yml
+###################################################
+
+services:
+  actual-budget:
+    image: ghcr.io/grossherzogvi/actual-budget:latest
+    ports:
+      - '5006:5006'
+    volumes:
+      - actual-data:/data
+    environment:
+      - ACTUAL_UPLOAD_FILE_SYNC_SIZE_LIMIT_MB=20
+      - ACTUAL_UPLOAD_SYNC_ENCRYPTED_FILE_SYNC_SIZE_LIMIT_MB=50
+      - ACTUAL_UPLOAD_FILE_SIZE_LIMIT_MB=20
+    depends_on:
+      surrealdb:
+        condition: service_healthy
+    restart: unless-stopped
+
+  surrealdb:
+    image: surrealdb/surrealdb:v3.0.0
+    command: >-
+      start
+      --log info
+      --user ${SURREALDB_USER:?Set SURREALDB_USER in .env}
+      --pass ${SURREALDB_PASS:?Set SURREALDB_PASS in .env}
+      --bind 0.0.0.0:8000
+      surrealkv://data/finance.db
+    ports:
+      - '8000:8000'
+    volumes:
+      - surrealdb-data:/data
+    healthcheck:
+      test: ['CMD', 'surreal', 'isready', '--conn', 'http://localhost:8000']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  actual-data:
+  surrealdb-data:

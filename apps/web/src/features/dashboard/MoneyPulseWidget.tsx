@@ -4,12 +4,16 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useMoneyPulse } from './useMoneyPulse';
 
 export function MoneyPulseWidget() {
-  const { lines, isDismissed, dismiss, isLoading } = useMoneyPulse();
+  const { lines, isDismissed, dismiss, isLoading, isError } = useMoneyPulse();
 
   if (isLoading) {
     return (
       <div className="h-12 rounded-md bg-[var(--fo-bg)] animate-pulse" />
     );
+  }
+
+  if (isError) {
+    return null; // Connection banner handles global DB errors
   }
 
   return (

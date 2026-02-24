@@ -3,6 +3,7 @@ import { CircleDollarSign, Lock, Wallet } from 'lucide-react';
 import { motion } from 'motion/react';
 
 import { getAvailableToSpend } from '../../core/api/finance-api';
+import { WidgetError } from './WidgetError';
 
 const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
 
@@ -31,7 +32,7 @@ function MetricRow({ icon: Icon, label, amount, amountClass = 'text-[var(--fo-te
 }
 
 export function AvailableToSpendWidget() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['available-to-spend'],
     queryFn: getAvailableToSpend,
   });
@@ -52,6 +53,22 @@ export function AvailableToSpendWidget() {
             <div key={i} className="h-8 rounded-md bg-[var(--fo-bg)] animate-pulse" />
           ))}
         </div>
+      </motion.section>
+    );
+  }
+
+  if (isError) {
+    return (
+      <motion.section
+        className="fo-panel"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, delay: 0.12 }}
+      >
+        <header className="fo-panel-header">
+          <h2>Verfügbar</h2>
+        </header>
+        <WidgetError message="Verfügbarer Betrag konnte nicht geladen werden" onRetry={() => void refetch()} />
       </motion.section>
     );
   }

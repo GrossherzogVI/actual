@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { AlertTriangle, TrendingUp } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 
+import { WidgetError } from '../dashboard/WidgetError';
 import { AnomalyCard } from './AnomalyCard';
 import { SpendingPatternCard } from './SpendingPatternCard';
 import { useAnomalies, useResolveAnomaly } from './useAnomalies';
@@ -15,9 +16,9 @@ export function IntelligenceInsights({
   compact?: boolean;
   maxItems?: number;
 }) {
-  const { data: anomalies = [], isLoading: anomaliesLoading } =
+  const { data: anomalies = [], isLoading: anomaliesLoading, isError: anomaliesError, refetch: refetchAnomalies } =
     useAnomalies(false);
-  const { data: patterns = [], isLoading: patternsLoading } =
+  const { data: patterns = [], isLoading: patternsLoading, isError: patternsError } =
     useSpendingPatterns(false);
 
   const resolveMutation = useResolveAnomaly();
@@ -41,6 +42,7 @@ export function IntelligenceInsights({
   }
 
   const isLoading = anomaliesLoading || patternsLoading;
+  const isError = anomaliesError || patternsError;
 
   const displayedAnomalies = anomalies.slice(0, maxItems);
   const displayedPatterns = patterns.slice(0, maxItems);
@@ -61,6 +63,17 @@ export function IntelligenceInsights({
             />
           ))}
         </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="fo-panel">
+        <header className="fo-panel-header">
+          <h2>Intelligenz</h2>
+        </header>
+        <WidgetError message="Intelligenz-Daten konnten nicht geladen werden" onRetry={() => void refetchAnomalies()} />
       </div>
     );
   }

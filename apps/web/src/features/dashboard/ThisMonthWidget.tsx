@@ -4,13 +4,14 @@ import { motion } from 'motion/react';
 
 import { getThisMonth } from '../../core/api/finance-api';
 import { AmountDisplay } from '../finance/AmountDisplay';
+import { WidgetError } from './WidgetError';
 
 function formatCount(n: number): string {
   return new Intl.NumberFormat('de-DE').format(n);
 }
 
 export function ThisMonthWidget() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['this-month'],
     queryFn: getThisMonth,
   });
@@ -39,6 +40,23 @@ export function ThisMonthWidget() {
             />
           ))}
         </div>
+      </motion.section>
+    );
+  }
+
+  if (isError) {
+    return (
+      <motion.section
+        className="fo-panel"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, delay: 0.1 }}
+      >
+        <header className="fo-panel-header">
+          <h2>Dieser Monat</h2>
+          <small className="capitalize">{monthName}</small>
+        </header>
+        <WidgetError message="Monatsdaten konnten nicht geladen werden" onRetry={() => void refetch()} />
       </motion.section>
     );
   }

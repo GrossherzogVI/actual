@@ -81,7 +81,8 @@ export function useMoneyPulse() {
 
   const isDismissed = dismissedDate === todayDateString();
   const isLoading = pulseLoading || monthLoading || prefLoading;
+  const isError = !isLoading && !pulse && !thisMonth;
   const lines = buildLines(pulse, thisMonth);
 
-  return { lines, isDismissed, dismiss, isLoading };
+  return { lines, isDismissed, dismiss, isLoading, isError };
 }

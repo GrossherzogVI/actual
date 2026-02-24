@@ -5,6 +5,7 @@ import { motion } from 'motion/react';
 import { listContracts } from '../../core/api/finance-api';
 import type { Contract } from '../../core/types/finance';
 import { AmountDisplay } from '../finance/AmountDisplay';
+import { WidgetError } from './WidgetError';
 
 const INTERVAL_LABELS: Record<Contract['interval'], string> = {
   monthly: 'mtl.',
@@ -42,7 +43,7 @@ const HEALTH_CONFIG: Record<
 };
 
 export function UpcomingPaymentsWidget() {
-  const { data: contracts, isLoading } = useQuery({
+  const { data: contracts, isLoading, isError, refetch } = useQuery({
     queryKey: ['contracts'],
     queryFn: listContracts,
   });
@@ -66,6 +67,22 @@ export function UpcomingPaymentsWidget() {
             />
           ))}
         </div>
+      </motion.section>
+    );
+  }
+
+  if (isError) {
+    return (
+      <motion.section
+        className="fo-panel"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, delay: 0.2 }}
+      >
+        <header className="fo-panel-header">
+          <h2>Laufende Vertraege</h2>
+        </header>
+        <WidgetError message="Vertragsdaten konnten nicht geladen werden" onRetry={() => void refetch()} />
       </motion.section>
     );
   }

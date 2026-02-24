@@ -1,11 +1,66 @@
 import { useCallback, useState } from 'react';
 
+import { useQuery } from '@tanstack/react-query';
+import { AlertCircle, RefreshCw, X } from 'lucide-react';
+
+import { connect } from '../core/api/surreal-client';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { FinancePage } from '../features/finance/FinancePage';
 import { QuickAddOverlay } from '../features/quick-add';
 import { CommandPalette } from './CommandPalette';
 import { KeyboardShortcuts } from './KeyboardShortcuts';
 import { useAppState } from './useAppState';
+
+function ConnectionStatus() {
+  const [dismissed, setDismissed] = useState(false);
+  const { isError, refetch } = useQuery({
+    queryKey: ['connection-health'],
+    queryFn: async () => {
+      const db = await connect();
+      await db.query('RETURN true');
+      return true;
+    },
+    retry: 2,
+    retryDelay: 3000,
+    refetchInterval: 30_000,
+  });
+
+  if (!isError || dismissed) return null;
+
+  return (
+    <div
+      className="flex items-center gap-3 px-4 py-2.5 text-sm"
+      style={{
+        background: 'var(--fo-danger-bg, rgba(239,68,68,0.1))',
+        borderBottom: '1px solid var(--fo-danger, #ef4444)',
+        color: 'var(--fo-danger, #ef4444)',
+      }}
+    >
+      <AlertCircle size={16} className="shrink-0" />
+      <span className="flex-1">
+        Datenbankverbindung fehlgeschlagen — Daten können nicht geladen werden.
+      </span>
+      <button
+        type="button"
+        onClick={() => void refetch()}
+        className="fo-row gap-1 text-xs font-medium hover:underline shrink-0"
+        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit' }}
+      >
+        <RefreshCw size={12} />
+        Erneut versuchen
+      </button>
+      <button
+        type="button"
+        onClick={() => setDismissed(true)}
+        className="shrink-0 p-0.5 rounded hover:opacity-70"
+        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit' }}
+        aria-label="Banner schließen"
+      >
+        <X size={14} />
+      </button>
+    </div>
+  );
+}
 
 const TAB_MAP: Record<string, string> = {
   'open-finance': 'dashboard',
@@ -57,6 +112,8 @@ export function App() {
           <small>Personal Finance Command Center</small>
         </div>
       </header>
+
+      <ConnectionStatus />
 
       <div style={{ flex: 1, minHeight: 0 }}>
         <ErrorBoundary zone="finance">

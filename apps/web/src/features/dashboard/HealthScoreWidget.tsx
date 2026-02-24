@@ -3,6 +3,7 @@ import { Activity } from 'lucide-react';
 import { motion } from 'motion/react';
 
 import { getDashboardPulse, getThisMonth } from '../../core/api/finance-api';
+import { WidgetError } from './WidgetError';
 
 type ScoreTier = {
   label: string;
@@ -132,17 +133,18 @@ function ScoreFactor({ label, ok }: ScoreFactorProps) {
 }
 
 export function HealthScoreWidget() {
-  const { data: pulse, isLoading: pulseLoading } = useQuery({
+  const { data: pulse, isLoading: pulseLoading, isError: pulseError, refetch: refetchPulse } = useQuery({
     queryKey: ['dashboard-pulse'],
     queryFn: getDashboardPulse,
   });
 
-  const { data: thisMonth, isLoading: monthLoading } = useQuery({
+  const { data: thisMonth, isLoading: monthLoading, isError: monthError } = useQuery({
     queryKey: ['this-month'],
     queryFn: getThisMonth,
   });
 
   const isLoading = pulseLoading || monthLoading;
+  const isError = pulseError || monthError;
 
   if (isLoading) {
     return (
@@ -158,6 +160,25 @@ export function HealthScoreWidget() {
         <div className="flex items-center justify-center h-32">
           <div className="w-28 h-28 rounded-full bg-[var(--fo-bg)] animate-pulse" />
         </div>
+      </motion.section>
+    );
+  }
+
+  if (isError) {
+    return (
+      <motion.section
+        className="fo-panel"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, delay: 0.22 }}
+      >
+        <header className="fo-panel-header">
+          <div className="fo-row">
+            <Activity size={14} className="text-[var(--fo-muted)]" />
+            <h2>Finanzgesundheit</h2>
+          </div>
+        </header>
+        <WidgetError message="Gesundheitsscore konnte nicht berechnet werden" onRetry={() => void refetchPulse()} />
       </motion.section>
     );
   }

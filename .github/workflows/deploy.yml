@@ -58,6 +58,22 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          sparse-checkout: |
+            infra
+            schema
+
+      - name: Copy files to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: 212.69.84.228
+          username: root
+          key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          source: 'infra/docker-compose.prod.yml,schema/*.surql'
+          target: /opt/finance-os
+          strip_components: 0
+
       - name: Deploy to VPS
         uses: appleboy/ssh-action@2ead5e36573f08b82fbfce1504f1a4b05a647c6f # v1.2.2
         with:
@@ -65,7 +81,45 @@ jobs:
           username: root
           key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
           script: |
-            cd /opt/ai-workstation
-            docker compose pull actual-budget
-            docker compose up -d actual-budget
+            set -euo pipefail
+            DEPLOY_DIR=/opt/finance-os
+
+            # Create .env with SurrealDB credentials if it doesn't exist
+            if [ ! -f "$DEPLOY_DIR/.env" ]; then
+              printf 'SURREALDB_USER=%s\nSURREALDB_PASS=%s\n' '${{ secrets.SURREALDB_USER }}' '${{ secrets.SURREALDB_PASS }}' > "$DEPLOY_DIR/.env"
+              chmod 600 "$DEPLOY_DIR/.env"
+            fi
+
+            # Pull and start services
+            cd "$DEPLOY_DIR"
+            docker compose --env-file .env -f infra/docker-compose.prod.yml pull
+            docker compose --env-file .env -f infra/docker-compose.prod.yml up -d
+
+            # Wait for SurrealDB to be healthy
+            echo "Waiting for SurrealDB..."
+            for i in $(seq 1 30); do
+              if docker compose --env-file .env -f infra/docker-compose.prod.yml exec -T surrealdb surreal isready --conn http://localhost:8000 2>/dev/null; then
+                echo "SurrealDB ready."
+                break
+              fi
+              sleep 2
+            done
+
+            # Apply schema (idempotent)
+            SURREAL_CONTAINER=$(docker compose --env-file .env -f infra/docker-compose.prod.yml ps -q surrealdb)
+            docker cp schema/. "$SURREAL_CONTAINER":/tmp/schema/
+            for f in schema/*.surql; do
+              [ -f "$f" ] || continue
+              echo "Applying $(basename "$f")..."
+              docker exec "$SURREAL_CONTAINER" \
+                surreal import \
+                  --endpoint http://localhost:8000 \
+                  --namespace finance \
+                  --database main \
+                  --username '${{ secrets.SURREALDB_USER }}' \
+                  --password '${{ secrets.SURREALDB_PASS }}' \
+                  "/tmp/schema/$(basename "$f")"
+            done
+
+            # Clean up old images
             docker image prune -f

@@ -11,6 +11,7 @@ import { motion } from 'motion/react';
 import { listAccounts } from '../../core/api/finance-api';
 import type { Account } from '../../core/types/finance';
 import { AmountDisplay } from '../finance/AmountDisplay';
+import { WidgetError } from './WidgetError';
 
 const TYPE_ICONS: Record<Account['type'], typeof Landmark> = {
   checking: Landmark,
@@ -49,7 +50,7 @@ function groupByType(accounts: Account[]) {
 }
 
 export function AccountBalancesWidget() {
-  const { data: accounts, isLoading } = useQuery({
+  const { data: accounts, isLoading, isError, refetch } = useQuery({
     queryKey: ['accounts'],
     queryFn: listAccounts,
   });
@@ -78,7 +79,40 @@ export function AccountBalancesWidget() {
     );
   }
 
+  if (isError) {
+    return (
+      <motion.section
+        className="fo-panel"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, delay: 0.05 }}
+      >
+        <header className="fo-panel-header">
+          <h2>Konten</h2>
+        </header>
+        <WidgetError message="Kontodaten konnten nicht geladen werden" onRetry={() => void refetch()} />
+      </motion.section>
+    );
+  }
+
   const list = accounts ?? [];
+
+  if (list.length === 0) {
+    return (
+      <motion.section
+        className="fo-panel"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, delay: 0.05 }}
+      >
+        <header className="fo-panel-header">
+          <h2>Konten</h2>
+        </header>
+        <WidgetError message="Keine Konten vorhanden" />
+      </motion.section>
+    );
+  }
+
   const totalBalance = list.reduce((sum, a) => sum + a.balance, 0);
   const grouped = groupByType(list);
 
