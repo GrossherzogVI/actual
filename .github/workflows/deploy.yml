@@ -104,10 +104,6 @@ jobs:
             # Pull images
             $DC pull
 
-            # Reset SurrealDB to pick up corrected credentials (one-time fix)
-            $DC down surrealdb 2>/dev/null || true
-            docker volume rm infra_surrealdb-data 2>/dev/null || true
-
             # Start SurrealDB first (without depends_on blocking)
             $DC up -d surrealdb
 
