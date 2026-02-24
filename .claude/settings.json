@@ -1,5 +1,11 @@
 {
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "enabledPlugins": {
+    "debugging-toolkit@wshobson-agents": true,
+    "error-diagnostics@wshobson-agents": true,
+    "error-debugging@wshobson-agents": true,
+    "developer-essentials@wshobson-agents": true
   }
 }
