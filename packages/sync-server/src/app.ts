@@ -23,6 +23,12 @@ import * as contractsApp from './contracts/app-contracts';
 import { startDeadlineChecker } from './contracts/deadline-checker';
 import * as importApp from './import/app-import';
 import { config } from './load-config';
+import * as delegateApp from './ops/app-delegate';
+import * as focusApp from './ops/app-focus';
+import * as intelligenceApp from './ops/app-intelligence';
+import * as opsApp from './ops/app-ops';
+import * as policyApp from './ops/app-policy';
+import * as scenarioApp from './ops/app-scenario';
 import * as quickAddApp from './quick-add/app-quick-add';
 import * as reviewApp from './review/app-review';
 
@@ -84,6 +90,12 @@ app.use('/review', reviewApp.handlers);
 app.use('/import', importApp.handlers);
 app.use('/categories-setup', categoriesApp.handlers);
 app.use('/quick-add', quickAddApp.handlers);
+app.use('/ops', opsApp.handlers);
+app.use('/ops/focus', focusApp.handlers);
+app.use('/ops/delegate', delegateApp.handlers);
+app.use('/ops/scenario', scenarioApp.handlers);
+app.use('/ops/policy', policyApp.handlers);
+app.use('/ops/intelligence', intelligenceApp.handlers);
 
 app.get('/mode', (req, res) => {
   res.send(config.get('mode'));

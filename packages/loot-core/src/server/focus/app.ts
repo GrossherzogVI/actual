@@ -1,11 +1,8 @@
 // @ts-strict-ignore
 import * as asyncStorage from '../../platform/server/asyncStorage';
 import { createApp } from '../app';
-import {
-  createGatewayEnvelope,
-  gatewayGet,
-  gatewayPost,
-} from '../financeos-gateway';
+import { get, post } from '../post';
+import { getServer } from '../server-config';
 
 type HandlerError = { error: string };
 
@@ -36,13 +33,19 @@ async function focusAdaptivePanel(): Promise<
   }
 
   try {
-    return await gatewayGet<Record<string, unknown>>(
-      '/focus/v1/adaptive-panel',
-      userToken,
+    const res = await get(
+      getServer().BASE_SERVER + '/ops/focus/adaptive-panel',
+      { headers: { 'X-ACTUAL-TOKEN': userToken } },
     );
+    if (res) {
+      const parsed = JSON.parse(res);
+      if (parsed.status === 'ok') return parsed.data;
+      return { error: parsed.reason || 'unknown' };
+    }
   } catch (err) {
     return { error: readError(err, 'network-failure') };
   }
+  return { error: 'no-response' };
 }
 
 async function focusRecordActionOutcome(args: {
@@ -56,16 +59,16 @@ async function focusRecordActionOutcome(args: {
   }
 
   try {
-    return await gatewayPost<Record<string, unknown>>(
-      '/focus/v1/record-action-outcome',
+    const result = await post(
+      getServer().BASE_SERVER + '/ops/focus/record-action-outcome',
       {
-        envelope: createGatewayEnvelope('record-action-outcome'),
         actionId: args.actionId ?? '',
         outcome: args.outcome,
         notes: args.notes,
       },
-      userToken,
+      { 'X-ACTUAL-TOKEN': userToken },
     );
+    return result as Record<string, unknown>;
   } catch (err) {
     return { error: readError(err) };
   }

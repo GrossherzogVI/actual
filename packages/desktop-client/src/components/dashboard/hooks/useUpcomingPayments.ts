@@ -73,10 +73,7 @@ function getPaymentDatesWithinDays(
       dates.push(new Date(current));
       current.setDate(current.getDate() + 7);
     }
-  } else if (
-    contract.interval === 'annual' ||
-    contract.interval === 'yearly'
-  ) {
+  } else if (contract.interval === 'annual') {
     if (!contract.start_date) return [];
     const start = new Date(contract.start_date);
     const day = clampDay(from.getFullYear(), start.getMonth(), start.getDate());
@@ -181,7 +178,7 @@ export function useUpcomingPayments(withinDays = 14): {
 
     let result: unknown;
     try {
-      result = await (send as Function)('contract-list', { status: 'active' });
+      result = await send('contract-list', { status: 'active' });
     } catch (err) {
       setError(String(err));
       setContractPayments([]);

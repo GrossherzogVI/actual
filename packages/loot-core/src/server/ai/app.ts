@@ -38,6 +38,8 @@ export type AIHandlers = {
   'ai-stats': typeof aiStats;
   'ai-auto-pin-check': typeof aiAutoPinCheck;
   'ai-promote-to-pinned': typeof aiPromoteToPinned;
+  'ai-rule-suggestions': typeof aiRuleSuggestions;
+  'ai-rule-accept': typeof aiRuleAccept;
 };
 
 export const app = createApp<AIHandlers>();
@@ -51,6 +53,8 @@ app.method('ai-learn', aiLearn);
 app.method('ai-stats', aiStats);
 app.method('ai-auto-pin-check', aiAutoPinCheck);
 app.method('ai-promote-to-pinned', aiPromoteToPinned);
+app.method('ai-rule-suggestions', aiRuleSuggestions);
+app.method('ai-rule-accept', aiRuleAccept);
 
 async function aiClassify(args: {
   transaction: unknown;
@@ -238,6 +242,53 @@ async function aiPromoteToPinned(args: {
       { 'X-ACTUAL-TOKEN': userToken },
     );
     return result as { promoted: boolean; rule?: SmartMatchRule };
+  } catch (err) {
+    return { error: err.reason || err.message || 'unknown' };
+  }
+}
+
+async function aiRuleSuggestions(args?: {
+  fileId?: string;
+  minHitCount?: number;
+}): Promise<Array<Record<string, unknown>> | { error: string }> {
+  const userToken = await asyncStorage.getItem('user-token');
+  if (!userToken) return { error: 'not-logged-in' };
+
+  const params = new URLSearchParams();
+  if (args?.fileId) params.set('fileId', args.fileId);
+  if (args?.minHitCount != null)
+    params.set('minHitCount', String(args.minHitCount));
+
+  try {
+    const res = await get(
+      getServer().BASE_SERVER +
+        `/ai/rule-suggestions?${params.toString()}`,
+      { headers: { 'X-ACTUAL-TOKEN': userToken } },
+    );
+    if (res) {
+      const parsed = JSON.parse(res);
+      if (parsed.status === 'ok') return parsed.data;
+      return { error: parsed.reason || 'unknown' };
+    }
+  } catch (err) {
+    return { error: err.message || 'network-failure' };
+  }
+  return { error: 'no-response' };
+}
+
+async function aiRuleAccept(args: {
+  id: string;
+}): Promise<{ accepted: boolean } | { error: string }> {
+  const userToken = await asyncStorage.getItem('user-token');
+  if (!userToken) return { error: 'not-logged-in' };
+
+  try {
+    const result = await post(
+      getServer().BASE_SERVER + `/ai/rule-suggestions/${args.id}/accept`,
+      {},
+      { 'X-ACTUAL-TOKEN': userToken },
+    );
+    return result as { accepted: boolean };
   } catch (err) {
     return { error: err.reason || err.message || 'unknown' };
   }

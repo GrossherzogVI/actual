@@ -33,12 +33,12 @@ export function AIRuleSuggestions() {
     async function load() {
       if (!budgetId) return;
       setLoading(true);
-      const result = await (send as Function)('ai-rule-suggestions', {
+      const result = await send('ai-rule-suggestions', {
         fileId: budgetId,
         minHitCount: 3,
       });
       if (result && !('error' in result)) {
-        setSuggestions(result);
+        setSuggestions(result as unknown as RuleSuggestion[]);
       }
       setLoading(false);
     }
@@ -47,7 +47,7 @@ export function AIRuleSuggestions() {
 
   const handleAccept = useCallback(async (id: string) => {
     setAccepting(prev => new Set(prev).add(id));
-    await (send as Function)('ai-rule-accept', { id });
+    await send('ai-rule-accept', { id });
     setSuggestions(prev => prev.filter(s => s.id !== id));
     setAccepting(prev => {
       const next = new Set(prev);

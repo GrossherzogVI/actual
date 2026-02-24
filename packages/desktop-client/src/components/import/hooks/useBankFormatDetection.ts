@@ -19,9 +19,9 @@ export function useBankFormatDetection(): UseBankFormatDetectionReturn {
 
   useEffect(() => {
     async function load() {
-      const res = await (send as Function)('import-bank-formats', {});
+      const res = await send('import-bank-formats');
       if (res && !('error' in res)) {
-        setFormats((res as BankFormat[]) ?? []);
+        setFormats((res as unknown as BankFormat[]) ?? []);
       }
       setLoading(false);
     }

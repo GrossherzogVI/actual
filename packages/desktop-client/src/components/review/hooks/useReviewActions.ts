@@ -26,7 +26,10 @@ async function updateItem(
   id: string,
   status: ReviewItemStatus,
 ): Promise<boolean> {
-  const result = await (send as Function)('review-update', { id, status });
+  const result = await send('review-update', {
+    id,
+    status: status as 'accepted' | 'rejected' | 'snoozed' | 'dismissed',
+  });
   return result && !('error' in result);
 }
 
@@ -56,7 +59,7 @@ export function useReviewActions({
   const accept = useCallback(
     (id: string) =>
       withProcessing(id, async () => {
-        const result = await (send as Function)('review-accept', { id });
+        const result = await send('review-accept', { id });
         return result && !('error' in result);
       }),
     [withProcessing],
@@ -65,7 +68,7 @@ export function useReviewActions({
   const reject = useCallback(
     (id: string, correctCategoryId?: string) =>
       withProcessing(id, async () => {
-        const result = await (send as Function)('review-reject', {
+        const result = await send('review-reject', {
           id,
           correct_category_id: correctCategoryId,
         });
@@ -77,7 +80,7 @@ export function useReviewActions({
   const snooze = useCallback(
     (id: string, days?: number) =>
       withProcessing(id, async () => {
-        const result = await (send as Function)('review-snooze', {
+        const result = await send('review-snooze', {
           id,
           days: days ?? 7,
         });
@@ -89,7 +92,7 @@ export function useReviewActions({
   const dismiss = useCallback(
     (id: string) =>
       withProcessing(id, async () => {
-        const result = await (send as Function)('review-dismiss', { id });
+        const result = await send('review-dismiss', { id });
         return result && !('error' in result);
       }),
     [withProcessing],
@@ -97,7 +100,7 @@ export function useReviewActions({
 
   const acceptHighConfidence = useCallback(
     async (_items: ReviewItem[], threshold = 0.9): Promise<number> => {
-      const result = await (send as Function)('review-batch-accept', {
+      const result = await send('review-batch-accept', {
         minConfidence: threshold,
       });
       if (result && !('error' in result)) {
@@ -117,9 +120,9 @@ export function useReviewActions({
       if (eligible.length === 0) return 0;
 
       const ids = eligible.map(i => i.id);
-      const result = await (send as Function)('review-batch', {
+      const result = await send('review-batch', {
         ids,
-        status: 'dismissed',
+        action: 'dismiss',
       });
       if (result && !('error' in result)) {
         onSuccess?.();

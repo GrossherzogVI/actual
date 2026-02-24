@@ -19,6 +19,10 @@ export function useDashboardData(): DashboardData & {
   const [expiringContracts, setExpiringContracts] = useState<ContractEntity[]>(
     [],
   );
+  const [healthScore, setHealthScore] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,11 +31,13 @@ export function useDashboardData(): DashboardData & {
     setError(null);
 
     try {
-      const [summaryResult, countsResult, expiringResult] = await Promise.all([
-        (send as Function)('contract-summary'),
-        (send as Function)('review-count'),
-        (send as Function)('contract-expiring', { withinDays: 30 }),
-      ]);
+      const [summaryResult, countsResult, expiringResult, healthResult] =
+        await Promise.all([
+          send('contract-summary'),
+          send('review-count'),
+          send('contract-expiring', { withinDays: 30 }),
+          send('ops-health-score').catch(() => null),
+        ]);
 
       if (summaryResult && 'error' in summaryResult) {
         setError(summaryResult.error as string);
@@ -45,6 +51,14 @@ export function useDashboardData(): DashboardData & {
 
       if (expiringResult && !('error' in expiringResult)) {
         setExpiringContracts((expiringResult as ContractEntity[]) ?? []);
+      }
+
+      if (
+        healthResult &&
+        typeof healthResult === 'object' &&
+        !('error' in healthResult)
+      ) {
+        setHealthScore(healthResult as Record<string, unknown>);
       }
     } catch {
       setError('Failed to load dashboard data');
@@ -61,6 +75,7 @@ export function useDashboardData(): DashboardData & {
     contractSummary,
     reviewCounts,
     expiringContracts,
+    healthScore,
     loading,
     error,
     reload,

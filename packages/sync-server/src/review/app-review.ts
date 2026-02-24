@@ -346,6 +346,35 @@ app.post('/:id/reject', (req, res) => {
     [resolvedAction, req.params.id],
   );
 
+  // Learning loop: if user provided a correction, write it to smart_match_rules
+  // and update ai_classifications so the model improves over time
+  if (correct_category_id && item.transaction_id) {
+    const txn = db.first(
+      'SELECT imported_payee, payee FROM transactions WHERE id = ?',
+      [item.transaction_id],
+    ) as { imported_payee?: string; payee?: string } | undefined;
+
+    const payeePattern = txn?.imported_payee || txn?.payee;
+    if (payeePattern) {
+      db.mutate(
+        `INSERT OR REPLACE INTO smart_match_rules
+           (id, payee_pattern, match_field, match_op, category_id, hit_count, status, created_at)
+         VALUES (?, ?, 'imported_payee', 'contains', ?, 1, 'accepted', datetime('now'))`,
+        [uuidv4(), payeePattern, correct_category_id],
+      );
+    }
+
+    // Update classification record if one exists for this transaction
+    db.mutate(
+      `UPDATE ai_classifications SET
+         suggested_category_id = ?,
+         status = 'rejected',
+         resolved_at = datetime('now')
+       WHERE transaction_id = ? AND status = 'pending'`,
+      [correct_category_id, item.transaction_id],
+    );
+  }
+
   res.json({
     status: 'ok',
     data: { rejected: true, correct_category_id: correct_category_id ?? null },

@@ -1,7 +1,8 @@
 // @ts-strict-ignore
 import * as asyncStorage from '../../platform/server/asyncStorage';
 import { createApp } from '../app';
-import { createGatewayEnvelope, gatewayPost } from '../financeos-gateway';
+import { get, post } from '../post';
+import { getServer } from '../server-config';
 
 type HandlerError = { error: string };
 
@@ -38,14 +39,12 @@ async function intelligenceRecommend(args?: {
   }
 
   try {
-    return await gatewayPost<Array<Record<string, unknown>>>(
-      '/intelligence/v1/recommend',
-      {
-        envelope: createGatewayEnvelope('intelligence-recommend'),
-        context: args?.context,
-      },
-      userToken,
+    const result = await post(
+      getServer().BASE_SERVER + '/ops/intelligence/corrections',
+      { context: args?.context },
+      { 'X-ACTUAL-TOKEN': userToken },
     );
+    return result as Array<Record<string, unknown>>;
   } catch (err) {
     return { error: readError(err) };
   }
@@ -60,14 +59,12 @@ async function intelligenceExplain(args: {
   }
 
   try {
-    return await gatewayPost<Record<string, unknown>>(
-      '/intelligence/v1/explain',
-      {
-        envelope: createGatewayEnvelope('intelligence-explain'),
-        recommendation: args.recommendation,
-      },
-      userToken,
+    const result = await post(
+      getServer().BASE_SERVER + '/ops/intelligence/classify-feedback',
+      { recommendation: args.recommendation },
+      { 'X-ACTUAL-TOKEN': userToken },
     );
+    return result as Record<string, unknown>;
   } catch (err) {
     return { error: readError(err) };
   }
@@ -83,15 +80,15 @@ async function intelligenceClassify(args: {
   }
 
   try {
-    return await gatewayPost<Record<string, unknown>>(
-      '/intelligence/v1/classify',
+    const result = await post(
+      getServer().BASE_SERVER + '/ops/intelligence/classify-feedback',
       {
-        envelope: createGatewayEnvelope('intelligence-classify'),
         payee: args.payee,
         amount: args.amount,
       },
-      userToken,
+      { 'X-ACTUAL-TOKEN': userToken },
     );
+    return result as Record<string, unknown>;
   } catch (err) {
     return { error: readError(err) };
   }
@@ -106,17 +103,18 @@ async function intelligenceForecast(args?: {
   }
 
   try {
-    return await gatewayPost<Record<string, unknown>>(
-      '/intelligence/v1/forecast',
-      {
-        envelope: createGatewayEnvelope('intelligence-forecast'),
-        months: args?.months ?? 6,
-      },
-      userToken,
-    );
+    const res = await get(getServer().BASE_SERVER + '/ops/intelligence/stats', {
+      headers: { 'X-ACTUAL-TOKEN': userToken },
+    });
+    if (res) {
+      const parsed = JSON.parse(res);
+      if (parsed.status === 'ok') return parsed.data;
+      return { error: parsed.reason || 'unknown' };
+    }
   } catch (err) {
     return { error: readError(err) };
   }
+  return { error: 'no-response' };
 }
 
 async function intelligenceLearnCorrection(args: {
@@ -129,15 +127,15 @@ async function intelligenceLearnCorrection(args: {
   }
 
   try {
-    return await gatewayPost<Record<string, unknown>>(
-      '/intelligence/v1/learn-correction',
+    const result = await post(
+      getServer().BASE_SERVER + '/ops/intelligence/corrections',
       {
-        envelope: createGatewayEnvelope('intelligence-learn-correction'),
         input: args.input,
         correctOutput: args.correctOutput ?? {},
       },
-      userToken,
+      { 'X-ACTUAL-TOKEN': userToken },
     );
+    return result as Record<string, unknown>;
   } catch (err) {
     return { error: readError(err) };
   }

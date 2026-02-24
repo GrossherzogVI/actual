@@ -60,7 +60,7 @@ function CategorySetupCard() {
   const handleSetup = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const res = await (send as Function)('categories-setup-german-tree', {});
+    const res = await send('categories-setup-german-tree', {});
     if (res && 'error' in res) {
       setError(res.error as string);
     } else {

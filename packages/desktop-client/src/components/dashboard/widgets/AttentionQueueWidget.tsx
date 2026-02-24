@@ -78,19 +78,19 @@ export function AttentionQueueWidget({ counts, loading }: Props) {
           <CountRow
             label={t('Urgent')}
             count={counts.urgent}
-            color="#ef4444"
+            color={theme.errorText}
             onClick={goToReview}
           />
           <CountRow
             label={t('To review')}
             count={counts.review}
-            color="#f59e0b"
+            color={theme.warningText}
             onClick={goToReview}
           />
           <CountRow
             label={t('Suggestions')}
             count={counts.suggestion}
-            color="#3b82f6"
+            color={theme.pageTextLink}
             onClick={goToReview}
           />
           {counts.pending > 0 && (

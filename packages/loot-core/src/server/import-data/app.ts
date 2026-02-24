@@ -3,7 +3,7 @@ import * as asyncStorage from '../../platform/server/asyncStorage';
 import type { ImportTransactionEntity } from '../../types/models/import-transaction';
 import { importTransactions } from '../accounts/app';
 import { createApp } from '../app';
-import { post } from '../post';
+import { get, post } from '../post';
 import { getServer } from '../server-config';
 
 export type ImportPreviewRow = {
@@ -44,6 +44,7 @@ export type ImportDataHandlers = {
   'import-csv-preview': typeof importCsvPreview;
   'import-csv-commit': typeof importCsvCommit;
   'import-detect-contracts': typeof importDetectContracts;
+  'import-bank-formats': typeof importBankFormats;
 };
 
 export const app = createApp<ImportDataHandlers>();
@@ -53,6 +54,7 @@ app.method('import-finanzguru-commit', importFinanzguruCommit);
 app.method('import-csv-preview', importCsvPreview);
 app.method('import-csv-commit', importCsvCommit);
 app.method('import-detect-contracts', importDetectContracts);
+app.method('import-bank-formats', importBankFormats);
 
 async function importFinanzguruPreview(args: {
   fileData: string; // base64-encoded XLSX
@@ -242,4 +244,31 @@ async function importDetectContracts(args: {
   } catch (err) {
     return { error: err.reason || err.message || 'unknown' };
   }
+}
+
+async function importBankFormats(): Promise<
+  Array<{
+    id: string;
+    name: string;
+    encoding: string;
+    delimiter: string | null;
+  }> | { error: string }
+> {
+  const userToken = await asyncStorage.getItem('user-token');
+  if (!userToken) return { error: 'not-logged-in' };
+
+  try {
+    const res = await get(
+      getServer().BASE_SERVER + '/import/bank-formats',
+      { headers: { 'X-ACTUAL-TOKEN': userToken } },
+    );
+    if (res) {
+      const parsed = JSON.parse(res);
+      if (parsed.status === 'ok') return parsed.data;
+      return { error: parsed.reason || 'unknown' };
+    }
+  } catch (err) {
+    return { error: err.message || 'network-failure' };
+  }
+  return { error: 'no-response' };
 }

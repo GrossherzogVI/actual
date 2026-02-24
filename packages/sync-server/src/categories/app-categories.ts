@@ -86,7 +86,7 @@ app.post('/map', (req, res) => {
   }
 
   const map =
-    source === 'finanzguru' ? FINANZGURU_CATEGORY_MAP : FINANZGURU_CATEGORY_MAP;
+    source === 'finanzguru' ? FINANZGURU_CATEGORY_MAP : {};
 
   const result: Array<{
     external: string;

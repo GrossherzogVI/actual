@@ -23,6 +23,7 @@ import { CommandBar } from './CommandBar';
 import { ToastProvider } from './common/Toast';
 import { FatalError } from './FatalError';
 import { GlobalKeys } from './GlobalKeys';
+import { KeyboardShortcutSheet } from './KeyboardShortcutSheet';
 import { MobileBankSyncAccountEditPage } from './mobile/banksync/MobileBankSyncAccountEditPage';
 import { MobileNavTabs } from './mobile/MobileNavTabs';
 import { TransactionEdit } from './mobile/transactions/TransactionEdit';
@@ -256,6 +257,7 @@ export function FinancesApp() {
   const financeOS = useFeatureFlag('financeOS');
   const quickAddEnabled = useFeatureFlag('quickAdd');
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [shortcutSheetOpen, setShortcutSheetOpen] = useState(false);
 
   useEffect(() => {
     if (!quickAddEnabled) return;
@@ -263,6 +265,13 @@ export function FinancesApp() {
     document.addEventListener('quick-add-open', handler);
     return () => document.removeEventListener('quick-add-open', handler);
   }, [quickAddEnabled]);
+
+  useEffect(() => {
+    if (!financeOS) return;
+    const handler = () => setShortcutSheetOpen(prev => !prev);
+    document.addEventListener('shortcut-sheet-toggle', handler);
+    return () => document.removeEventListener('shortcut-sheet-toggle', handler);
+  }, [financeOS]);
 
   const scrollableRef = useRef<HTMLDivElement>(null);
 
@@ -279,6 +288,12 @@ export function FinancesApp() {
               <QuickAddOverlay
                 isOpen={quickAddOpen}
                 onClose={() => setQuickAddOpen(false)}
+              />
+            )}
+            {financeOS && (
+              <KeyboardShortcutSheet
+                open={shortcutSheetOpen}
+                onOpenChange={setShortcutSheetOpen}
               />
             )}
             <View className="bg-background flex-1 flex-row">

@@ -21,10 +21,23 @@ export type UpcomingPayment = {
   interval: string;
 };
 
+export type HealthScore = {
+  score: number;
+  trend: 'up' | 'down' | 'stable';
+  components: Array<{
+    name: string;
+    score: number;
+    maxScore: number;
+    detail: string;
+  }>;
+  generatedAt: string;
+};
+
 export type DashboardData = {
   contractSummary: ContractSummary | null;
   reviewCounts: ReviewCounts | null;
   expiringContracts: ContractEntity[];
+  healthScore: Record<string, unknown> | null;
   loading: boolean;
   error: string | null;
 };

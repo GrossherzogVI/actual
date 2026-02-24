@@ -48,7 +48,7 @@ export function useReviewQueue({
   const [hasMore, setHasMore] = useState(false);
 
   const fetchCounts = useCallback(async () => {
-    const result = await (send as Function)('review-count', {});
+    const result = await send('review-count');
     if (result && !('error' in result)) {
       setCounts(result as ReviewCount);
     }
@@ -68,7 +68,7 @@ export function useReviewQueue({
       if (priorityFilter !== 'all') args.priority = priorityFilter;
 
       const [listResult] = await Promise.all([
-        (send as Function)('review-list', args),
+        send('review-list', args),
         fetchCounts(),
       ]);
 
@@ -101,7 +101,7 @@ export function useReviewQueue({
       if (typeFilter !== 'all') args.type = typeFilter;
       if (priorityFilter !== 'all') args.priority = priorityFilter;
 
-      const result = await (send as Function)('review-list', args);
+      const result = await send('review-list', args);
 
       if (result && !('error' in result)) {
         const fetched = (result as ReviewItem[]) ?? [];

@@ -6,6 +6,7 @@ import {
   requestLoggerMiddleware,
   validateSessionMiddleware,
 } from '../util/middlewares.js';
+import { withTransaction } from '../util/with-transaction.js';
 
 import {
   computeDeadlines,
@@ -167,6 +168,97 @@ function enrichContract(row: Record<string, unknown>) {
   };
 }
 
+/**
+ * Batch-enrich contracts: reduces 4N+1 queries down to 5 queries total.
+ * Used for list endpoints (GET /, GET /expiring).
+ */
+function enrichContractsBatch(rows: Record<string, unknown>[]) {
+  if (rows.length === 0) return [];
+
+  const db = getAccountDb();
+  const ids = rows.map(r => r.id as string);
+  const placeholders = ids.map(() => '?').join(',');
+
+  // 1. Batch fetch tags
+  const allTags = db.all(
+    `SELECT contract_id, tag FROM contract_tags WHERE contract_id IN (${placeholders})`,
+    ids,
+  ) as Array<{ contract_id: string; tag: string }>;
+  const tagsByContract = new Map<string, string[]>();
+  for (const t of allTags) {
+    const arr = tagsByContract.get(t.contract_id) ?? [];
+    arr.push(t.tag);
+    tagsByContract.set(t.contract_id, arr);
+  }
+
+  // 2. Batch fetch price history
+  const allPriceHistory = db.all(
+    `SELECT * FROM contract_price_history WHERE contract_id IN (${placeholders}) ORDER BY change_date DESC`,
+    ids,
+  ) as Array<Record<string, unknown>>;
+  const priceByContract = new Map<string, Record<string, unknown>[]>();
+  for (const p of allPriceHistory) {
+    const arr = priceByContract.get(p.contract_id as string) ?? [];
+    arr.push(p);
+    priceByContract.set(p.contract_id as string, arr);
+  }
+
+  // 3. Batch fetch events
+  const allEvents = db.all(
+    `SELECT * FROM contract_events WHERE contract_id IN (${placeholders}) ORDER BY created_at`,
+    ids,
+  ) as Array<Record<string, unknown>>;
+  const eventsByContract = new Map<string, Record<string, unknown>[]>();
+  for (const e of allEvents) {
+    const arr = eventsByContract.get(e.contract_id as string) ?? [];
+    arr.push(e);
+    eventsByContract.set(e.contract_id as string, arr);
+  }
+
+  // 4. Batch fetch documents
+  const allDocs = db.all(
+    `SELECT * FROM contract_documents WHERE contract_id IN (${placeholders}) ORDER BY uploaded_at DESC`,
+    ids,
+  ) as Array<Record<string, unknown>>;
+  const docsByContract = new Map<string, Record<string, unknown>[]>();
+  for (const d of allDocs) {
+    const arr = docsByContract.get(d.contract_id as string) ?? [];
+    arr.push(d);
+    docsByContract.set(d.contract_id as string, arr);
+  }
+
+  // 5. Assemble enriched results
+  return rows.map(row => {
+    const id = row.id as string;
+    const tags = tagsByContract.get(id) ?? [];
+    const additionalEvents = eventsByContract.get(id) ?? [];
+    const health = computeHealth(
+      row.cancellation_deadline as string | null,
+      row.end_date as string | null,
+    );
+    const annualCost = computeAnnualCost(
+      row.amount as number | null,
+      row.interval as string,
+      additionalEvents as Array<{ amount: number; interval: string }>,
+    );
+    const costPerDay =
+      annualCost != null ? Math.round(annualCost / 365) : null;
+
+    return {
+      ...row,
+      auto_renewal: row.auto_renewal === 1 || row.auto_renewal === true,
+      tombstone: undefined,
+      health,
+      annual_cost: annualCost,
+      cost_per_day: costPerDay,
+      tags,
+      price_history: priceByContract.get(id) ?? [],
+      additional_events: additionalEvents,
+      documents: docsByContract.get(id) ?? [],
+    };
+  });
+}
+
 // ─── Summary (must be registered before /:id) ─────────────────────────────
 
 /** GET /contracts/summary — aggregate cost summary */
@@ -224,22 +316,22 @@ app.get('/expiring', (req, res) => {
     [days],
   ) as Record<string, unknown>[];
 
-  res.json({ status: 'ok', data: rows.map(enrichContract) });
+  res.json({ status: 'ok', data: enrichContractsBatch(rows) });
 });
 
 /** POST /contracts/discover — stub for AI contract discovery */
 app.post('/discover', (_req, res) => {
-  res.json({
-    status: 'ok',
-    data: { message: 'Discovery not yet implemented' },
+  res.status(501).json({
+    status: 'error',
+    reason: 'not-implemented',
   });
 });
 
 /** POST /contracts/bulk-import — stub for bulk import */
 app.post('/bulk-import', (_req, res) => {
-  res.json({
-    status: 'ok',
-    data: { message: 'Bulk import not yet implemented' },
+  res.status(501).json({
+    status: 'error',
+    reason: 'not-implemented',
   });
 });
 
@@ -279,7 +371,7 @@ app.get('/', (req, res) => {
     params,
   ) as Record<string, unknown>[];
 
-  res.json({ status: 'ok', data: rows.map(enrichContract) });
+  res.json({ status: 'ok', data: enrichContractsBatch(rows) });
 });
 
 /** GET /contracts/:id/deadlines — compute upcoming payment deadlines */
@@ -448,14 +540,16 @@ app.post('/', (req, res) => {
     ],
   );
 
-  // Set tags if provided
-  if (Array.isArray(tags)) {
-    for (const tag of tags) {
-      db.mutate(
-        'INSERT OR IGNORE INTO contract_tags (contract_id, tag) VALUES (?, ?)',
-        [id, tag],
-      );
-    }
+  // Set tags if provided (wrapped in transaction for atomicity)
+  if (Array.isArray(tags) && tags.length > 0) {
+    withTransaction(db, () => {
+      for (const tag of tags) {
+        db.mutate(
+          'INSERT OR IGNORE INTO contract_tags (contract_id, tag) VALUES (?, ?)',
+          [id, tag],
+        );
+      }
+    });
   }
 
   const created = db.first('SELECT * FROM contracts WHERE id = ?', [
@@ -556,17 +650,19 @@ app.patch('/:id', (req, res) => {
     );
   }
 
-  // Update tags if provided
+  // Update tags if provided (wrapped in transaction for atomicity)
   if (Array.isArray(body.tags)) {
-    db.mutate('DELETE FROM contract_tags WHERE contract_id = ?', [
-      req.params.id,
-    ]);
-    for (const tag of body.tags) {
-      db.mutate(
-        'INSERT OR IGNORE INTO contract_tags (contract_id, tag) VALUES (?, ?)',
-        [req.params.id, tag],
-      );
-    }
+    withTransaction(db, () => {
+      db.mutate('DELETE FROM contract_tags WHERE contract_id = ?', [
+        req.params.id,
+      ]);
+      for (const tag of body.tags) {
+        db.mutate(
+          'INSERT OR IGNORE INTO contract_tags (contract_id, tag) VALUES (?, ?)',
+          [req.params.id, tag],
+        );
+      }
+    });
   }
 
   const updated = db.first('SELECT * FROM contracts WHERE id = ?', [
@@ -594,6 +690,72 @@ app.delete('/:id', (req, res) => {
   );
 
   res.json({ status: 'ok', data: { deleted: true } });
+});
+
+// ─── Batch Operations ─────────────────────────────────────────────────────
+
+/** POST /contracts/batch-delete — delete multiple contracts at once */
+app.post('/batch-delete', (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    res.status(400).json({ status: 'error', reason: 'ids must be a non-empty array' });
+    return;
+  }
+  if (ids.length > 100) {
+    res.status(400).json({ status: 'error', reason: 'max 100 ids per batch' });
+    return;
+  }
+
+  const db = getAccountDb();
+  const placeholders = ids.map(() => '?').join(',');
+
+  withTransaction(db, () => {
+    db.mutate(
+      `UPDATE contracts SET tombstone = 1, updated_at = datetime('now') WHERE id IN (${placeholders}) AND tombstone = 0`,
+      ids,
+    );
+  });
+
+  res.json({ status: 'ok', data: { deleted: ids.length } });
+});
+
+/** POST /contracts/batch-update — update fields on multiple contracts */
+app.post('/batch-update', (req, res) => {
+  const { ids, data } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    res.status(400).json({ status: 'error', reason: 'ids must be a non-empty array' });
+    return;
+  }
+  if (!data || typeof data !== 'object') {
+    res.status(400).json({ status: 'error', reason: 'data must be an object' });
+    return;
+  }
+  if (ids.length > 100) {
+    res.status(400).json({ status: 'error', reason: 'max 100 ids per batch' });
+    return;
+  }
+
+  // Whitelist of fields that can be batch-updated
+  const allowed = ['status', 'category_id', 'type', 'payment_account_id'];
+  const fields = Object.keys(data).filter(k => allowed.includes(k));
+  if (fields.length === 0) {
+    res.status(400).json({ status: 'error', reason: `only these fields can be batch-updated: ${allowed.join(', ')}` });
+    return;
+  }
+
+  const db = getAccountDb();
+  const placeholders = ids.map(() => '?').join(',');
+  const setClauses = fields.map(f => `${f} = ?`).join(', ');
+  const setValues = fields.map(f => data[f]);
+
+  withTransaction(db, () => {
+    db.mutate(
+      `UPDATE contracts SET ${setClauses}, updated_at = datetime('now') WHERE id IN (${placeholders}) AND tombstone = 0`,
+      [...setValues, ...ids],
+    );
+  });
+
+  res.json({ status: 'ok', data: { updated: ids.length } });
 });
 
 // ─── Price History ─────────────────────────────────────────────────────────

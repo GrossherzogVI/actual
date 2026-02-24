@@ -285,7 +285,6 @@ export function useAnalyticsData(): AnalyticsData {
                   monthly = monthly / 6;
                   break;
                 case 'annual':
-                case 'yearly':
                   monthly = monthly / 12;
                   break;
               }

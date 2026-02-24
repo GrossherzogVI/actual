@@ -1,11 +1,8 @@
 // @ts-strict-ignore
 import * as asyncStorage from '../../platform/server/asyncStorage';
 import { createApp } from '../app';
-import {
-  createGatewayEnvelope,
-  gatewayGet,
-  gatewayPost,
-} from '../financeos-gateway';
+import { get, post } from '../post';
+import { getServer } from '../server-config';
 
 type HandlerError = { error: string };
 
@@ -42,13 +39,18 @@ async function delegateListLanes(): Promise<
   }
 
   try {
-    return await gatewayGet<Array<Record<string, unknown>>>(
-      '/delegate/v1/lanes',
-      userToken,
-    );
+    const res = await get(getServer().BASE_SERVER + '/ops/delegate/lanes', {
+      headers: { 'X-ACTUAL-TOKEN': userToken },
+    });
+    if (res) {
+      const parsed = JSON.parse(res);
+      if (parsed.status === 'ok') return parsed.data;
+      return { error: parsed.reason || 'unknown' };
+    }
   } catch (err) {
     return { error: readError(err, 'network-failure') };
   }
+  return { error: 'no-response' };
 }
 
 async function delegateAssignLane(args: {
@@ -63,17 +65,17 @@ async function delegateAssignLane(args: {
   }
 
   try {
-    return await gatewayPost<Record<string, unknown>>(
-      '/delegate/v1/assign-lane',
+    const result = await post(
+      getServer().BASE_SERVER + '/ops/delegate/lanes',
       {
-        envelope: createGatewayEnvelope('delegate-assign-lane'),
         title: args.title,
         assignee: args.assignee || 'delegate',
         assignedBy: args.assignedBy ?? 'owner',
         payload: args.payload || {},
       },
-      userToken,
+      { 'X-ACTUAL-TOKEN': userToken },
     );
+    return result as Record<string, unknown>;
   } catch (err) {
     return { error: readError(err) };
   }
@@ -88,14 +90,12 @@ async function delegateAcceptLane(args: {
   }
 
   try {
-    return await gatewayPost<Record<string, unknown>>(
-      '/delegate/v1/accept-lane',
-      {
-        envelope: createGatewayEnvelope('delegate-accept-lane'),
-        laneId: args.laneId ?? '',
-      },
-      userToken,
+    const result = await post(
+      getServer().BASE_SERVER + '/ops/delegate/lanes/accept',
+      { laneId: args.laneId ?? '' },
+      { 'X-ACTUAL-TOKEN': userToken },
     );
+    return result as Record<string, unknown>;
   } catch (err) {
     return { error: readError(err) };
   }
@@ -110,14 +110,12 @@ async function delegateCompleteLane(args: {
   }
 
   try {
-    return await gatewayPost<Record<string, unknown>>(
-      '/delegate/v1/complete-lane',
-      {
-        envelope: createGatewayEnvelope('delegate-complete-lane'),
-        laneId: args.laneId ?? '',
-      },
-      userToken,
+    const result = await post(
+      getServer().BASE_SERVER + '/ops/delegate/lanes/complete',
+      { laneId: args.laneId ?? '' },
+      { 'X-ACTUAL-TOKEN': userToken },
     );
+    return result as Record<string, unknown>;
   } catch (err) {
     return { error: readError(err) };
   }
@@ -132,14 +130,12 @@ async function delegateRejectLane(args: {
   }
 
   try {
-    return await gatewayPost<Record<string, unknown>>(
-      '/delegate/v1/reject-lane',
-      {
-        envelope: createGatewayEnvelope('delegate-reject-lane'),
-        laneId: args.laneId ?? '',
-      },
-      userToken,
+    const result = await post(
+      getServer().BASE_SERVER + '/ops/delegate/lanes/reject',
+      { laneId: args.laneId ?? '' },
+      { 'X-ACTUAL-TOKEN': userToken },
     );
+    return result as Record<string, unknown>;
   } catch (err) {
     return { error: readError(err) };
   }

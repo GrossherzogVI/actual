@@ -6,6 +6,7 @@ import {
   requestLoggerMiddleware,
   validateSessionMiddleware,
 } from '../util/middlewares.js';
+import { withTransaction } from '../util/with-transaction.js';
 
 const app = express();
 
@@ -149,13 +150,15 @@ app.post('/presets/reorder', (req, res) => {
   }
 
   const db = getAccountDb();
-  for (const item of order as Array<{ id: string; sort_order: number }>) {
-    if (!item.id || item.sort_order === undefined) continue;
-    db.mutate('UPDATE quick_add_presets SET sort_order = ? WHERE id = ?', [
-      item.sort_order,
-      item.id,
-    ]);
-  }
+  withTransaction(db, () => {
+    for (const item of order as Array<{ id: string; sort_order: number }>) {
+      if (!item.id || item.sort_order === undefined) continue;
+      db.mutate('UPDATE quick_add_presets SET sort_order = ? WHERE id = ?', [
+        item.sort_order,
+        item.id,
+      ]);
+    }
+  });
 
   res.json({ status: 'ok', data: { reordered: order.length } });
 });

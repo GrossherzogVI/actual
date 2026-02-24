@@ -74,7 +74,7 @@ export function useImport({ format }: UseImportOptions): UseImportReturn {
               encoding: opts.encoding,
             };
 
-      const res = await (send as Function)(handler, args);
+      const res = await send(handler, args);
 
       if (res && 'error' in res) {
         setError(res.error as string);
@@ -117,7 +117,7 @@ export function useImport({ format }: UseImportOptions): UseImportReturn {
               categoryMapping: args.categoryMapping,
             };
 
-      const res = await (send as Function)(handler, payload);
+      const res = await send(handler, payload);
 
       if (res && 'error' in res) {
         setError(res.error as string);

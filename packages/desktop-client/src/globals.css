@@ -124,6 +124,21 @@
   --shadow-2xl: 0px 4px 10px 0px hsl(0 0% 0% / 0.13);
   --tracking-normal: -0.01em;
   --spacing: 0.25rem;
+
+  /* ── Style Bridge: emotion theme → Tailwind CSS variables ──────────────
+   * Maps the upstream Actual Budget emotion theme tokens (var(--color-*))
+   * to shadcn/Tailwind custom properties so both systems respect theme.
+   * Direction: migrate TOWARD Tailwind/shadcn, not back to emotion. */
+  --primary: var(--color-buttonPrimaryBackground, oklch(0.5461 0.2152 262.8809));
+  --primary-foreground: var(--color-buttonPrimaryText, oklch(1.0000 0 0));
+  --destructive: var(--color-errorText, oklch(0.6368 0.2078 25.3313));
+  --muted-foreground: var(--color-pageTextSubdued, oklch(0.5544 0.0407 257.4166));
+  --foreground: var(--color-pageText, oklch(0.2077 0.0398 265.7549));
+  --background: var(--color-pageBackground, oklch(0.9842 0.0034 247.8575));
+  --card: var(--color-cardBackground, oklch(1.0000 0 0));
+  --card-foreground: var(--color-pageText, oklch(0.2077 0.0398 265.7549));
+  --border: var(--color-tableBorder, oklch(0.9288 0.0126 255.5078));
+  --input: var(--color-formInputBorder, oklch(0.9288 0.0126 255.5078));
 }
 
 .dark {

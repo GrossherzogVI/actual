@@ -18,6 +18,17 @@ export function GlobalKeys() {
         return;
       }
 
+      // ?: Keyboard shortcut sheet — works everywhere
+      if (financeOS && e.key === '?' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const target = e.target as HTMLElement;
+        const tag = target?.tagName?.toLowerCase();
+        if (tag !== 'input' && tag !== 'textarea' && !target?.isContentEditable) {
+          e.preventDefault();
+          document.dispatchEvent(new CustomEvent('shortcut-sheet-toggle'));
+          return;
+        }
+      }
+
       if (Platform.isBrowser) {
         return;
       }

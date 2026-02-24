@@ -210,13 +210,13 @@ export function CalendarPage() {
               padding: '4px 10px',
               fontSize: 12,
               fontWeight: thresholdEnabled ? 600 : 400,
-              border: `1px solid ${thresholdEnabled ? (theme.errorText ?? '#ef4444') : theme.tableBorder}`,
+              border: `1px solid ${thresholdEnabled ? theme.errorText : theme.tableBorder}`,
               borderRadius: 12,
               backgroundColor: thresholdEnabled
-                ? `${theme.errorText ?? '#ef4444'}18`
+                ? `${theme.errorText}18`
                 : 'transparent',
               color: thresholdEnabled
-                ? (theme.errorText ?? '#ef4444')
+                ? theme.errorText
                 : theme.pageTextSubdued,
             }}
           >
@@ -226,7 +226,7 @@ export function CalendarPage() {
                 height: 7,
                 borderRadius: '50%',
                 backgroundColor: thresholdEnabled
-                  ? (theme.errorText ?? '#ef4444')
+                  ? theme.errorText
                   : theme.pageTextSubdued,
                 flexShrink: 0,
               }}

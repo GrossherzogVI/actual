@@ -21,6 +21,7 @@ import {
 } from './types';
 import type { ContractEntity } from './types';
 
+import { ConfirmDialog } from '@desktop-client/components/common/ConfirmDialog';
 import { EmptyState } from '@desktop-client/components/common/EmptyState';
 import { Search } from '@desktop-client/components/common/Search';
 import { SkeletonList } from '@desktop-client/components/common/Skeleton';
@@ -247,7 +248,7 @@ export function ContractsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const lastClickedId = useRef<string | null>(null);
 
-  const { contracts, loading, error, updateContract, deleteContract } =
+  const { contracts, loading, error, updateContract, batchDelete, batchUpdate } =
     useContracts({
       status: statusFilter || undefined,
       type: typeFilter || undefined,
@@ -334,26 +335,24 @@ export function ContractsPage() {
     lastClickedId.current = null;
   }, []);
 
-  const handleBatchDelete = useCallback(async () => {
-    if (!window.confirm(t('Delete {{n}} contract(s)?', { n: selected.size }))) {
-      return;
-    }
-    for (const id of selected) {
-      await deleteContract(id);
-    }
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const handleBatchDelete = useCallback(() => {
+    if (selected.size === 0) return;
+    setShowDeleteConfirm(true);
+  }, [selected.size]);
+
+  const confirmBatchDelete = useCallback(async () => {
+    await batchDelete([...selected]);
     clearSelection();
-  }, [selected, deleteContract, clearSelection, t]);
+  }, [selected, batchDelete, clearSelection]);
 
   const handleBatchStatus = useCallback(
     async (status: string) => {
-      for (const id of selected) {
-        await updateContract(id, {
-          status: status as ContractEntity['status'],
-        });
-      }
+      await batchUpdate([...selected], { status });
       clearSelection();
     },
-    [selected, updateContract, clearSelection],
+    [selected, batchUpdate, clearSelection],
   );
 
   const handleRowClick = useCallback(
@@ -726,6 +725,16 @@ export function ContractsPage() {
           <Trans>Add contract</Trans>
         </Button>
       </View>
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        title={t('Delete contracts')}
+        message={t('Delete {{n}} contract(s)? This cannot be undone.', { n: selected.size })}
+        confirmLabel={t('Delete')}
+        variant="destructive"
+        onConfirm={confirmBatchDelete}
+      />
     </Page>
   );
 }

@@ -61,7 +61,7 @@ export function AvailableToSpendWidget({ upcomingPayments, loading }: Props) {
                 fontWeight: 700,
                 color: isPositive
                   ? theme.noticeText
-                  : (theme.errorText ?? '#ef4444'),
+                  : theme.errorText,
                 letterSpacing: '-0.5px',
               }}
             >
@@ -108,7 +108,7 @@ export function AvailableToSpendWidget({ upcomingPayments, loading }: Props) {
                 style={{
                   fontSize: 12,
                   fontWeight: 500,
-                  color: theme.errorText ?? '#ef4444',
+                  color: theme.errorText,
                 }}
               >
                 -{formatEur(committedCents)}

@@ -180,7 +180,7 @@ export function CommandBar() {
   const [contracts, setContracts] = useState<ContractEntry[]>([]);
   useEffect(() => {
     if (!contractManagementEnabled || !open) return;
-    void (send as Function)('contract-list', {}).then((result: unknown) => {
+    void send('contract-list', {}).then((result: unknown) => {
       if (Array.isArray(result)) {
         setContracts(result as ContractEntry[]);
       }
@@ -309,10 +309,10 @@ export function CommandBar() {
           void navigate('/review');
           break;
         case 'qa-sync-all':
-          void (send as Function)('sync');
+          void send('sync');
           break;
         case 'qa-close-weekly':
-          void (send as Function)('workflow-run-close-routine', {
+          void send('workflow-run-close-routine', {
             period: 'weekly',
           });
           break;

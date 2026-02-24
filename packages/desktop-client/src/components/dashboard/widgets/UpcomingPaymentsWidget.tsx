@@ -46,7 +46,7 @@ export function UpcomingPaymentsWidget({ grouped, loading, error }: Props) {
           <Trans>Loading…</Trans>
         </Text>
       ) : error ? (
-        <Text style={{ color: theme.errorText ?? '#ef4444', fontSize: 13 }}>
+        <Text style={{ color: theme.errorText, fontSize: 13 }}>
           {error}
         </Text>
       ) : grouped.size === 0 ? (

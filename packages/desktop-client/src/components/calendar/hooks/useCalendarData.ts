@@ -321,13 +321,13 @@ export function useCalendarData(
     setContractsLoading(true);
     setError(null);
     try {
-      const result = await (send as Function)('contract-list', {
+      const result = await send('contract-list', {
         status: 'active',
       });
       if (result && !('error' in result)) {
-        setContracts(result as ContractRaw[]);
+        setContracts(result as unknown as ContractRaw[]);
       } else if (result && 'error' in result) {
-        setError(result.error);
+        setError(String((result as { error: unknown }).error));
       }
     } catch (e) {
       setError('Failed to load calendar data');

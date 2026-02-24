@@ -1,11 +1,8 @@
 // @ts-strict-ignore
 import * as asyncStorage from '../../platform/server/asyncStorage';
 import { createApp } from '../app';
-import {
-  createGatewayEnvelope,
-  gatewayGet,
-  gatewayPost,
-} from '../financeos-gateway';
+import { get, post } from '../post';
+import { getServer } from '../server-config';
 
 type HandlerError = { error: string };
 
@@ -26,6 +23,7 @@ export type WorkflowHandlers = {
   'workflow-run-close-routine': typeof workflowRunCloseRoutine;
   'workflow-apply-batch-policy': typeof workflowApplyBatchPolicy;
   'workflow-execute-chain': typeof workflowExecuteChain;
+  'ops-health-score': typeof opsHealthScore;
 };
 
 export const app = createApp<WorkflowHandlers>();
@@ -39,6 +37,7 @@ app.method('workflow-run-playbook', workflowRunPlaybook);
 app.method('workflow-run-close-routine', workflowRunCloseRoutine);
 app.method('workflow-apply-batch-policy', workflowApplyBatchPolicy);
 app.method('workflow-execute-chain', workflowExecuteChain);
+app.method('ops-health-score', opsHealthScore);
 
 function readError(err: unknown, fallback = 'unknown') {
   return (
@@ -57,13 +56,18 @@ async function workflowMoneyPulse(): Promise<
   }
 
   try {
-    return await gatewayGet<WorkflowMoneyPulse>(
-      '/workflow/v1/money-pulse',
-      userToken,
-    );
+    const res = await get(getServer().BASE_SERVER + '/ops/money-pulse', {
+      headers: { 'X-ACTUAL-TOKEN': userToken },
+    });
+    if (res) {
+      const parsed = JSON.parse(res);
+      if (parsed.status === 'ok') return parsed.data;
+      return { error: parsed.reason || 'unknown' };
+    }
   } catch (err) {
     return { error: readError(err, 'network-failure') };
   }
+  return { error: 'no-response' };
 }
 
 async function workflowCommandRuns(args: {
@@ -94,13 +98,19 @@ async function workflowCommandRuns(args: {
     if (typeof args.hasErrors === 'boolean') {
       params.set('hasErrors', String(args.hasErrors));
     }
-    return await gatewayGet<Array<Record<string, unknown>>>(
-      `/workflow/v1/command-runs?${params.toString()}`,
-      userToken,
+    const res = await get(
+      getServer().BASE_SERVER + `/ops/command-runs?${params.toString()}`,
+      { headers: { 'X-ACTUAL-TOKEN': userToken } },
     );
+    if (res) {
+      const parsed = JSON.parse(res);
+      if (parsed.status === 'ok') return parsed.data;
+      return { error: parsed.reason || 'unknown' };
+    }
   } catch (err) {
     return { error: readError(err, 'network-failure') };
   }
+  return { error: 'no-response' };
 }
 
 async function workflowResolveNextAction(): Promise<
@@ -112,11 +122,12 @@ async function workflowResolveNextAction(): Promise<
   }
 
   try {
-    return await gatewayPost<Record<string, unknown>>(
-      '/workflow/v1/resolve-next-action',
-      { envelope: createGatewayEnvelope('resolve-next-action') },
-      userToken,
+    const result = await post(
+      getServer().BASE_SERVER + '/ops/resolve-next-action',
+      {},
+      { 'X-ACTUAL-TOKEN': userToken },
     );
+    return result as Record<string, unknown>;
   } catch (err) {
     return { error: readError(err) };
   }
@@ -131,13 +142,18 @@ async function workflowPlaybookList(): Promise<
   }
 
   try {
-    return await gatewayGet<Array<Record<string, unknown>>>(
-      '/workflow/v1/playbooks',
-      userToken,
-    );
+    const res = await get(getServer().BASE_SERVER + '/ops/playbooks', {
+      headers: { 'X-ACTUAL-TOKEN': userToken },
+    });
+    if (res) {
+      const parsed = JSON.parse(res);
+      if (parsed.status === 'ok') return parsed.data;
+      return { error: parsed.reason || 'unknown' };
+    }
   } catch (err) {
     return { error: readError(err, 'network-failure') };
   }
+  return { error: 'no-response' };
 }
 
 async function workflowPlaybookCreate(args: {
@@ -151,15 +167,16 @@ async function workflowPlaybookCreate(args: {
   }
 
   try {
-    return await gatewayPost<Record<string, unknown>>(
-      '/workflow/v1/playbooks',
+    const result = await post(
+      getServer().BASE_SERVER + '/ops/playbooks',
       {
         name: args.name,
         description: args.description ?? '',
         commands: args.commands,
       },
-      userToken,
+      { 'X-ACTUAL-TOKEN': userToken },
     );
+    return result as Record<string, unknown>;
   } catch (err) {
     return { error: readError(err) };
   }
@@ -175,15 +192,15 @@ async function workflowRunPlaybook(args: {
   }
 
   try {
-    return await gatewayPost<Record<string, unknown>>(
-      '/workflow/v1/run-playbook',
+    const result = await post(
+      getServer().BASE_SERVER + '/ops/run-playbook',
       {
-        envelope: createGatewayEnvelope('run-playbook'),
         playbookId: args.id,
         dryRun: args.dryRun ?? true,
       },
-      userToken,
+      { 'X-ACTUAL-TOKEN': userToken },
     );
+    return result as Record<string, unknown>;
   } catch (err) {
     return { error: readError(err) };
   }
@@ -198,14 +215,12 @@ async function workflowRunCloseRoutine(args: {
   }
 
   try {
-    return await gatewayPost<Record<string, unknown>>(
-      '/workflow/v1/run-close-routine',
-      {
-        envelope: createGatewayEnvelope('run-close-routine'),
-        period: args.period,
-      },
-      userToken,
+    const result = await post(
+      getServer().BASE_SERVER + '/ops/run-close-routine',
+      { period: args.period },
+      { 'X-ACTUAL-TOKEN': userToken },
     );
+    return result as Record<string, unknown>;
   } catch (err) {
     return { error: readError(err) };
   }
@@ -222,16 +237,16 @@ async function workflowApplyBatchPolicy(args: {
   }
 
   try {
-    return await gatewayPost<Record<string, unknown>>(
-      '/workflow/v1/apply-batch-policy',
+    const result = await post(
+      getServer().BASE_SERVER + '/ops/apply-batch-policy',
       {
-        envelope: createGatewayEnvelope('apply-batch-policy'),
         ids: args.ids,
         status: args.status,
         resolvedAction: args.resolvedAction ?? 'batch-policy',
       },
-      userToken,
+      { 'X-ACTUAL-TOKEN': userToken },
     );
+    return result as Record<string, unknown>;
   } catch (err) {
     return { error: readError(err) };
   }
@@ -248,17 +263,40 @@ async function workflowExecuteChain(args: {
   }
 
   try {
-    return await gatewayPost<Record<string, unknown>>(
-      '/workflow/v1/execute-chain',
+    const result = await post(
+      getServer().BASE_SERVER + '/ops/execute-chain',
       {
-        envelope: createGatewayEnvelope('execute-chain'),
         chain: args.chain,
         assignee: args.assignee,
         dryRun: args.dryRun ?? false,
       },
-      userToken,
+      { 'X-ACTUAL-TOKEN': userToken },
     );
+    return result as Record<string, unknown>;
   } catch (err) {
     return { error: readError(err) };
   }
+}
+
+async function opsHealthScore(): Promise<
+  Record<string, unknown> | HandlerError
+> {
+  const userToken = await asyncStorage.getItem('user-token');
+  if (!userToken) {
+    return { error: 'not-logged-in' };
+  }
+
+  try {
+    const res = await get(getServer().BASE_SERVER + '/ops/health-score', {
+      headers: { 'X-ACTUAL-TOKEN': userToken },
+    });
+    if (res) {
+      const parsed = JSON.parse(res);
+      if (parsed.status === 'ok') return parsed.data;
+      return { error: parsed.reason || 'unknown' };
+    }
+  } catch (err) {
+    return { error: readError(err, 'network-failure') };
+  }
+  return { error: 'no-response' };
 }

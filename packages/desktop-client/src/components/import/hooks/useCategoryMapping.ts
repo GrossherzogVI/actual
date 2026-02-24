@@ -49,7 +49,7 @@ export function useCategoryMapping({
 
   useEffect(() => {
     async function load() {
-      const res = await (send as Function)('categories-setup-templates', {});
+      const res = await send('categories-setup-templates');
       if (res && !('error' in res)) {
         setTemplates((res as CategoryTemplate[]) ?? []);
       }
