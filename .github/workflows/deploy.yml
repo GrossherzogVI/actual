@@ -93,17 +93,20 @@ jobs:
               cd /opt/ai-workstation && docker compose down --remove-orphans 2>/dev/null || true
             fi
 
-            # Create .env with SurrealDB credentials if it doesn't exist
+            # Write .env with SurrealDB credentials (always overwrite to pick up secret changes)
             mkdir -p "$DEPLOY_DIR"
-            if [ ! -f "$DEPLOY_DIR/.env" ]; then
-              printf 'SURREALDB_USER=%s\nSURREALDB_PASS=%s\n' '${{ secrets.SURREALDB_USER }}' '${{ secrets.SURREALDB_PASS }}' > "$DEPLOY_DIR/.env"
-              chmod 600 "$DEPLOY_DIR/.env"
-            fi
+            printf 'SURREALDB_USER=%s\nSURREALDB_PASS=%s\n' '${{ secrets.SURREALDB_USER }}' '${{ secrets.SURREALDB_PASS }}' > "$DEPLOY_DIR/.env"
+            chmod 600 "$DEPLOY_DIR/.env"
+            echo ".env written ($(wc -c < "$DEPLOY_DIR/.env") bytes)"
 
             cd "$DEPLOY_DIR"
 
             # Pull images
             $DC pull
+
+            # Reset SurrealDB to pick up corrected credentials (one-time fix)
+            $DC down surrealdb 2>/dev/null || true
+            docker volume rm infra_surrealdb-data 2>/dev/null || true
 
             # Start SurrealDB first (without depends_on blocking)
             $DC up -d surrealdb
