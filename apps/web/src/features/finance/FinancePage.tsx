@@ -142,7 +142,7 @@ export function FinancePage() {
             className="grid gap-5 p-5 h-full"
             style={{ gridTemplateColumns: '280px minmax(0, 1fr)' }}
           >
-            <div className="fo-column" style={{ gap: 16, alignContent: 'start', overflow: 'auto' }}>
+            <div className="grid gap-4 content-start overflow-auto">
               <AccountPanel
                 selectedAccountId={selectedAccountId}
                 onSelectAccount={setSelectedAccountId}

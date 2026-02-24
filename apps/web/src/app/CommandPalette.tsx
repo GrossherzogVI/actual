@@ -7,7 +7,7 @@ type Props = {
   open: boolean;
   entries: Entry[];
   onClose: () => void;
-  onSelect: (entry: Entry) => Promise<void>;
+  onSelect: (entry: Entry) => void;
 };
 
 export function CommandPalette({ open, entries, onClose, onSelect }: Props) {

@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import {
+  type LucideIcon,
   CalendarDays,
   ClipboardCheck,
   FileText,
-  LayoutDashboard,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -128,7 +128,7 @@ export function DashboardPage() {
 // -- Pulse Badge (header KPI chip) --
 
 type PulseBadgeProps = {
-  icon: typeof LayoutDashboard;
+  icon: LucideIcon;
   value: number | null;
   label: string;
 };

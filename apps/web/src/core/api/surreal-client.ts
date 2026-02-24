@@ -42,9 +42,11 @@ export async function connect(): Promise<Surreal> {
 
 export async function signin(email: string, password: string) {
   const client = await connect();
+  const ns = import.meta.env.VITE_SURREALDB_NS || 'finance';
+  const dbName = import.meta.env.VITE_SURREALDB_DB || 'main';
   return client.signin({
-    namespace: 'finance',
-    database: 'main',
+    namespace: ns,
+    database: dbName,
     access: 'account',
     variables: { email, password },
   });

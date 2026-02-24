@@ -14,10 +14,6 @@ export default defineConfig({
         rootDir,
         '../../packages/design-system/src/index.ts',
       ),
-      '@finance-os/domain-kernel': resolve(
-        rootDir,
-        '../../packages/domain-kernel/src/index.ts',
-      ),
       '@': resolve(rootDir, './src'),
     },
   },

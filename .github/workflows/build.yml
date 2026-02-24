@@ -62,28 +62,6 @@ jobs:
           name: actual-crdt
           path: packages/crdt/actual-crdt.tgz
 
-  web:
-    # NOTE: desktop-client was archived to the desktop-client-archive branch.
-    # packages/desktop-client/build no longer exists. This job is legacy and
-    # will fail until it is removed or replaced by the level5-web job below.
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-      - name: Set up environment
-        uses: ./.github/actions/setup
-      - name: Build Web
-        run: yarn build:browser
-      - name: Upload Build
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
-        with:
-          name: actual-web
-          path: packages/desktop-client/build
-      - name: Upload Build Stats
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
-        with:
-          name: build-stats
-          path: packages/desktop-client/build-stats
-
   level5-web:
     runs-on: ubuntu-latest
     steps:
@@ -94,6 +72,8 @@ jobs:
           download-translations: 'false'
       - name: Build Level-5 web
         run: yarn workspace @finance-os/web build
+        env:
+          VITE_SURREALDB_URL: ${{ secrets.VITE_SURREALDB_URL || 'ws://localhost:8000' }}
       - name: Upload Build
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:

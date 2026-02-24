@@ -42,6 +42,8 @@ jobs:
           download-translations: 'false'
       - name: Typecheck Level-5 web
         run: yarn workspace @finance-os/web typecheck
+        env:
+          VITE_SURREALDB_URL: ${{ secrets.VITE_SURREALDB_URL || 'ws://localhost:8000' }}
       - name: Typecheck Level-5 worker
         run: yarn workspace @finance-os/worker typecheck
 

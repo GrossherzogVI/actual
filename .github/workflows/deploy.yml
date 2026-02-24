@@ -16,7 +16,7 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
 
       - name: Set up environment
         uses: ./.github/actions/setup
@@ -26,18 +26,23 @@ jobs:
       - name: Build server
         run: yarn build:server
 
+      - name: Build Level-5 web
+        run: yarn workspace @finance-os/web build
+        env:
+          VITE_SURREALDB_URL: ${{ secrets.VITE_SURREALDB_URL }}
+
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
 
       - name: Build and push alpine image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198f0a3d45c8a8 # v6.18.0
         with:
           context: .
           file: packages/sync-server/docker/alpine.Dockerfile
@@ -54,7 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to VPS
-        uses: appleboy/ssh-action@v1
+        uses: appleboy/ssh-action@2ead5e36573714850e45b534601f3ebb26a74e6a # v1.2.2
         with:
           host: 212.69.84.228
           username: root
