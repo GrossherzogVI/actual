@@ -172,7 +172,64 @@ app.method('handler-name', async args => {
 
 ## What's Built
 
-### Custom Frontend Pages
+### Level-5 Web Platform (New — Phase 0+1 Complete)
+
+**Location:** `apps/web/src/features/`
+
+#### 1.1 Dashboard (`dashboard/`)
+- DashboardPage: Time-of-day German greeting, KPI badges, 4-widget grid
+- Widgets: AccountBalances (real balances), ThisMonth (income/expenses/available), UpcomingPayments (next 7 days), CashRunway (days until money runs out)
+
+#### 1.2 Contracts (`contracts/`)
+- ContractsPage: Summary metrics, search/filter, health chips (healthy/at-risk/expired)
+- ContractCard: Type badges, notice period countdown
+- ContractForm: Slide-over create/edit with mutations
+- Health computed field: Based on notice_period_days vs. next_payment_date
+
+#### 1.3 Calendar (`calendar/`)
+- CalendarPage: Toggle between 30-day list view and month grid
+- CalendarListView: Grouped by date, "Heute" marker, running balance calculation
+- CalendarGridView: 7-column grid, color-coded cells for payment visibility
+- useCalendarData: Projects upcoming payments from contracts + schedules
+
+#### 1.4 Quick Add (`quick-add/`)
+- QuickAddOverlay: Radix Dialog, Cmd+N shortcut, calculator input
+- German presets: Einkauf, Kaffee, ÖPNV, Restaurant, Tanken
+- useCalculator: Evaluates "12,50+8,30" with German comma + operator support
+- useCategorySearch: Fuzzy search with prefix/contains scoring
+
+#### 1.5 Categories (`categories/`)
+- CategoriesPage: Summary stats, search, tree view
+- CategoryTree: Hierarchical L1/L2 with expand/collapse
+- CategoryForm: Slide-over with color picker
+- CategoryColorPicker: 16 presets + custom hex input
+
+#### 1.6 Review Queue (`review/`)
+- ReviewQueuePage: Priority stats, status/type/priority filters, batch accept
+- ReviewItemCard: Priority/type badges, AI suggestion display, accept/dismiss/snooze
+- Per-item mutation tracking with AnimatePresence exit animations
+
+#### 1.7 Command Palette (integrated in App.tsx)
+- 8 finance entries with German labels
+- CustomEvent bridge for tab switching from palette to FinancePage tabs
+
+#### 1.8 AI Smart Matching (in Worker)
+- `apps/worker/src/main.ts` classifyTransaction() → Ollama classification
+- German-language prompt with all categories listed
+- Confidence ≥ 0.85: auto-apply; < 0.85: review queue
+
+**Integration:** All tabs lazy-loaded in `FinancePage.tsx` with CustomEvent listener for command palette tab switching.
+
+**API Layer:** `apps/web/src/core/api/`
+- `surreal-client.ts` — Singleton with promise-based connection guard
+- `finance-api.ts` — 15+ typed SurrealQL functions: transactions, accounts, categories, contracts, reviews, dashboard, schedules, live subscriptions
+- Types in `core/types/finance.ts` — Account, Transaction, Category, Contract, ReviewItem, Schedule, DashboardPulse, ThisMonthSummary
+
+### Desktop-Client Platform (Legacy — Phases 1-8 Complete)
+
+**Location:** `packages/desktop-client/src/`
+
+#### Custom Frontend Pages
 
 All custom routes are **lazy-loaded** via `React.lazy()` + `Suspense` in `FinancesApp.tsx`:
 
@@ -355,7 +412,77 @@ Every new module touches these files:
 - `yarn lint:fix` has been run
 - Relevant tests pass
 
-## Critical Gotchas
+## Level-5 Development Guide
+
+### Starting Development
+
+```bash
+# Terminal 1: Start SurrealDB
+yarn docker:level5
+
+# Terminal 2: Apply schema (one-time or after schema changes)
+cd schema && ./apply.sh
+
+# Terminal 3: Dev server
+yarn workspace @actual-app/web dev      # Vite, hot reload on localhost:5173
+```
+
+### Creating a New Feature Module
+
+1. **Create feature directory** in `apps/web/src/features/{feature-name}/`
+2. **Export from index.ts** — enables parallel agent development without merge conflicts
+3. **Add to FinancePage.tsx tabs** if it's a primary page
+4. **Use existing components** from `packages/design-system/` (Button, Dialog, Input, etc.)
+5. **Query SurrealDB via `apps/web/src/core/api/finance-api.ts`** — don't call sync-server handlers
+
+### Data Flow (Level-5)
+
+```
+React Component
+  ↓ useQuery/useMutation from @tanstack/react-query
+    ↓ calls financeApi.* (finance-api.ts)
+      ↓ SurrealQL query via surreal-client.ts
+        ↓ SurrealDB (WebSocket)
+          ↓ DEFINE API endpoint or raw query
+```
+
+### Code Style (Level-5)
+
+**React + Tailwind:**
+
+- Use `className` for Tailwind utilities (not `style={}`)
+- Button pattern: `<Button variant="primary" onClick={() => {}}>`
+- Dialog pattern: `<Dialog open={open} onOpenChange={setOpen}><DialogContent>...</DialogContent></Dialog>`
+- Always provide `aria-label` for icon-only buttons
+
+**TypeScript:**
+
+- Import types from `apps/web/src/core/types/finance.ts`
+- Use `type Account`, `type Transaction`, etc. (not `interface`)
+- Avoid `any` — use `unknown` if necessary
+
+**Hooks:**
+
+- Custom hooks live in feature directory or `apps/web/src/hooks/`
+- `useQuery()` for fetching (caching automatic)
+- `useMutation()` for writes with `onSuccess`/`onError` handlers
+- Always unsubscribe from live subscriptions in cleanup
+
+### Critical Gotchas (Level-5)
+
+**SurrealDB:**
+
+- Connection is async — check `connectPromise` in `surreal-client.ts` to avoid race conditions
+- Record links are resolved inline: `SELECT *, payee.name AS payee_name FROM transaction`
+- CASE expressions in ORDER BY for priority sorting (e.g., review queue)
+
+**React + Tailwind v4:**
+
+- No more Emotion CSS — use Tailwind utilities directly
+- Design tokens in `packages/design-system/` — import from there, not from CSS variables
+- `motion/react` for animations (Framer Motion wrapped)
+
+**Desktop-Client Gotchas (Legacy):**
 
 **Routing:**
 
@@ -384,21 +511,85 @@ Every new module touches these files:
 
 ## Infrastructure
 
-- **VPS**: 212.69.84.228, Docker Compose
+### Deployment
+
+- **VPS**: 212.69.84.228, Docker Compose (self-hosted)
 - **Registry**: `ghcr.io/grossherzogvi/actual-budget`
 - **CI/CD**: GitHub Actions -> GHCR -> VPS deploy
+- **Database**: SurrealDB 3.0 (docker-compose.level5.yml)
 - **Ollama**: `ACTUAL_OLLAMA_URL`, `ACTUAL_OLLAMA_MODEL`, `ACTUAL_AI_ENABLED`
 - **Webhooks**: `ACTUAL_WEBHOOK_URL`, `ACTUAL_WEBHOOK_SECRET`
+
+### Local Development Environment
+
+```bash
+# SurrealDB (run once)
+docker compose -f docker-compose.level5.yml up
+
+# Apply schema (after schema changes)
+cd schema && ./apply.sh
+
+# Web app (Vite + hot reload)
+yarn workspace @actual-app/web dev
+
+# Worker (background jobs + AI)
+yarn workspace @actual-app/worker dev
+```
 
 ## Running Tests
 
 ```bash
 yarn test                                    # All tests (lage, parallel + cached)
 yarn workspace @actual-app/sync-server test  # Sync-server tests only
+yarn workspace @actual-app/web test          # Level-5 web tests
 yarn workspace @actual-app/sync-server vitest run src/ai/app-ai.test.ts  # Single file
 ```
 
-## What's Not Built Yet
+## Roadmap
+
+### Mega-Phase 2: Intelligence Layer (Next)
+
+**Focus**: Anomaly detection, spending patterns, NLP analysis
+
+- Anomaly detection engine (outlier spending detection)
+- Spending pattern recognition (seasonal trends, category drift)
+- NLP-based description summarization
+- Rule suggestions based on patterns
+- Predictive anomaly alerts
+
+### Mega-Phase 3: German Financial Ecosystem
+
+**Focus**: Localization for German users
+
+- Kündigungsfristen (notice period) enforcement
+- German bank CSV import (MT940, CAMT.053)
+- German receipt OCR via Ollama `llama3.2-vision`
+- Tax export (EÜR, Umsatzsteuer)
+- SEPA payment preparation
+- German public holidays integration
+
+### Mega-Phase 4: Advanced Financial Features
+
+**Focus**: Comprehensive budgeting + goal tracking
+
+- Envelope budgeting with rollover
+- Savings goals with progress tracking
+- Net worth tracking (assets + liabilities)
+- Loan amortization (Tilgungsplan) calculator
+- Investment portfolio tracking
+- Budget-vs-actual analysis
+
+### Mega-Phase 5: Ops Panel Wiring
+
+**Focus**: Connect existing Level-5 ops panels to SurrealDB
+
+- Wire command mesh (delegate lanes, focus)
+- Wire intelligence panels (anomalies, suggestions)
+- Wire scenario builder
+- Wire playbook runner
+- Real-time sync across panels
+
+## What's Not Built Yet (Desktop-Client Legacy)
 
 **High priority (features exist but need wiring):**
 
@@ -419,6 +610,3 @@ yarn workspace @actual-app/sync-server vitest run src/ai/app-ai.test.ts  # Singl
 - Contract timeline visualization
 - IBAN-based auto-categorization rules
 - Full AI-during-import pipeline
-- Envelope budgeting with rollover
-- Savings goals
-- Loan tracking (Tilgungsplan)
