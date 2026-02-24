@@ -4,15 +4,23 @@ import { useTranslation } from 'react-i18next';
 
 import { theme } from '@actual-app/components/theme';
 
-import { Badge } from '@/components/ui/badge';
-
 import type { ReviewCount } from './types';
+
+import { Badge } from '@/components/ui/badge';
 
 type ReviewStatsProps = {
   counts: ReviewCount;
 };
 
-function StatChip({ label, count, color }: { label: string; count: number; color: string }) {
+function StatChip({
+  label,
+  count,
+  color,
+}: {
+  label: string;
+  count: number;
+  color: string;
+}) {
   return (
     <Badge
       variant="outline"

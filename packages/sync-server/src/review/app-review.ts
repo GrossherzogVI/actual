@@ -7,6 +7,30 @@ import {
   validateSessionMiddleware,
 } from '../util/middlewares.js';
 
+// ─── Snoozed item reactivation ─────────────────────────────────────────────
+
+/**
+ * Moves all review queue items whose snooze period has expired back to
+ * `pending` status. Intended to be called periodically (e.g. from the
+ * deadline-checker background job).
+ *
+ * @returns The number of items that were reactivated.
+ */
+export function reactivateSnoozedItems(): number {
+  const db = getAccountDb();
+  const result = db.mutate(
+    `UPDATE review_queue
+     SET status = 'pending',
+         snoozed_until = NULL,
+         updated_at = datetime('now')
+     WHERE status = 'snoozed'
+       AND snoozed_until IS NOT NULL
+       AND snoozed_until <= datetime('now')`,
+    [],
+  );
+  return result.changes ?? 0;
+}
+
 const app = express();
 
 export { app as handlers };
@@ -104,6 +128,19 @@ app.get('/', (req, res) => {
   const conditions = ["status = 'pending'"];
   const params: unknown[] = [];
 
+  if (type && !VALID_TYPES.includes(type as (typeof VALID_TYPES)[number])) {
+    res.status(400).json({ status: 'error', reason: 'invalid-type' });
+    return;
+  }
+
+  if (
+    priority &&
+    !VALID_PRIORITIES.includes(priority as (typeof VALID_PRIORITIES)[number])
+  ) {
+    res.status(400).json({ status: 'error', reason: 'invalid-priority' });
+    return;
+  }
+
   if (type) {
     conditions.push('type = ?');
     params.push(type);
@@ -114,8 +151,12 @@ app.get('/', (req, res) => {
     params.push(priority);
   }
 
-  const limitNum = parseInt(String(limit ?? '50'), 10);
-  const offsetNum = parseInt(String(offset ?? '0'), 10);
+  const rawLimit = parseInt(String(limit ?? '50'), 10);
+  const rawOffset = parseInt(String(offset ?? '0'), 10);
+  const limitNum = Number.isFinite(rawLimit)
+    ? Math.max(1, Math.min(rawLimit, 500))
+    : 50;
+  const offsetNum = Number.isFinite(rawOffset) ? Math.max(0, rawOffset) : 0;
 
   const rows = db.all(
     `SELECT * FROM review_queue
@@ -184,6 +225,17 @@ app.post('/batch', (req, res) => {
     return;
   }
 
+  // Cap to prevent unbounded IN clauses
+  const MAX_BATCH_IDS = 500;
+  if (ids.length > MAX_BATCH_IDS) {
+    res.status(400).json({
+      status: 'error',
+      reason: 'too-many-ids',
+      maxAllowed: MAX_BATCH_IDS,
+    });
+    return;
+  }
+
   if (
     !newStatus ||
     !['accepted', 'rejected', 'dismissed'].includes(newStatus)
@@ -195,7 +247,7 @@ app.post('/batch', (req, res) => {
   const db = getAccountDb();
   const placeholders = ids.map(() => '?').join(',');
 
-  db.mutate(
+  const result = db.mutate(
     `UPDATE review_queue SET
        status = ?,
        resolved_at = datetime('now'),
@@ -205,7 +257,9 @@ app.post('/batch', (req, res) => {
     [newStatus, resolved_action ?? null, ...ids],
   );
 
-  res.json({ status: 'ok', data: { updated: ids.length } });
+  // Use result.changes (actual DB rows affected) rather than ids.length
+  // (which would overcount if some ids were already resolved or non-existent)
+  res.json({ status: 'ok', data: { updated: result.changes ?? 0 } });
 });
 
 /** POST /review/:id/apply — apply the AI suggestion */
@@ -254,7 +308,22 @@ app.post('/:id/apply', (req, res) => {
 /** POST /review/batch-accept — accept all pending items above confidence threshold */
 app.post('/batch-accept', (req, res) => {
   const { minConfidence } = req.body ?? {};
-  const threshold = typeof minConfidence === 'number' ? minConfidence : 0.9;
+  const rawThreshold = typeof minConfidence === 'number' ? minConfidence : 0.9;
+
+  // Clamp to valid probability range [0, 1]
+  if (
+    typeof minConfidence === 'number' &&
+    (minConfidence < 0 || minConfidence > 1)
+  ) {
+    res.status(400).json({
+      status: 'error',
+      reason: 'minConfidence-out-of-range',
+      message: 'minConfidence must be between 0 and 1',
+    });
+    return;
+  }
+
+  const threshold = Math.max(0, Math.min(1, rawThreshold));
 
   const db = getAccountDb();
 

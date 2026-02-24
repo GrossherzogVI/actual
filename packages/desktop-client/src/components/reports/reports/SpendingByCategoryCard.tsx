@@ -107,7 +107,7 @@ export function SpendingByCategoryCard() {
         }}
       >
         <Text style={{ fontSize: 11, color: theme.pageTextSubdued }}>
-          {<Trans>Total</Trans>}
+          <Trans>Total</Trans>
         </Text>
         <Text
           style={{

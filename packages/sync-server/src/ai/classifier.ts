@@ -1,6 +1,22 @@
 import { ollamaChat } from './ollama-client.js';
 import type { ClassificationResult } from './types.js';
 
+// ─── Prompt sanitization ────────────────────────────────────────────────────
+
+/**
+ * Strips control characters from user-supplied text and enforces a length cap
+ * before the text is interpolated into an LLM prompt. This prevents prompt
+ * injection via null bytes, escape sequences, or oversized payloads.
+ *
+ * @param text   - Raw user-supplied string
+ * @param maxLen - Maximum retained character count (default 500)
+ */
+function sanitizeForPrompt(text: string, maxLen: number = 500): string {
+  // Remove C0/C1 control characters (0x00–0x1F, 0x7F) but keep printable ASCII and Unicode
+  // eslint-disable-next-line no-control-regex
+  return text.replace(/[\x00-\x1F\x7F]/g, '').slice(0, maxLen);
+}
+
 // ─── In-memory classification cache by normalized payee ────────────────────
 
 type CacheEntry = {
@@ -10,6 +26,8 @@ type CacheEntry = {
 
 const classificationCache = new Map<string, CacheEntry>();
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+/** Maximum number of entries before evicting oldest 200 (LRU-lite via insertion order). */
+const MAX_CACHE_SIZE = 1000;
 
 function normalizePayee(payee: string): string {
   return payee.toLowerCase().trim().replace(/\s+/g, ' ');
@@ -33,6 +51,16 @@ function cacheClassification(
   result: ClassificationResult,
 ): void {
   const key = normalizePayee(payee);
+
+  // Evict oldest entries when the cache exceeds the size limit.
+  // Map preserves insertion order, so the first entries are the oldest.
+  if (classificationCache.size >= MAX_CACHE_SIZE) {
+    const keysToDelete = [...classificationCache.keys()].slice(0, 200);
+    for (const k of keysToDelete) {
+      classificationCache.delete(k);
+    }
+  }
+
   classificationCache.set(key, { result, cachedAt: Date.now() });
 }
 
@@ -93,13 +121,13 @@ Rules:
 
   const amountFormatted = (transaction.amount / 100).toFixed(2);
   const parts = [
-    `Payee: ${transaction.payee}`,
+    `Payee: ${sanitizeForPrompt(transaction.payee)}`,
     transaction.imported_payee
-      ? `Imported Payee: ${transaction.imported_payee}`
+      ? `Imported Payee: ${sanitizeForPrompt(transaction.imported_payee)}`
       : null,
     `Amount: ${amountFormatted} EUR`,
     `Date: ${transaction.date}`,
-    transaction.notes ? `Notes: ${transaction.notes}` : null,
+    transaction.notes ? `Notes: ${sanitizeForPrompt(transaction.notes)}` : null,
     transaction.account ? `Account: ${transaction.account}` : null,
   ]
     .filter(Boolean)
@@ -140,7 +168,26 @@ export async function classifyTransaction(
     { temperature: 0.1, format: 'json' },
   );
 
-  const parsed = JSON.parse(raw) as LLMResponse;
+  let parsed: LLMResponse;
+  try {
+    parsed = JSON.parse(raw) as LLMResponse;
+  } catch {
+    return {
+      transactionId: transaction.id,
+      categoryId: '',
+      confidence: 0,
+      reasoning: 'Invalid LLM JSON response',
+    };
+  }
+
+  // Validate that the returned category_id is one we actually provided
+  const validCategoryIds = new Set(categories.map(c => c.id));
+  if (parsed.category_id && !validCategoryIds.has(parsed.category_id)) {
+    // Hallucinated category: zero confidence so it goes to review queue
+    parsed.confidence = 0;
+    parsed.reasoning =
+      (parsed.reasoning ?? '') + ' [category_id not in valid set]';
+  }
 
   const result: ClassificationResult = {
     transactionId: transaction.id,
@@ -170,7 +217,6 @@ const CONCURRENCY_LIMIT = 3;
 export async function classifyBatch(
   transactions: TransactionInput[],
   categories: CategoryInfo[],
-  _fileId: string,
 ): Promise<ClassificationResult[]> {
   const results: ClassificationResult[] = [];
   const queue = [...transactions];

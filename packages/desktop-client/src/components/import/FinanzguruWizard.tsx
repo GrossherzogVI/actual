@@ -4,6 +4,7 @@ import { Trans, useTranslation } from 'react-i18next';
 import { useDispatch } from 'react-redux';
 
 import { Button } from '@actual-app/components/button';
+import { AnimatedLoading } from '@actual-app/components/icons/AnimatedLoading';
 import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
@@ -13,74 +14,20 @@ import { useCategoryMapping } from './hooks/useCategoryMapping';
 import { useImport } from './hooks/useImport';
 import { ImportAdvisor } from './ImportAdvisor';
 import { ImportPreview } from './ImportPreview';
+import { fileToBase64, StepIndicator } from './shared';
 
 import { useAccounts } from '@desktop-client/hooks/useAccounts';
 import { useCategories } from '@desktop-client/hooks/useCategories';
 import { replaceModal } from '@desktop-client/modals/modalsSlice';
 
+import { useToast } from '@/components/common/Toast';
+
 type Step = 1 | 2 | 3 | 4 | 5;
-
-function StepIndicator({ step, total }: { step: Step; total: number }) {
-  return (
-    <View
-      style={{
-        flexDirection: 'row',
-        gap: 8,
-        alignItems: 'center',
-        marginBottom: 20,
-      }}
-    >
-      {Array.from({ length: total }, (_, i) => i + 1).map(n => (
-        <View
-          key={n}
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: 14,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor:
-              n < step
-                ? '#10b981'
-                : n === step
-                  ? theme.buttonPrimaryBackground
-                  : theme.tableBorder,
-            color: n <= step ? theme.buttonPrimaryText : theme.pageTextSubdued,
-            fontSize: 12,
-            fontWeight: 600,
-          }}
-        >
-          <Text
-            style={{
-              fontSize: 12,
-              fontWeight: 600,
-              color: n <= step ? '#fff' : theme.pageTextSubdued,
-            }}
-          >
-            {n < step ? '✓' : String(n)}
-          </Text>
-        </View>
-      ))}
-    </View>
-  );
-}
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      // Strip data URL prefix, keep raw base64
-      resolve(result.split(',')[1] ?? result);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 
 export function FinanzguruWizard() {
   const { t } = useTranslation();
   const dispatch = useDispatch();
+  const toast = useToast();
   const [step, setStep] = useState<Step>(1);
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -126,11 +73,20 @@ export function FinanzguruWizard() {
   const handleFile = useCallback(
     async (f: File) => {
       setFile(f);
-      const b64 = await fileToBase64(f);
-      await uploadAndPreview(b64);
-      setStep(2);
+      try {
+        const b64 = await fileToBase64(f);
+        await uploadAndPreview(b64);
+        // Only advance to step 2 on success
+        setStep(2);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : t('Upload failed');
+        toast.show(t('Upload failed: {{message}}', { message }), {
+          type: 'error',
+        });
+        // Keep user on step 1
+      }
     },
-    [uploadAndPreview],
+    [uploadAndPreview, toast, t],
   );
 
   const handleDrop = useCallback(
@@ -186,7 +142,7 @@ export function FinanzguruWizard() {
               padding: '48px 24px',
               alignItems: 'center',
               justifyContent: 'center',
-              cursor: 'pointer',
+              cursor: loading ? 'default' : 'pointer',
               backgroundColor: dragOver
                 ? `${theme.buttonPrimaryBackground}10`
                 : theme.tableBackground,
@@ -195,21 +151,48 @@ export function FinanzguruWizard() {
             }}
             onDragOver={e => {
               e.preventDefault();
-              setDragOver(true);
+              if (!loading) setDragOver(true);
             }}
             onDragLeave={() => setDragOver(false)}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
+            onDrop={loading ? undefined : handleDrop}
+            onClick={() => {
+              if (!loading) fileInputRef.current?.click();
+            }}
           >
-            <Text style={{ fontSize: 32 }}>📂</Text>
-            <Text
-              style={{ fontSize: 14, fontWeight: 500, color: theme.pageText }}
-            >
-              <Trans>Drop XLSX file here or click to browse</Trans>
-            </Text>
-            <Text style={{ fontSize: 12, color: theme.pageTextSubdued }}>
-              <Trans>Supports Finanzguru XLSX export format</Trans>
-            </Text>
+            {loading ? (
+              <>
+                <AnimatedLoading
+                  width={32}
+                  height={32}
+                  style={{ color: theme.buttonPrimaryBackground }}
+                />
+                <Text
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 500,
+                    color: theme.pageText,
+                  }}
+                >
+                  <Trans>Uploading and analyzing…</Trans>
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={{ fontSize: 32 }}>📂</Text>
+                <Text
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 500,
+                    color: theme.pageText,
+                  }}
+                >
+                  <Trans>Drop XLSX file here or click to browse</Trans>
+                </Text>
+                <Text style={{ fontSize: 12, color: theme.pageTextSubdued }}>
+                  <Trans>Supports Finanzguru XLSX export format</Trans>
+                </Text>
+              </>
+            )}
           </View>
 
           <input
@@ -223,11 +206,6 @@ export function FinanzguruWizard() {
             }}
           />
 
-          {loading && (
-            <Text style={{ fontSize: 13, color: theme.pageTextSubdued }}>
-              <Trans>Uploading and analyzing…</Trans>
-            </Text>
-          )}
           {error && (
             <Text style={{ fontSize: 13, color: '#ef4444' }}>
               {t('Error: {{error}}', { error })}
@@ -307,7 +285,7 @@ export function FinanzguruWizard() {
                 alignSelf: 'flex-start',
               }}
             >
-              + Neues Konto erstellen
+              <Trans>+ Create new account</Trans>
             </Button>
           </View>
 

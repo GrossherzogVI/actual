@@ -11,6 +11,7 @@
  */
 
 import { getAccountDb } from '../account-db.js';
+import { reactivateSnoozedItems } from '../review/app-review.js';
 import { dispatchWebhook } from '../webhook.js';
 
 import {
@@ -100,6 +101,21 @@ function runCheck(): void {
       (err as Error).message,
     );
     return;
+  }
+
+  // Reactivate any snoozed review items whose snooze period has expired
+  try {
+    const reactivated = reactivateSnoozedItems();
+    if (reactivated > 0) {
+      console.log(
+        `[DeadlineChecker] Reactivated ${reactivated} snoozed review item(s)`,
+      );
+    }
+  } catch (err) {
+    console.warn(
+      '[DeadlineChecker] Could not reactivate snoozed items:',
+      (err as Error).message,
+    );
   }
 
   const bundesland = getBundesland();

@@ -34,7 +34,7 @@ process.on('unhandledRejection', reason => {
 
 app.disable('x-powered-by');
 
-app.use(cors());
+app.use(cors({ origin: process.env.ACTUAL_CORS_ORIGIN || true }));
 
 app.set('trust proxy', config.get('trustedProxies'));
 if (process.env.NODE_ENV !== 'development') {

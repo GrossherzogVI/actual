@@ -1,5 +1,5 @@
 // @ts-strict-ignore
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import ReactGridLayout from 'react-grid-layout';
 import type { Layout, LayoutItem } from 'react-grid-layout';
 import { Trans, useTranslation } from 'react-i18next';
@@ -24,6 +24,7 @@ import { CashRunwayWidget } from './widgets/CashRunwayWidget';
 import { QuickAddWidget } from './widgets/QuickAddWidget';
 import { ThisMonthWidget } from './widgets/ThisMonthWidget';
 import { UpcomingPaymentsWidget } from './widgets/UpcomingPaymentsWidget';
+import { WidgetErrorBoundary } from './widgets/WidgetErrorBoundary';
 
 import { EmptyState } from '@desktop-client/components/common/EmptyState';
 import { SkeletonCard } from '@desktop-client/components/common/Skeleton';
@@ -172,13 +173,25 @@ export function DashboardPage() {
 
   const currentSheetName = monthUtils.sheetForMonth(monthUtils.currentMonth());
 
+  // Debounce layout save (500ms)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handleLayoutChange = useCallback(
     (newLayout: Layout) => {
       setLayout([...newLayout]);
-      setSavedLayoutRaw(JSON.stringify(newLayout));
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
+        setSavedLayoutRaw(JSON.stringify(newLayout));
+      }, 500);
     },
     [setSavedLayoutRaw],
   );
+
+  const handleResetLayout = useCallback(() => {
+    setLayout([...DEFAULT_LAYOUT]);
+    setVisibleWidgets(new Set(ALL_WIDGET_IDS));
+    setSavedLayoutRaw(JSON.stringify(DEFAULT_LAYOUT));
+  }, [setSavedLayoutRaw]);
 
   const handleRemoveWidget = useCallback(
     (id: WidgetId) => {
@@ -292,9 +305,18 @@ export function DashboardPage() {
           </View>
         )}
         {isEditing ? (
-          <Button onPress={() => setIsEditing(false)}>
-            <Trans>Done</Trans>
-          </Button>
+          <>
+            <Button
+              variant="bare"
+              onPress={handleResetLayout}
+              style={{ fontSize: 12, color: theme.pageTextSubdued }}
+            >
+              {t('Layout zurücksetzen')}
+            </Button>
+            <Button onPress={() => setIsEditing(false)}>
+              <Trans>Done</Trans>
+            </Button>
+          </>
         ) : (
           <Button variant="bare" onPress={() => setIsEditing(true)}>
             {t('Edit Dashboard')}
@@ -419,25 +441,26 @@ export function DashboardPage() {
                       ×
                     </Button>
                   )}
-                  <WidgetRenderer
-                    id={item.i as WidgetId}
-                    contractSummary={contractSummary}
-                    loading={loading}
-                    paymentsLoading={paymentsLoading}
-                    paymentsError={paymentsError}
-                    grouped={grouped}
-                    upcomingFlat={upcomingFlat}
-                    reviewCounts={reviewCounts}
-                    currentSheetName={currentSheetName}
-                    onOpenQuickAdd={handleOpenQuickAdd}
-                  />
+                  <WidgetErrorBoundary>
+                    <WidgetRenderer
+                      id={item.i as WidgetId}
+                      contractSummary={contractSummary}
+                      loading={loading}
+                      paymentsLoading={paymentsLoading}
+                      paymentsError={paymentsError}
+                      grouped={grouped}
+                      upcomingFlat={upcomingFlat}
+                      reviewCounts={reviewCounts}
+                      currentSheetName={currentSheetName}
+                      onOpenQuickAdd={handleOpenQuickAdd}
+                    />
+                  </WidgetErrorBoundary>
                 </div>
               ))}
             </ReactGridLayout>
           )}
         </View>
       )}
-
     </Page>
   );
 }

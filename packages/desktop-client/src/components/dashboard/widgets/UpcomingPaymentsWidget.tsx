@@ -6,19 +6,12 @@ import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
-import type { UpcomingPayment } from '@/components/dashboard/types';
-
 import { WidgetCard } from './WidgetCard';
 
 import { useNavigate } from '@desktop-client/hooks/useNavigate';
+import { formatEur } from '@desktop-client/utils/german-format';
 
-function formatEur(cents: number | null): string {
-  if (cents == null) return '\u2014';
-  return new Intl.NumberFormat('de-DE', {
-    style: 'currency',
-    currency: 'EUR',
-  }).format(cents / 100);
-}
+import type { UpcomingPayment } from '@/components/dashboard/types';
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00');
@@ -68,25 +61,37 @@ export function UpcomingPaymentsWidget({ grouped, loading, error }: Props) {
                 {formatDate(date)}
               </Text>
               {payments.map(p => (
-                <View
+                <button
                   key={`${date}-${p.contractId}`}
                   onClick={() => navigate(`/contracts/${p.contractId}`)}
+                  aria-label={`${p.name} – ${formatEur(p.amount)}`}
                   style={{
+                    display: 'flex',
                     flexDirection: 'row',
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     padding: '4px 8px',
                     borderRadius: 4,
                     cursor: 'pointer',
+                    width: '100%',
+                    background: 'none',
+                    border: 'none',
+                    textAlign: 'left',
                   }}
                 >
                   <Text style={{ color: theme.pageText, fontSize: 13 }}>
                     {p.name}
                   </Text>
-                  <Text style={{ color: theme.pageTextSubdued, fontSize: 13 }}>
+                  <Text
+                    style={{
+                      color: theme.pageTextSubdued,
+                      fontSize: 13,
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
                     -{formatEur(p.amount)}
                   </Text>
-                </View>
+                </button>
               ))}
             </View>
           ))}

@@ -23,13 +23,19 @@ import { theme } from '@actual-app/components/theme';
 import { Tooltip } from '@actual-app/components/tooltip';
 import { View } from '@actual-app/components/view';
 
+import { getItemSubtitle, getItemTitle, PRIORITY_BORDER_COLORS } from './types';
+import type {
+  ReviewItemType as ItemType,
+  ReviewItem as ReviewItemType,
+} from './types';
+
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 
-import { PRIORITY_BORDER_COLORS, getItemTitle, getItemSubtitle } from './types';
-import type { ReviewItem as ReviewItemType, ReviewItemType as ItemType } from './types';
-
-const PRIORITY_BADGE_VARIANT: Record<string, 'destructive' | 'default' | 'secondary'> = {
+const PRIORITY_BADGE_VARIANT: Record<
+  string,
+  'destructive' | 'default' | 'secondary'
+> = {
   urgent: 'destructive',
   review: 'default',
   suggestion: 'secondary',
@@ -76,7 +82,9 @@ function ConfidenceBar({ confidence }: ConfidenceBarProps) {
   return (
     <div className="mt-1 flex items-center gap-1.5">
       <Progress value={pct} className="h-1 w-[120px]" />
-      <span className="text-xs font-medium" style={{ color }}>{pct}%</span>
+      <span className="text-xs font-medium" style={{ color }}>
+        {pct}%
+      </span>
     </div>
   );
 }
@@ -182,7 +190,10 @@ export function ReviewItem({
           >
             {title}
           </Text>
-          <Badge variant={PRIORITY_BADGE_VARIANT[item.priority] ?? 'secondary'} className="text-[10px] px-1.5 py-0 capitalize">
+          <Badge
+            variant={PRIORITY_BADGE_VARIANT[item.priority] ?? 'secondary'}
+            className="text-[10px] px-1.5 py-0 capitalize"
+          >
             {item.priority}
           </Badge>
         </div>
@@ -211,8 +222,7 @@ export function ReviewItem({
               marginTop: 3,
             }}
           >
-            <Trans>Amount</Trans>:{' '}
-            {(item.transaction_amount / 100).toFixed(2)}
+            <Trans>Amount</Trans>: {(item.transaction_amount / 100).toFixed(2)}
           </Text>
         )}
       </View>

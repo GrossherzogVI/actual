@@ -215,6 +215,9 @@ type UseCalendarDataOptions = {
    *  the most recent past payday to the next payday. When undefined/null
    *  the classic 30-day window from today is used. */
   paydayDate?: number | null;
+  /** Offset in months from the current month (0 = current, -1 = last, +1 = next).
+   *  Only applies when paydayDate is not set. */
+  monthOffset?: number;
 };
 
 type UseCalendarDataResult = {
@@ -286,7 +289,7 @@ function getPaydayCycleWindow(
 export function useCalendarData(
   options?: UseCalendarDataOptions,
 ): UseCalendarDataResult {
-  const { paydayDate } = options ?? {};
+  const { paydayDate, monthOffset = 0 } = options ?? {};
   const [contracts, setContracts] = useState<ContractRaw[]>([]);
   const [contractsLoading, setContractsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -347,11 +350,22 @@ export function useCalendarData(
     if (paydayDate && paydayDate >= 1 && paydayDate <= 28) {
       return getPaydayCycleWindow(paydayDate, today);
     }
+    if (monthOffset !== 0) {
+      // Show the full target month
+      const target = new Date(
+        today.getFullYear(),
+        today.getMonth() + monthOffset,
+        1,
+      );
+      const from = toISODate(target);
+      const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0);
+      return [from, toISODate(lastDay)];
+    }
     const from = toISODate(today);
     const toDate30 = new Date(today);
     toDate30.setDate(today.getDate() + 30);
     return [from, toISODate(toDate30)];
-  }, [paydayDate]);
+  }, [paydayDate, monthOffset]);
 
   const allEntries = useMemo<CalendarEntry[]>(() => {
     const fromDate = windowStart;

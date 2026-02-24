@@ -109,7 +109,7 @@ export function FixedVsVariable({ data }: Props) {
             <Text
               style={{ fontSize: 12, color: theme.pageText, fontWeight: 600 }}
             >
-              {<Trans>Fixed</Trans>} ({fixedPercent}%)
+              <Trans>Fixed</Trans> ({fixedPercent}%)
             </Text>
             <Text style={{ fontSize: 11, color: theme.pageTextSubdued }}>
               {formatCents(data.fixed)}
@@ -130,7 +130,7 @@ export function FixedVsVariable({ data }: Props) {
             <Text
               style={{ fontSize: 12, color: theme.pageText, fontWeight: 600 }}
             >
-              {<Trans>Variable</Trans>} ({variablePercent}%)
+              <Trans>Variable</Trans> ({variablePercent}%)
             </Text>
             <Text style={{ fontSize: 11, color: theme.pageTextSubdued }}>
               {formatCents(data.variable)}

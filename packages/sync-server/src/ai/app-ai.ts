@@ -6,6 +6,7 @@ import {
   requestLoggerMiddleware,
   validateSessionMiddleware,
 } from '../util/middlewares.js';
+import { isSafeRegex } from '../util/safe-regex.js';
 
 import {
   classifyBatch,
@@ -34,10 +35,14 @@ const HIGH_TIER_MIN_ACCURACY = 0.85;
  *   2. ai_high rules (>85% accuracy, >5 matches) → ASSIGN silently
  *   3. No match → Ollama classify → confidence determines review queue
  */
-function matchSmartRule(
-  payee: string,
-  iban?: string,
-): { category_id: string; confidence: number; tier: string } | null {
+type SmartRuleMatch = {
+  id: string;
+  category_id: string;
+  confidence: number;
+  tier: string;
+};
+
+function matchSmartRule(payee: string, iban?: string): SmartRuleMatch | null {
   const db = getAccountDb();
 
   // Tier 1: pinned exact match
@@ -48,6 +53,7 @@ function matchSmartRule(
   ) as Record<string, unknown> | undefined;
   if (pinnedExact) {
     return {
+      id: pinnedExact.id as string,
       category_id: pinnedExact.category_id as string,
       confidence: 1.0,
       tier: 'pinned',
@@ -63,6 +69,7 @@ function matchSmartRule(
     ) as Record<string, unknown> | undefined;
     if (pinnedIban) {
       return {
+        id: pinnedIban.id as string,
         category_id: pinnedIban.category_id as string,
         confidence: 1.0,
         tier: 'pinned',
@@ -95,7 +102,10 @@ function matchSmartRule(
       matched = payee.toLowerCase().includes(pattern.toLowerCase());
     } else if (matchType === 'regex') {
       try {
-        matched = new RegExp(pattern, 'i').test(payee);
+        if (isSafeRegex(pattern)) {
+          matched = new RegExp(pattern, 'i').test(payee);
+        }
+        // unsafe or invalid regex: skip silently
       } catch {
         // invalid regex, skip
       }
@@ -105,6 +115,7 @@ function matchSmartRule(
 
     if (matched) {
       return {
+        id: rule.id as string,
         category_id: rule.category_id as string,
         confidence: rule.confidence as number,
         tier: 'ai_high',
@@ -168,12 +179,13 @@ app.post('/classify', async (req, res) => {
   const ruleMatch = matchSmartRule(transaction.payee ?? '', transaction.iban);
 
   if (ruleMatch) {
-    // Update match stats for matched rule
+    // Update match stats for the specific matched rule only (by its id).
+    // Using WHERE id avoids incorrectly incrementing all rules for the same category.
     db.mutate(
       `UPDATE smart_match_rules
        SET match_count = match_count + 1, last_matched_at = datetime('now'), updated_at = datetime('now')
-       WHERE category_id = ? AND tier IN ('pinned','ai_high')`,
-      [ruleMatch.category_id],
+       WHERE id = ?`,
+      [ruleMatch.id],
     );
 
     res.json({ status: 'ok', data: { ...ruleMatch, source: 'rule' } });
@@ -276,7 +288,7 @@ app.post('/classify-batch', async (req, res) => {
   let failed = 0;
 
   // Phase 1: Rule matching (fast, synchronous) — separate from Ollama work
-  type OllamaWork = { index: number; transaction: typeof transactions[0] };
+  type OllamaWork = { index: number; transaction: (typeof transactions)[0] };
   const ollamaQueue: OllamaWork[] = [];
 
   for (let i = 0; i < transactions.length; i++) {
@@ -397,15 +409,28 @@ app.post('/classify-batch', async (req, res) => {
     }
   }
 
-  // After classification, check if any payees now qualify for auto-pin promotion
+  // After classification, check if any payees now qualify for auto-pin promotion.
+  // Deduplicate by normalized payee first so we query each unique payee once,
+  // not once per transaction (prevents O(n) DB queries for repeated payees).
   const promotions: Array<{ payee: string; category_id: string }> = [];
   if (ollamaHigh > 0) {
     const AUTO_PIN_MIN = 5;
+
+    // Build a set of unique normalized payees from the batch
+    const uniqueNormalizedPayees = new Set<string>();
+    const payeeToOriginal = new Map<string, string>();
     for (const transaction of transactions) {
       const payee = transaction.payee ?? '';
       if (!payee) continue;
+      const normalized = payee.toLowerCase().trim();
+      uniqueNormalizedPayees.add(normalized);
+      // Keep the first seen original spelling for pin pattern
+      if (!payeeToOriginal.has(normalized)) {
+        payeeToOriginal.set(normalized, payee);
+      }
+    }
 
-      // Check if this payee now has enough consistent categorizations
+    for (const normalizedPayee of uniqueNormalizedPayees) {
       const consistency = db.first(
         `SELECT suggested_category_id, COUNT(*) as cnt
          FROM ai_classifications
@@ -413,19 +438,21 @@ app.post('/classify-batch', async (req, res) => {
          GROUP BY suggested_category_id
          ORDER BY cnt DESC
          LIMIT 1`,
-        [payee.toLowerCase().trim()],
+        [normalizedPayee],
       ) as { suggested_category_id: string; cnt: number } | undefined;
 
       if (consistency && consistency.cnt >= AUTO_PIN_MIN) {
+        const originalPayee =
+          payeeToOriginal.get(normalizedPayee) ?? normalizedPayee;
         // Check not already pinned
         const alreadyPinned = db.first(
           `SELECT id FROM smart_match_rules
            WHERE tier = 'pinned' AND payee_pattern = ? AND category_id = ?`,
-          [payee, consistency.suggested_category_id],
+          [originalPayee, consistency.suggested_category_id],
         );
         if (!alreadyPinned) {
           promotions.push({
-            payee,
+            payee: originalPayee,
             category_id: consistency.suggested_category_id,
           });
         }
@@ -452,6 +479,16 @@ app.get('/rules', (req, res) => {
   const conditions: string[] = [];
   const params: unknown[] = [];
 
+  // Validate tier against whitelist
+  const VALID_RULE_TIERS = ['pinned', 'ai_high', 'ai_low'] as const;
+  if (
+    tier &&
+    !VALID_RULE_TIERS.includes(tier as (typeof VALID_RULE_TIERS)[number])
+  ) {
+    res.status(400).json({ status: 'error', reason: 'invalid-tier' });
+    return;
+  }
+
   if (tier) {
     conditions.push('tier = ?');
     params.push(tier);
@@ -459,7 +496,10 @@ app.get('/rules', (req, res) => {
 
   const whereClause =
     conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-  const limitNum = parseInt(String(limit ?? '200'), 10);
+  const rawLimit = parseInt(String(limit ?? '200'), 10);
+  const limitNum = Number.isFinite(rawLimit)
+    ? Math.max(1, Math.min(rawLimit, 1000))
+    : 200;
 
   const rows = db.all(
     `SELECT * FROM smart_match_rules ${whereClause}
@@ -477,6 +517,26 @@ app.post('/rules', (req, res) => {
 
   if (!payee_pattern || !category_id) {
     res.status(400).json({ status: 'error', reason: 'missing-fields' });
+    return;
+  }
+
+  // Validate match_type against whitelist
+  const VALID_MATCH_TYPES = ['exact', 'contains', 'regex', 'iban'] as const;
+  if (match_type && !VALID_MATCH_TYPES.includes(match_type)) {
+    res.status(400).json({ status: 'error', reason: 'invalid-match-type' });
+    return;
+  }
+
+  // Validate tier against whitelist
+  const VALID_TIERS = ['pinned', 'ai_high', 'ai_low'] as const;
+  if (tier && !VALID_TIERS.includes(tier)) {
+    res.status(400).json({ status: 'error', reason: 'invalid-tier' });
+    return;
+  }
+
+  // Validate regex safety before storing
+  if (match_type === 'regex' && !isSafeRegex(payee_pattern)) {
+    res.status(400).json({ status: 'error', reason: 'unsafe-regex' });
     return;
   }
 
