@@ -1,475 +1,310 @@
-import { createHash } from 'node:crypto';
+import Surreal from 'surrealdb';
 
 type WorkerConfig = {
   workerId: string;
-  gatewayUrl: string;
-  gatewayInternalToken: string;
-  aiPolicyUrl: string;
+  surrealUrl: string;
+  surrealNs: string;
+  surrealDb: string;
+  surrealUser: string;
+  surrealPass: string;
+  ollamaUrl: string;
   projectionIntervalMs: number;
   anomalyIntervalMs: number;
   closeRoutineIntervalMs: number;
-  modelIntervalMs: number;
   queuePollIntervalMs: number;
-  queueRequeueIntervalMs: number;
-  queueVisibilityTimeoutMs: number;
   queueMaxJobs: number;
-  queueRequeueLimit: number;
   queueMaxAttempts: number;
-  queueLeaseTtlMs: number;
-  queueLeaseKey: string;
 };
 
 const config: WorkerConfig = {
   workerId:
-    process.env.WORKER_ID || `worker-${Math.random().toString(16).slice(2, 8)}`,
-  gatewayUrl: process.env.FINANCE_GATEWAY_URL || 'http://localhost:7070',
-  gatewayInternalToken: process.env.FINANCE_GATEWAY_INTERNAL_TOKEN || '',
-  aiPolicyUrl: process.env.AI_POLICY_URL || 'http://localhost:7072',
+    process.env.WORKER_ID ||
+    `worker-${Math.random().toString(16).slice(2, 8)}`,
+  surrealUrl: process.env.SURREALDB_URL || 'ws://localhost:8000',
+  surrealNs: process.env.SURREALDB_NS || 'finance',
+  surrealDb: process.env.SURREALDB_DB || 'main',
+  surrealUser: process.env.SURREALDB_USER || 'root',
+  surrealPass: process.env.SURREALDB_PASS || 'root',
+  ollamaUrl: process.env.OLLAMA_URL || 'http://localhost:11434',
   projectionIntervalMs: Number(process.env.PROJECTION_INTERVAL_MS || 30_000),
   anomalyIntervalMs: Number(process.env.ANOMALY_INTERVAL_MS || 60_000),
   closeRoutineIntervalMs: Number(
     process.env.CLOSE_ROUTINE_INTERVAL_MS || 60_000,
   ),
-  modelIntervalMs: Number(process.env.MODEL_INTERVAL_MS || 90_000),
   queuePollIntervalMs: Number(process.env.QUEUE_POLL_INTERVAL_MS || 1_500),
-  queueRequeueIntervalMs: Number(
-    process.env.QUEUE_REQUEUE_INTERVAL_MS || 5_000,
-  ),
-  queueVisibilityTimeoutMs: Number(
-    process.env.QUEUE_VISIBILITY_TIMEOUT_MS || 30_000,
-  ),
   queueMaxJobs: Number(process.env.QUEUE_MAX_JOBS || 25),
-  queueRequeueLimit: Number(process.env.QUEUE_REQUEUE_LIMIT || 100),
   queueMaxAttempts: Number(process.env.QUEUE_MAX_ATTEMPTS || 6),
-  queueLeaseTtlMs: Number(process.env.QUEUE_LEASE_TTL_MS || 15_000),
-  queueLeaseKey: process.env.QUEUE_LEASE_KEY || 'worker-queue-drain',
 };
 
-type WorkerTask = {
-  name: string;
-  intervalMs: number;
-  run: () => Promise<void>;
-};
+const db = new Surreal();
 
-type ClaimedQueueJob = {
-  id: string;
-  name: string;
-  payload: Record<string, unknown>;
-  createdAtMs: number;
-  receipt: string;
-  attempt: number;
-  claimedAtMs: number;
-  visibleAtMs: number;
-};
-
-type QueueClaimResult = {
-  jobs: ClaimedQueueJob[];
-  queueSize: number;
-  queueInFlight: number;
-};
-
-type QueueLeaseResult = {
-  acquired: boolean;
-  leaseKey: string;
-  ownerId: string;
-  ttlMs: number;
-  expiresAtMs: number;
-};
-
-type QueueFingerprintClaimResult = {
-  status: 'acquired' | 'already-processed' | 'already-claimed';
-  fingerprint: string;
-  leaseKey: string;
-  ownerId: string;
-  ttlMs: number;
-  expiresAtMs?: number;
-};
-
-async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
-    ...init,
-    headers: {
-      'content-type': 'application/json',
-      ...(init?.headers || {}),
-    },
+async function connectDb() {
+  await db.connect(config.surrealUrl, {
+    namespace: config.surrealNs,
+    database: config.surrealDb,
   });
-
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status} for ${url}`);
-  }
-
-  return response.json() as Promise<T>;
+  await db.signin({
+    username: config.surrealUser,
+    password: config.surrealPass,
+  });
 }
 
 function nowIso(): string {
   return new Date().toISOString();
 }
 
-function internalGatewayHeaders(): Record<string, string> | undefined {
-  if (!config.gatewayInternalToken) {
-    return undefined;
-  }
-  return {
-    'x-finance-internal-token': config.gatewayInternalToken,
-  };
-}
-
-async function claimQueueJobs(): Promise<QueueClaimResult> {
-  return fetchJson<QueueClaimResult>(
-    `${config.gatewayUrl}/workflow/v1/claim-queue-jobs`,
-    {
-      method: 'POST',
-      headers: internalGatewayHeaders(),
-      body: JSON.stringify({
-        workerId: config.workerId,
-        maxJobs: config.queueMaxJobs,
-        visibilityTimeoutMs: config.queueVisibilityTimeoutMs,
-      }),
-    },
-  );
-}
-
-async function ackQueueJob(input: {
-  receipt: string;
-  success: boolean;
-  requeue?: boolean;
-  jobId: string;
-  jobName: string;
-  jobFingerprint?: string;
-  attempt: number;
-  processingMs: number;
-  errorMessage?: string;
-  payload?: Record<string, unknown>;
-}): Promise<void> {
-  await fetchJson<Record<string, unknown>>(
-    `${config.gatewayUrl}/workflow/v1/ack-queue-job`,
-    {
-      method: 'POST',
-      headers: internalGatewayHeaders(),
-      body: JSON.stringify({
-        workerId: config.workerId,
-        receipt: input.receipt,
-        success: input.success,
-        requeue: input.requeue ?? true,
-        jobId: input.jobId,
-        jobName: input.jobName,
-        jobFingerprint: input.jobFingerprint,
-        attempt: input.attempt,
-        processingMs: Math.max(0, Math.trunc(input.processingMs)),
-        errorMessage: input.errorMessage,
-        payload: input.payload,
-      }),
-    },
-  );
-}
-
-async function requeueExpiredQueueJobs(): Promise<number> {
-  const result = await fetchJson<{ moved: number }>(
-    `${config.gatewayUrl}/workflow/v1/requeue-expired-queue-jobs`,
-    {
-      method: 'POST',
-      headers: internalGatewayHeaders(),
-      body: JSON.stringify({
-        limit: config.queueRequeueLimit,
-      }),
-    },
-  );
-  return result.moved;
-}
-
-async function acquireQueueLease(): Promise<QueueLeaseResult> {
-  return fetchJson<QueueLeaseResult>(
-    `${config.gatewayUrl}/workflow/v1/acquire-worker-queue-lease`,
-    {
-      method: 'POST',
-      headers: internalGatewayHeaders(),
-      body: JSON.stringify({
-        workerId: config.workerId,
-        ttlMs: config.queueLeaseTtlMs,
-        leaseKey: config.queueLeaseKey,
-      }),
-    },
-  );
-}
-
-async function releaseQueueLease(): Promise<void> {
-  await fetchJson<Record<string, unknown>>(
-    `${config.gatewayUrl}/workflow/v1/release-worker-queue-lease`,
-    {
-      method: 'POST',
-      headers: internalGatewayHeaders(),
-      body: JSON.stringify({
-        workerId: config.workerId,
-        leaseKey: config.queueLeaseKey,
-      }),
-    },
-  );
-}
-
-async function claimWorkerJobFingerprint(
-  fingerprint: string,
-): Promise<QueueFingerprintClaimResult> {
-  return fetchJson<QueueFingerprintClaimResult>(
-    `${config.gatewayUrl}/workflow/v1/claim-worker-job-fingerprint`,
-    {
-      method: 'POST',
-      headers: internalGatewayHeaders(),
-      body: JSON.stringify({
-        workerId: config.workerId,
-        fingerprint,
-        ttlMs: config.queueVisibilityTimeoutMs,
-      }),
-    },
-  );
-}
+// ── Tasks ──────────────────────────────────────────────────────────────────
 
 async function projectionTask() {
-  const pulse = await fetchJson<{
-    pendingReviews: number;
-    urgentReviews: number;
-    expiringContracts: number;
-  }>(`${config.gatewayUrl}/workflow/v1/money-pulse`);
+  const [pending] = await db.query<[{ count: number }[]]>(
+    `SELECT count() AS count FROM review_item WHERE status = 'pending' GROUP ALL`,
+  );
+  const [urgent] = await db.query<[{ count: number }[]]>(
+    `SELECT count() AS count FROM review_item WHERE priority = 'critical' AND status = 'pending' GROUP ALL`,
+  );
+  const [expiring] = await db.query<[{ count: number }[]]>(
+    `SELECT count() AS count FROM contract WHERE health = 'red' GROUP ALL`,
+  );
 
   console.log(
-    `[${nowIso()}][worker:projection] pending=${pulse.pendingReviews} urgent=${pulse.urgentReviews} expiring=${pulse.expiringContracts}`,
+    `[${nowIso()}][worker:projection] pending=${pending?.[0]?.count ?? 0} urgent=${urgent?.[0]?.count ?? 0} expiring=${expiring?.[0]?.count ?? 0}`,
   );
 }
 
 async function anomalyTask() {
-  const pulse = await fetchJson<{
-    pendingReviews: number;
-    urgentReviews: number;
-    expiringContracts: number;
-  }>(`${config.gatewayUrl}/workflow/v1/money-pulse`);
+  const [urgent] = await db.query<[{ count: number }[]]>(
+    `SELECT count() AS count FROM review_item WHERE priority = 'critical' AND status = 'pending' GROUP ALL`,
+  );
+  const [expiring] = await db.query<[{ count: number }[]]>(
+    `SELECT count() AS count FROM contract WHERE health = 'red' GROUP ALL`,
+  );
 
-  if (pulse.urgentReviews > 5 || pulse.expiringContracts > 10) {
+  const urgentCount = urgent?.[0]?.count ?? 0;
+  const expiringCount = expiring?.[0]?.count ?? 0;
+
+  if (urgentCount > 5 || expiringCount > 10) {
     console.log(
-      `[${nowIso()}][worker:anomaly] high-pressure detected urgent=${pulse.urgentReviews} expiring=${pulse.expiringContracts}`,
+      `[${nowIso()}][worker:anomaly] high-pressure urgent=${urgentCount} expiring=${expiringCount}`,
     );
   }
 }
 
 async function closeRoutineTask() {
   const dayOfWeek = new Date().getDay();
-  if (dayOfWeek !== 1) {
-    return;
-  }
+  if (dayOfWeek !== 1) return; // Only on Mondays
 
-  const envelope = {
-    commandId: `worker-close-${Date.now()}`,
-    actorId: 'worker',
-    tenantId: 'default',
-    workspaceId: 'default',
-    intent: 'run-close-routine',
-    workflowId: 'close-loop',
-    sourceSurface: 'worker',
-    latencyBudgetMs: 10_000,
-    clientTimestampMs: Date.now(),
-  };
-
-  const result = await fetchJson<Record<string, unknown>>(
-    `${config.gatewayUrl}/workflow/v1/run-close-routine`,
-    {
-      method: 'POST',
-      body: JSON.stringify({ envelope, period: 'weekly' }),
-    },
+  const [pending] = await db.query<[{ count: number }[]]>(
+    `SELECT count() AS count FROM review_item WHERE status = 'pending' GROUP ALL`,
   );
-
-  console.log(`[${nowIso()}][worker:close] weekly close run`, result);
-}
-
-async function modelTask() {
-  const payload = {
-    tenantId: 'default',
-    workspaceId: 'default',
-    providerHint: 'local/ollama',
-    prompt: 'Summarize top finance risks for this week.',
-    dataClass: 'sensitive',
-  };
-
-  const decision = await fetchJson<Record<string, unknown>>(
-    `${config.aiPolicyUrl}/v1/route`,
-    {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    },
+  const [expiring] = await db.query<[{ count: number }[]]>(
+    `SELECT count() AS count FROM contract WHERE health IN ['red', 'yellow'] GROUP ALL`,
   );
-
-  console.log(`[${nowIso()}][worker:model] policy decision`, decision);
-}
-
-function payloadString(
-  payload: Record<string, unknown>,
-  key: string,
-): string | undefined {
-  const value = payload[key];
-  return typeof value === 'string' && value.length > 0 ? value : undefined;
-}
-
-function stableStringify(value: unknown): string {
-  if (value === null) {
-    return 'null';
-  }
-
-  if (typeof value === 'string' || typeof value === 'boolean') {
-    return JSON.stringify(value);
-  }
-
-  if (typeof value === 'number') {
-    return Number.isFinite(value) ? JSON.stringify(value) : 'null';
-  }
-
-  if (Array.isArray(value)) {
-    return `[${value.map(item => stableStringify(item)).join(',')}]`;
-  }
-
-  if (typeof value === 'object') {
-    const record = value as Record<string, unknown>;
-    const keys = Object.keys(record).sort();
-    const entries = keys.map(
-      key => `${JSON.stringify(key)}:${stableStringify(record[key])}`,
-    );
-    return `{${entries.join(',')}}`;
-  }
-
-  return 'null';
-}
-
-function computeJobFingerprint(job: ClaimedQueueJob): string {
-  const hash = createHash('sha256');
-  hash.update(
-    stableStringify({
-      name: job.name,
-      payload: job.payload,
-    }),
-  );
-  return hash.digest('hex');
-}
-
-async function processQueueJob(job: ClaimedQueueJob) {
-  switch (job.name) {
-    case 'workflow.playbook.created':
-    case 'workflow.playbook.run':
-    case 'workflow.close.run':
-    case 'workflow.batch-policy.applied':
-    case 'scenario.branch.created':
-    case 'scenario.mutation.applied':
-    case 'scenario.branch.adopted':
-    case 'delegate.lane.assigned':
-    case 'delegate.lane.transitioned':
-    case 'delegate.lane.commented':
-      await projectionTask();
-      return;
-    case 'ledger.command.submitted': {
-      const workspaceId =
-        payloadString(job.payload, 'workspaceId') || 'default';
-      await fetchJson<Record<string, unknown>>(
-        `${config.gatewayUrl}/ledger/v1/projection-snapshot`,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            workspaceId,
-            projectionName: 'ops-default',
-          }),
-        },
-      );
-      return;
-    }
-    case 'intelligence.correction.learned':
-      await modelTask();
-      return;
-    default:
-      return;
-  }
-}
-
-async function queueDrainTask() {
-  const lease = await acquireQueueLease();
-  if (!lease.acquired) {
-    return;
-  }
-
-  const claimed = await claimQueueJobs();
-  if (claimed.jobs.length === 0) {
-    return;
-  }
-
-  for (const job of claimed.jobs) {
-    const startedAtMs = Date.now();
-    const jobFingerprint = computeJobFingerprint(job);
-    try {
-      const claim = await claimWorkerJobFingerprint(jobFingerprint);
-      if (claim.status === 'already-claimed') {
-        continue;
-      }
-
-      if (claim.status === 'already-processed') {
-        await ackQueueJob({
-          receipt: job.receipt,
-          success: true,
-          requeue: false,
-          jobId: job.id,
-          jobName: job.name,
-          jobFingerprint,
-          attempt: job.attempt,
-          processingMs: Date.now() - startedAtMs,
-          errorMessage: 'skipped-duplicate-fingerprint',
-          payload: job.payload,
-        });
-        continue;
-      }
-
-      await processQueueJob(job);
-      await ackQueueJob({
-        receipt: job.receipt,
-        success: true,
-        requeue: false,
-        jobId: job.id,
-        jobName: job.name,
-        jobFingerprint,
-        attempt: job.attempt,
-        processingMs: Date.now() - startedAtMs,
-        payload: job.payload,
-      });
-    } catch (error) {
-      const shouldRequeue = job.attempt < config.queueMaxAttempts;
-      const message = error instanceof Error ? error.message : String(error);
-      await ackQueueJob({
-        receipt: job.receipt,
-        success: false,
-        requeue: shouldRequeue,
-        jobId: job.id,
-        jobName: job.name,
-        jobFingerprint,
-        attempt: job.attempt,
-        processingMs: Date.now() - startedAtMs,
-        errorMessage: message,
-        payload: job.payload,
-      });
-      console.error(
-        `[${nowIso()}][worker:queue] job=${job.name} id=${job.id} attempt=${job.attempt} requeue=${shouldRequeue} error=${message}`,
-      );
-    }
-  }
 
   console.log(
-    `[${nowIso()}][worker:queue] processed=${claimed.jobs.length} ready=${claimed.queueSize} inflight=${claimed.queueInFlight}`,
+    `[${nowIso()}][worker:close] weekly summary pending=${pending?.[0]?.count ?? 0} expiring=${expiring?.[0]?.count ?? 0}`,
   );
 }
 
-async function queueMaintenanceTask() {
-  const lease = await acquireQueueLease();
-  if (!lease.acquired) {
+// ── Queue ──────────────────────────────────────────────────────────────────
+
+async function queueDrainTask() {
+  // Atomically claim pending jobs
+  const [jobs] = await db.query<
+    [
+      {
+        id: string;
+        name: string;
+        payload: Record<string, unknown>;
+        attempt: number;
+      }[],
+    ]
+  >(
+    `UPDATE (SELECT * FROM job_queue WHERE status = 'pending' AND visible_at <= time::now() LIMIT $limit) SET status = 'claimed', claimed_by = $worker, claimed_at = time::now() RETURN AFTER`,
+    { limit: config.queueMaxJobs, worker: config.workerId },
+  );
+
+  if (!jobs || jobs.length === 0) return;
+
+  for (const job of jobs) {
+    const startedAtMs = Date.now();
+    try {
+      await processQueueJob(job);
+
+      // Delete completed job
+      await db.query('DELETE $id', { id: job.id });
+
+      console.log(
+        `[${nowIso()}][worker:queue] completed job=${job.name} ms=${Date.now() - startedAtMs}`,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const shouldRequeue = job.attempt < config.queueMaxAttempts;
+
+      if (shouldRequeue) {
+        const backoffMs = Math.min(60_000, 1000 * Math.pow(2, job.attempt));
+        await db.query(
+          `UPDATE $id SET status = 'pending', claimed_by = NONE, claimed_at = NONE, attempt = attempt + 1, visible_at = time::now() + $backoff, error_message = $error`,
+          { id: job.id, backoff: `${backoffMs}ms`, error: message },
+        );
+      } else {
+        await db.query(
+          `UPDATE $id SET status = 'failed', error_message = $error`,
+          { id: job.id, error: message },
+        );
+      }
+
+      console.error(
+        `[${nowIso()}][worker:queue] failed job=${job.name} attempt=${job.attempt} requeue=${shouldRequeue} error=${message}`,
+      );
+    }
+  }
+}
+
+async function classifyTransaction(payload: Record<string, unknown>) {
+  const txnId = String(payload.transaction_id ?? '');
+  if (!txnId) return;
+
+  // Fetch transaction with resolved names
+  const [txns] = await db.query<[{ id: string; amount: number; notes?: string; payee_name?: string; category?: string; category_name?: string }[]]>(
+    `SELECT *, payee.name AS payee_name, category.name AS category_name FROM $id`,
+    { id: txnId },
+  );
+  const txn = txns?.[0];
+  if (!txn) return;
+
+  // Skip if already categorized
+  if (txn.category) {
+    console.log(`[worker:classify] skipping ${txnId} — already categorized as ${txn.category_name}`);
     return;
   }
 
-  const moved = await requeueExpiredQueueJobs();
-  if (moved > 0) {
-    console.log(
-      `[${nowIso()}][worker:queue] requeued expired claims moved=${moved}`,
-    );
+  // Fetch all categories for the prompt
+  const [cats] = await db.query<[{ id: string; name: string; parent?: string; is_income: boolean }[]]>(
+    `SELECT id, name, parent, is_income FROM category ORDER BY sort_order`,
+  );
+  const categoryList = (cats ?? []).map(c => `${c.id}: ${c.name}${c.is_income ? ' (Einnahme)' : ''}`).join('\n');
+
+  const prompt = `Du bist ein Finanz-Kategorisierer. Ordne die folgende Transaktion einer Kategorie zu.
+
+Transaktion:
+- Betrag: ${txn.amount} EUR
+- Empfänger: ${txn.payee_name ?? 'Unbekannt'}
+- Notizen: ${txn.notes ?? 'Keine'}
+
+Verfügbare Kategorien:
+${categoryList}
+
+Antworte NUR mit der Kategorie-ID (z.B. "category:lebensmittel") und einem Konfidenzwert zwischen 0.0 und 1.0, getrennt durch ein Komma.
+Beispiel: category:lebensmittel,0.92`;
+
+  try {
+    const response = await fetch(`${config.ollamaUrl}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: process.env.OLLAMA_MODEL || 'mistral-small',
+        prompt,
+        stream: false,
+        options: { temperature: 0.1, num_predict: 50 },
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Ollama returned ${response.status}`);
+    }
+
+    const result = await response.json() as { response: string };
+    const [categoryId, confidenceStr] = result.response.trim().split(',');
+    const confidence = parseFloat(confidenceStr?.trim() ?? '0');
+
+    if (!categoryId || !categoryId.startsWith('category:')) {
+      console.log(`[worker:classify] ${txnId} — could not parse response: ${result.response}`);
+      await createReviewItem(txnId, 'uncategorized', 'medium', { raw_response: result.response });
+      return;
+    }
+
+    if (confidence >= 0.85) {
+      // High confidence: auto-categorize
+      await db.query(
+        `UPDATE $id SET category = $cat, ai_confidence = $conf, ai_classified = true, updated_at = time::now()`,
+        { id: txnId, cat: categoryId.trim(), conf: confidence },
+      );
+      console.log(`[worker:classify] ${txnId} → ${categoryId.trim()} (${confidence}) — auto-applied`);
+    } else {
+      // Low confidence: create review item
+      await db.query(
+        `UPDATE $id SET ai_confidence = $conf, ai_classified = false, updated_at = time::now()`,
+        { id: txnId, conf: confidence },
+      );
+      await createReviewItem(txnId, 'low-confidence', confidence < 0.5 ? 'high' : 'medium', {
+        suggested_category: categoryId.trim(),
+        confidence,
+      });
+      console.log(`[worker:classify] ${txnId} → review queue (confidence ${confidence})`);
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[worker:classify] Ollama error for ${txnId}: ${message}`);
+    // Create review item for manual classification
+    await createReviewItem(txnId, 'uncategorized', 'medium', { error: message });
   }
 }
+
+async function createReviewItem(
+  transactionId: string,
+  type: string,
+  priority: string,
+  suggestion: Record<string, unknown>,
+) {
+  await db.query(
+    `CREATE review_item SET
+      type = $type,
+      transaction = $txn,
+      priority = $priority,
+      ai_suggestion = $suggestion,
+      status = 'pending',
+      created_at = time::now()`,
+    { type, txn: transactionId, priority, suggestion },
+  );
+}
+
+async function processQueueJob(job: {
+  name: string;
+  payload: Record<string, unknown>;
+}) {
+  switch (job.name) {
+    case 'classify-transaction':
+      await classifyTransaction(job.payload);
+      break;
+    case 'import-csv':
+      // TODO: Parse CSV and insert transactions
+      break;
+    case 'check-deadlines': {
+      const [expiring] = await db.query<
+        [{ id: string; name: string }[]]
+      >(
+        `SELECT id, name FROM contract WHERE health = 'red' AND status = 'active'`,
+      );
+      for (const contract of expiring ?? []) {
+        await db.query(
+          `CREATE review_item SET type = 'contract-deadline', priority = 'high', ai_suggestion = { contract_id: $cid, contract_name: $cname, action: 'review-deadline' }, created_at = time::now()`,
+          { cid: String(contract.id), cname: contract.name },
+        );
+      }
+      break;
+    }
+    default:
+      console.log(`[worker] unknown job: ${job.name}`);
+  }
+}
+
+// ── Scheduling ─────────────────────────────────────────────────────────────
+
+type WorkerTask = {
+  name: string;
+  intervalMs: number;
+  run: () => Promise<void>;
+};
 
 function scheduleTask(task: WorkerTask): NodeJS.Timeout {
   const runner = async () => {
@@ -487,6 +322,9 @@ function scheduleTask(task: WorkerTask): NodeJS.Timeout {
 }
 
 async function main() {
+  await connectDb();
+  console.log(`[worker] connected to SurrealDB at ${config.surrealUrl}`);
+
   const tasks: WorkerTask[] = [
     {
       name: 'queue-drain',
@@ -494,42 +332,34 @@ async function main() {
       run: queueDrainTask,
     },
     {
-      name: 'queue-requeue',
-      intervalMs: config.queueRequeueIntervalMs,
-      run: queueMaintenanceTask,
-    },
-    {
       name: 'projection',
       intervalMs: config.projectionIntervalMs,
       run: projectionTask,
     },
-    { name: 'anomaly', intervalMs: config.anomalyIntervalMs, run: anomalyTask },
+    {
+      name: 'anomaly',
+      intervalMs: config.anomalyIntervalMs,
+      run: anomalyTask,
+    },
     {
       name: 'close-routine',
       intervalMs: config.closeRoutineIntervalMs,
       run: closeRoutineTask,
     },
-    { name: 'model', intervalMs: config.modelIntervalMs, run: modelTask },
   ];
 
   const intervals = tasks.map(scheduleTask);
 
   const shutdown = async () => {
-    for (const interval of intervals) {
-      clearInterval(interval);
-    }
-    try {
-      await releaseQueueLease();
-    } catch {
-      // best-effort lease release during shutdown
-    }
+    for (const interval of intervals) clearInterval(interval);
+    await db.close();
     process.exit(0);
   };
 
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
 
-  console.log('[worker] started', config);
+  console.log('[worker] started', { workerId: config.workerId });
 }
 
 void main();

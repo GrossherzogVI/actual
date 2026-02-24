@@ -1,8 +1,11 @@
 import { useCallback, useState } from 'react';
 
-import { motion } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { apiClient } from '../core/api/client';
+import { FinancePage } from '../features/finance/FinancePage';
+import { QuickAddOverlay } from '../features/quick-add';
 import { dispatchRunDetailsCommand } from '../features/runtime/run-details-commands';
 import { dispatchRuntimeCommand } from '../features/runtime/runtime-commands';
 import { AppShell } from './AppShell';
@@ -15,6 +18,8 @@ export function App() {
   const [lastRoute, setLastRoute] = useState('/ops');
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [activeLoop, setActiveLoop] = useState('morning');
+  const [activeView, setActiveView] = useState<'ops' | 'finance'>('ops');
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
 
   const {
     moneyPulse,
@@ -32,11 +37,13 @@ export function App() {
   const handleRoute = useCallback((route: string) => {
     setLastRoute(route);
     setStatus(`Navigated to ${route}`);
-    if (route.includes('/quick-add')) { setActiveLoop('capture'); return; }
-    if (route.includes('/review')) { setActiveLoop('triage'); return; }
-    if (route.includes('/contracts')) { setActiveLoop('execution'); return; }
-    if (route.includes('#spatial-twin')) { setActiveLoop('simulation'); return; }
-    if (route.includes('#delegate-lanes')) { setActiveLoop('execution'); return; }
+    if (route.includes('/finance')) { setActiveView('finance'); setActiveLoop('morning'); return; }
+    if (route.includes('/quick-add')) { setActiveView('ops'); setActiveLoop('capture'); return; }
+    if (route.includes('/review')) { setActiveView('ops'); setActiveLoop('triage'); return; }
+    if (route.includes('/contracts')) { setActiveView('ops'); setActiveLoop('execution'); return; }
+    if (route.includes('#spatial-twin')) { setActiveView('ops'); setActiveLoop('simulation'); return; }
+    if (route.includes('#delegate-lanes')) { setActiveView('ops'); setActiveLoop('execution'); return; }
+    if (route.includes('/ops')) { setActiveView('ops'); }
     setActiveLoop('morning');
   }, []);
 
@@ -61,6 +68,16 @@ export function App() {
     async (entryId: string, source: 'palette' | 'shell') => {
       if (entryId === 'open-ops') { handleRoute('/ops'); return; }
       if (entryId === 'open-review') { handleRoute('/review?priority=urgent'); return; }
+
+      // Finance navigation commands
+      if (entryId === 'open-finance') { handleRoute('/finance'); return; }
+      if (entryId === 'open-quick-add') { setQuickAddOpen(true); return; }
+      if (entryId === 'open-finance-dashboard') { handleRoute('/finance'); window.dispatchEvent(new CustomEvent('finance-tab', { detail: 'dashboard' })); return; }
+      if (entryId === 'open-finance-transactions') { handleRoute('/finance'); window.dispatchEvent(new CustomEvent('finance-tab', { detail: 'transactions' })); return; }
+      if (entryId === 'open-finance-contracts') { handleRoute('/finance'); window.dispatchEvent(new CustomEvent('finance-tab', { detail: 'contracts' })); return; }
+      if (entryId === 'open-finance-calendar') { handleRoute('/finance'); window.dispatchEvent(new CustomEvent('finance-tab', { detail: 'calendar' })); return; }
+      if (entryId === 'open-finance-categories') { handleRoute('/finance'); window.dispatchEvent(new CustomEvent('finance-tab', { detail: 'categories' })); return; }
+      if (entryId === 'open-finance-review') { handleRoute('/finance'); window.dispatchEvent(new CustomEvent('finance-tab', { detail: 'review' })); return; }
 
       if (entryId === 'open-runtime-incidents') {
         handleRoute('/ops#runtime-incidents');
@@ -184,12 +201,31 @@ export function App() {
         onClosePalette={() => setPaletteOpen(false)}
         onRoute={handleRoute}
         onRunCommand={executeShellCommand}
+        onToggleQuickAdd={() => setQuickAddOpen(prev => !prev)}
       />
 
       <header className="fo-topbar">
-        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.22 }}>
-          <h1>Finance OS - Command Center</h1>
-          <small>Precision Command Center / Ops Superhuman mode</small>
+        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.22 }} className="fo-row" style={{ gap: 16 }}>
+          <div>
+            <h1>Finance OS</h1>
+            <small>Precision Command Center</small>
+          </div>
+          <nav className="fo-row" style={{ gap: 2 }}>
+            <button
+              type="button"
+              className={`fo-loop-chip ${activeView === 'ops' ? 'fo-loop-chip-active' : ''}`}
+              onClick={() => { setActiveView('ops'); handleRoute('/ops'); }}
+            >
+              Ops
+            </button>
+            <button
+              type="button"
+              className={`fo-loop-chip ${activeView === 'finance' ? 'fo-loop-chip-active' : ''}`}
+              onClick={() => { setActiveView('finance'); handleRoute('/finance'); }}
+            >
+              Finanzen
+            </button>
+          </nav>
         </motion.div>
 
         <motion.div className="fo-metrics" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.22, staggerChildren: 0.1 }}>
@@ -208,59 +244,88 @@ export function App() {
         </motion.div>
       </header>
 
-      <nav className="fo-loop-strip">
-        {loops.map(loop => (
-          <button
-            key={loop.id}
-            className={`fo-loop-chip ${activeLoop === loop.id ? 'fo-loop-chip-active' : ''}`}
-            type="button"
-            onClick={() => handleRoute(loop.route)}
+      {activeView === 'ops' && (
+        <>
+          <nav className="fo-loop-strip">
+            {loops.map(loop => (
+              <button
+                key={loop.id}
+                className={`fo-loop-chip ${activeLoop === loop.id ? 'fo-loop-chip-active' : ''}`}
+                type="button"
+                onClick={() => handleRoute(loop.route)}
+              >
+                <span>{loop.label}</span>
+                <kbd className="fo-kbd">{loop.hint}</kbd>
+              </button>
+            ))}
+          </nav>
+
+          <nav className="fo-action-strip">
+            {shellActions.map(action => (
+              <button
+                key={action.id}
+                className="fo-action-chip"
+                type="button"
+                onClick={() => executeShellCommand(action.id)}
+              >
+                <span>{action.label}</span>
+                <kbd className="fo-kbd">{action.hint}</kbd>
+              </button>
+            ))}
+          </nav>
+
+          <nav className="fo-anomaly-rail">
+            <button className="fo-anomaly-badge fo-anomaly-badge-blocked" type="button" onClick={() => executeShellCommand('open-latest-blocked-run')}>
+              <strong>{anomalyCounts.blocked}</strong>
+              <small>blocked</small>
+              <kbd className="fo-kbd">A+S+B</kbd>
+            </button>
+            <button className="fo-anomaly-badge fo-anomaly-badge-failed" type="button" onClick={() => executeShellCommand('open-latest-failed-run')}>
+              <strong>{anomalyCounts.failed}</strong>
+              <small>failed</small>
+              <kbd className="fo-kbd">A+S+F</kbd>
+            </button>
+            <button className="fo-anomaly-badge fo-anomaly-badge-rollback" type="button" onClick={() => executeShellCommand('open-latest-rollback-eligible-run')}>
+              <strong>{anomalyCounts.rollbackEligible}</strong>
+              <small>rollback window</small>
+              <kbd className="fo-kbd">A+S+R</kbd>
+            </button>
+            <small className="fo-muted-line">live sample: {anomalyCounts.sampleSize} runs</small>
+          </nav>
+        </>
+      )}
+
+      <AnimatePresence mode="wait">
+        {activeView === 'finance' ? (
+          <motion.div
+            key="finance"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.15 }}
+            style={{ flex: 1, minHeight: 0 }}
           >
-            <span>{loop.label}</span>
-            <kbd className="fo-kbd">{loop.hint}</kbd>
-          </button>
-        ))}
-      </nav>
-
-      <nav className="fo-action-strip">
-        {shellActions.map(action => (
-          <button
-            key={action.id}
-            className="fo-action-chip"
-            type="button"
-            onClick={() => executeShellCommand(action.id)}
+            <ErrorBoundary zone="finance">
+              <FinancePage />
+            </ErrorBoundary>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="ops"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.15 }}
           >
-            <span>{action.label}</span>
-            <kbd className="fo-kbd">{action.hint}</kbd>
-          </button>
-        ))}
-      </nav>
-
-      <nav className="fo-anomaly-rail">
-        <button className="fo-anomaly-badge fo-anomaly-badge-blocked" type="button" onClick={() => executeShellCommand('open-latest-blocked-run')}>
-          <strong>{anomalyCounts.blocked}</strong>
-          <small>blocked</small>
-          <kbd className="fo-kbd">A+S+B</kbd>
-        </button>
-        <button className="fo-anomaly-badge fo-anomaly-badge-failed" type="button" onClick={() => executeShellCommand('open-latest-failed-run')}>
-          <strong>{anomalyCounts.failed}</strong>
-          <small>failed</small>
-          <kbd className="fo-kbd">A+S+F</kbd>
-        </button>
-        <button className="fo-anomaly-badge fo-anomaly-badge-rollback" type="button" onClick={() => executeShellCommand('open-latest-rollback-eligible-run')}>
-          <strong>{anomalyCounts.rollbackEligible}</strong>
-          <small>rollback window</small>
-          <kbd className="fo-kbd">A+S+R</kbd>
-        </button>
-        <small className="fo-muted-line">live sample: {anomalyCounts.sampleSize} runs</small>
-      </nav>
-
-      <AppShell
-        recommendations={recommendations.data || []}
-        narrativePulseData={narrativePulse.data}
-        onStatus={setStatus}
-        onRoute={handleRoute}
-      />
+            <AppShell
+              recommendations={recommendations.data || []}
+              narrativePulseData={narrativePulse.data}
+              onStatus={setStatus}
+              onRoute={handleRoute}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <footer className="fo-status-bar">
         <span>{status}</span>
@@ -283,6 +348,12 @@ export function App() {
         entries={paletteEntries}
         onClose={() => setPaletteOpen(false)}
         onSelect={handlePaletteSelection}
+      />
+
+      <QuickAddOverlay
+        open={quickAddOpen}
+        onClose={() => setQuickAddOpen(false)}
+        onSaved={() => setStatus('Transaktion gespeichert.')}
       />
     </div>
   );

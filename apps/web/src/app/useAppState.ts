@@ -176,6 +176,15 @@ export function useAppState() {
       { id: 'open-latest-failed-run', label: 'Open Latest Failed Run', hint: 'X F' },
       { id: 'open-latest-blocked-run', label: 'Open Latest Blocked Run', hint: 'X B' },
       { id: 'open-latest-rollback-eligible-run', label: 'Open Latest Rollback Eligible Run', hint: 'X R' },
+      // Finance operations
+      { id: 'open-finance', label: 'Finanzen öffnen', hint: 'G F' },
+      { id: 'open-quick-add', label: 'Neue Transaktion (Quick Add)', hint: '⌘N' },
+      { id: 'open-finance-dashboard', label: 'Finanz-Dashboard', hint: 'F D' },
+      { id: 'open-finance-transactions', label: 'Transaktionen', hint: 'F T' },
+      { id: 'open-finance-contracts', label: 'Verträge', hint: 'F V' },
+      { id: 'open-finance-calendar', label: 'Zahlungskalender', hint: 'F K' },
+      { id: 'open-finance-categories', label: 'Kategorien verwalten', hint: 'F C' },
+      { id: 'open-finance-review', label: 'Prüfungen / Review Queue', hint: 'F R' },
     ],
     [],
   );

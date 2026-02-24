@@ -8,6 +8,7 @@ type Props = {
   onClosePalette: () => void;
   onRoute: (route: string) => void;
   onRunCommand: (commandId: string) => void;
+  onToggleQuickAdd?: () => void;
 };
 
 export function KeyboardShortcuts({
@@ -16,6 +17,7 @@ export function KeyboardShortcuts({
   onClosePalette,
   onRoute,
   onRunCommand,
+  onToggleQuickAdd,
 }: Props) {
   // Cmd/Ctrl+K palette + Alt+[1-6] loop navigation + Escape
   useEffect(() => {
@@ -23,6 +25,11 @@ export function KeyboardShortcuts({
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
         onTogglePalette();
+        return;
+      }
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'n') {
+        event.preventDefault();
+        onToggleQuickAdd?.();
         return;
       }
       if (event.altKey && /^[1-6]$/.test(event.key)) {
@@ -39,7 +46,7 @@ export function KeyboardShortcuts({
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [loops, onTogglePalette, onClosePalette, onRoute]);
+  }, [loops, onTogglePalette, onClosePalette, onRoute, onToggleQuickAdd]);
 
   // Alt+Shift+[B/F/R] anomaly shortcuts
   useEffect(() => {
