@@ -96,5 +96,13 @@ backups/
 .auto-claude-status
 .claude_settings.json
 .worktrees/
+.claude/worktrees/
 .security-key
 logs/security/
+
+# Code review output
+.full-review/
+
+# Level-5 build output
+apps/web/dist/
+apps/worker/dist/
