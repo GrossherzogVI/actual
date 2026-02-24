@@ -8,9 +8,15 @@ import {
 import { motion } from 'motion/react';
 
 import { getDashboardPulse } from '../../core/api/finance-api';
+import { IntelligenceInsights } from '../intelligence';
 
 import { AccountBalancesWidget } from './AccountBalancesWidget';
+import { AvailableToSpendWidget } from './AvailableToSpendWidget';
+import { BalanceProjectionWidget } from './BalanceProjectionWidget';
 import { CashRunwayWidget } from './CashRunwayWidget';
+import { DashboardGrid, DEFAULT_LAYOUT, layoutStyle } from './DashboardGrid';
+import { HealthScoreWidget } from './HealthScoreWidget';
+import { MoneyPulseWidget } from './MoneyPulseWidget';
 import { ThisMonthWidget } from './ThisMonthWidget';
 import { UpcomingPaymentsWidget } from './UpcomingPaymentsWidget';
 
@@ -84,28 +90,37 @@ export function DashboardPage() {
         </div>
       </motion.header>
 
-      {/* Widget Grid */}
-      <div
-        className="grid gap-5"
-        style={{
-          gridTemplateColumns: 'minmax(280px, 1fr) minmax(0, 2fr)',
-          gridTemplateRows: 'auto auto',
-        }}
-      >
-        {/* Left column: Account Balances (spans 2 rows) */}
-        <div style={{ gridRow: '1 / 3' }}>
+      {/* Widget Grid — 12 column layout */}
+      <DashboardGrid>
+        <div style={layoutStyle(DEFAULT_LAYOUT[0])}>
+          <MoneyPulseWidget />
+        </div>
+        <div style={layoutStyle(DEFAULT_LAYOUT[1])}>
           <AccountBalancesWidget />
         </div>
-
-        {/* Right column top: This Month + Cash Runway side by side */}
-        <div className="grid gap-5" style={{ gridTemplateColumns: '1fr 1fr' }}>
+        <div style={layoutStyle(DEFAULT_LAYOUT[2])}>
           <ThisMonthWidget />
+        </div>
+        <div style={layoutStyle(DEFAULT_LAYOUT[3])}>
           <CashRunwayWidget />
         </div>
-
-        {/* Right column bottom: Upcoming Payments */}
-        <UpcomingPaymentsWidget />
-      </div>
+        <div style={layoutStyle(DEFAULT_LAYOUT[4])}>
+          <AvailableToSpendWidget />
+        </div>
+        <div style={layoutStyle(DEFAULT_LAYOUT[5])}>
+          <BalanceProjectionWidget />
+        </div>
+        <div style={layoutStyle(DEFAULT_LAYOUT[6])}>
+          <UpcomingPaymentsWidget />
+        </div>
+        <div style={layoutStyle(DEFAULT_LAYOUT[7])}>
+          <HealthScoreWidget />
+        </div>
+        {/* Intelligence insights spans full width below */}
+        <div style={{ gridColumn: '1 / -1' }}>
+          <IntelligenceInsights />
+        </div>
+      </DashboardGrid>
     </motion.div>
   );
 }

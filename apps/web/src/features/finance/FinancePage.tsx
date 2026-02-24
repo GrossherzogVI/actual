@@ -2,12 +2,15 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 
 import { motion } from 'motion/react';
 import {
+  BarChart3,
   CalendarDays,
   FileSearch,
   FileText,
   LayoutDashboard,
   List,
+  PiggyBank,
   Tags,
+  Upload,
 } from 'lucide-react';
 
 import { AccountPanel } from './AccountPanel';
@@ -30,8 +33,17 @@ const CategoriesPage = lazy(() =>
 const ReviewQueuePage = lazy(() =>
   import('../review/ReviewQueuePage').then(m => ({ default: m.ReviewQueuePage })),
 );
+const AnalyticsPage = lazy(() =>
+  import('../analytics/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })),
+);
+const ImportPage = lazy(() =>
+  import('../import/ImportPage').then(m => ({ default: m.ImportPage })),
+);
+const BudgetPage = lazy(() =>
+  import('../budget/BudgetPage').then(m => ({ default: m.BudgetPage })),
+);
 
-type FinanceTab = 'dashboard' | 'transactions' | 'contracts' | 'calendar' | 'categories' | 'review';
+type FinanceTab = 'dashboard' | 'transactions' | 'contracts' | 'calendar' | 'categories' | 'review' | 'analytics' | 'import' | 'budget';
 
 const TABS: { id: FinanceTab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -40,6 +52,9 @@ const TABS: { id: FinanceTab; label: string; icon: typeof LayoutDashboard }[] = 
   { id: 'calendar', label: 'Kalender', icon: CalendarDays },
   { id: 'categories', label: 'Kategorien', icon: Tags },
   { id: 'review', label: 'Prüfungen', icon: FileSearch },
+  { id: 'analytics', label: 'Analysen', icon: BarChart3 },
+  { id: 'import', label: 'Import', icon: Upload },
+  { id: 'budget', label: 'Budget', icon: PiggyBank },
 ];
 
 function TabFallback() {
@@ -152,6 +167,24 @@ export function FinancePage() {
         {activeTab === 'review' && (
           <Suspense fallback={<TabFallback />}>
             <ReviewQueuePage />
+          </Suspense>
+        )}
+
+        {activeTab === 'analytics' && (
+          <Suspense fallback={<TabFallback />}>
+            <AnalyticsPage />
+          </Suspense>
+        )}
+
+        {activeTab === 'import' && (
+          <Suspense fallback={<TabFallback />}>
+            <ImportPage />
+          </Suspense>
+        )}
+
+        {activeTab === 'budget' && (
+          <Suspense fallback={<TabFallback />}>
+            <BudgetPage />
           </Suspense>
         )}
       </div>

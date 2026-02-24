@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 
 import type { ReviewItem } from '../../core/types/finance';
+import { AIExplainButton, ConfidenceBadge } from '../intelligence';
 
 const PRIORITY_CONFIG: Record<
   ReviewItem['priority'],
@@ -180,15 +181,7 @@ export function ReviewItemCard({
                 </span>
               )}
               {confidence != null && (
-                <span
-                  className="text-xs font-medium tabular-nums"
-                  style={{
-                    color: isHighConfidence ? '#34d399' : '#eab308',
-                    fontVariantNumeric: 'tabular-nums',
-                  }}
-                >
-                  {formatConfidence(confidence)} Konfidenz
-                </span>
+                <ConfidenceBadge confidence={confidence} showPercentage />
               )}
             </div>
             {item.ai_suggestion.error && (
@@ -225,6 +218,14 @@ export function ReviewItemCard({
             </span>
           )}
         </div>
+      )}
+
+      {/* AI explanation */}
+      {!isResolved && item.ai_suggestion && (
+        <AIExplainButton
+          reviewItemId={item.id}
+          existingExplanation={item.explanation}
+        />
       )}
 
       {/* Action buttons */}

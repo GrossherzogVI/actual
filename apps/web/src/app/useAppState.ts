@@ -185,6 +185,9 @@ export function useAppState() {
       { id: 'open-finance-calendar', label: 'Zahlungskalender', hint: 'F K' },
       { id: 'open-finance-categories', label: 'Kategorien verwalten', hint: 'F C' },
       { id: 'open-finance-review', label: 'Prüfungen / Review Queue', hint: 'F R' },
+      { id: 'open-finance-analytics', label: 'Analysen öffnen', hint: 'F A' },
+      { id: 'open-finance-import', label: 'Import öffnen', hint: 'F I' },
+      { id: 'open-finance-budget', label: 'Budget öffnen', hint: 'F B' },
     ],
     [],
   );

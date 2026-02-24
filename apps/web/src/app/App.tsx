@@ -78,6 +78,9 @@ export function App() {
       if (entryId === 'open-finance-calendar') { handleRoute('/finance'); window.dispatchEvent(new CustomEvent('finance-tab', { detail: 'calendar' })); return; }
       if (entryId === 'open-finance-categories') { handleRoute('/finance'); window.dispatchEvent(new CustomEvent('finance-tab', { detail: 'categories' })); return; }
       if (entryId === 'open-finance-review') { handleRoute('/finance'); window.dispatchEvent(new CustomEvent('finance-tab', { detail: 'review' })); return; }
+      if (entryId === 'open-finance-analytics') { handleRoute('/finance'); window.dispatchEvent(new CustomEvent('finance-tab', { detail: 'analytics' })); return; }
+      if (entryId === 'open-finance-import') { handleRoute('/finance'); window.dispatchEvent(new CustomEvent('finance-tab', { detail: 'import' })); return; }
+      if (entryId === 'open-finance-budget') { handleRoute('/finance'); window.dispatchEvent(new CustomEvent('finance-tab', { detail: 'budget' })); return; }
 
       if (entryId === 'open-runtime-incidents') {
         handleRoute('/ops#runtime-incidents');

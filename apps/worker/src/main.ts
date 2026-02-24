@@ -293,6 +293,109 @@ async function processQueueJob(job: {
       }
       break;
     }
+    case 'detect-anomalies': {
+      // Compare recent transactions against 30-day moving average per category
+      const [outliers] = await db.query<[{ id: string; amount: number; payee_name?: string; category_name?: string; avg_amount: number }[]]>(
+        `SELECT id, amount, payee.name AS payee_name, category.name AS category_name,
+           (SELECT math::mean(math::abs(amount)) FROM transaction WHERE category = $parent.category AND date >= time::now() - 30d) AS avg_amount
+         FROM transaction
+         WHERE date >= time::now() - 7d AND amount < 0
+           AND math::abs(amount) > 2 * (SELECT VALUE math::mean(math::abs(amount)) FROM transaction WHERE category = $parent.category AND date >= time::now() - 30d)
+         LIMIT 20`,
+      );
+      for (const txn of outliers ?? []) {
+        await db.query(
+          `CREATE anomaly SET transaction = $txn, type = 'unusual_amount', severity = 'medium',
+           description = $desc, created_at = time::now()`,
+          {
+            txn: txn.id,
+            desc: `Ungewoehnlich hoher Betrag: ${Math.abs(txn.amount).toFixed(2)} EUR bei ${txn.payee_name ?? 'Unbekannt'} (Durchschnitt: ${(txn.avg_amount ?? 0).toFixed(2)} EUR)`,
+          },
+        );
+      }
+      console.log(`[${nowIso()}][worker:detect-anomalies] found ${outliers?.length ?? 0} outliers`);
+      break;
+    }
+    case 'analyze-spending-patterns': {
+      // Find recurring payments not tracked as contracts
+      const [recurring] = await db.query<[{ payee_name: string; avg_amount: number; count: number; frequency: string }[]]>(
+        `SELECT payee.name AS payee_name, math::mean(math::abs(amount)) AS avg_amount, count() AS count,
+           'monthly' AS frequency
+         FROM transaction
+         WHERE amount < 0 AND date >= time::now() - 90d
+         GROUP BY payee
+         HAVING count >= 3
+           AND payee NOT IN (SELECT VALUE payee FROM contract WHERE status = 'active')
+         ORDER BY avg_amount DESC
+         LIMIT 15`,
+      );
+      for (const pattern of recurring ?? []) {
+        // Only create if not already tracked
+        const [existing] = await db.query<[{ count: number }[]]>(
+          `SELECT count() AS count FROM spending_pattern WHERE payee_name = $name AND dismissed = false GROUP ALL`,
+          { name: pattern.payee_name },
+        );
+        if ((existing?.[0]?.count ?? 0) === 0) {
+          await db.query(
+            `CREATE spending_pattern SET type = 'recurring_untracked', description = $desc,
+             payee_name = $name, amount = $amount, frequency = $freq, confidence = 0.7, created_at = time::now()`,
+            {
+              desc: `${pattern.payee_name} scheint eine wiederkehrende Zahlung zu sein (~${pattern.avg_amount.toFixed(2)} EUR, ${pattern.count}x in 90 Tagen)`,
+              name: pattern.payee_name,
+              amount: pattern.avg_amount,
+              freq: pattern.frequency,
+            },
+          );
+        }
+      }
+      console.log(`[${nowIso()}][worker:analyze-patterns] checked ${recurring?.length ?? 0} recurring candidates`);
+      break;
+    }
+    case 'explain-classification': {
+      // Call Ollama with review item context to explain the AI's classification
+      const reviewItemId = String(job.payload.review_item_id ?? '');
+      if (!reviewItemId) break;
+
+      const [items] = await db.query<[{ id: string; transaction_payee_name?: string; transaction_amount?: number; ai_suggestion?: Record<string, unknown> }[]]>(
+        `SELECT * FROM $id`,
+        { id: reviewItemId },
+      );
+      const item = items?.[0];
+      if (!item) break;
+
+      const prompt = `Du bist ein Finanz-Assistent. Erklaere kurz und verstaendlich auf Deutsch, warum die folgende Transaktion so kategorisiert wurde.
+
+Transaktion:
+- Empfaenger: ${item.transaction_payee_name ?? 'Unbekannt'}
+- Betrag: ${item.transaction_amount ?? 0} EUR
+- KI-Vorschlag: ${JSON.stringify(item.ai_suggestion ?? {})}
+
+Erklaere in 1-2 Saetzen, warum diese Kategorie vorgeschlagen wurde.`;
+
+      try {
+        const response = await fetch(`${config.ollamaUrl}/api/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: process.env.OLLAMA_MODEL || 'mistral-small',
+            prompt,
+            stream: false,
+            options: { temperature: 0.3, num_predict: 150 },
+          }),
+        });
+        if (!response.ok) throw new Error(`Ollama returned ${response.status}`);
+        const result = await response.json() as { response: string };
+        await db.query(
+          `UPDATE $id SET explanation = $explanation`,
+          { id: reviewItemId, explanation: result.response.trim() },
+        );
+        console.log(`[${nowIso()}][worker:explain] explained ${reviewItemId}`);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`[${nowIso()}][worker:explain] failed for ${reviewItemId}: ${msg}`);
+      }
+      break;
+    }
     default:
       console.log(`[worker] unknown job: ${job.name}`);
   }

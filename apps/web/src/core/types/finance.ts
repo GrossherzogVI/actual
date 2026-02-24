@@ -98,6 +98,7 @@ export type ReviewItem = {
     action?: string;
   };
   status: 'pending' | 'accepted' | 'dismissed' | 'snoozed';
+  explanation?: string;
   created_at: string;
   resolved_at?: string;
   // Resolved via record link traversal in enriched queries
@@ -132,4 +133,101 @@ export type ThisMonthSummary = {
   expenses: number;
   net: number;
   transaction_count: number;
+};
+
+// -- Analytics --
+
+export type CategorySpending = {
+  category_id: string;
+  category_name: string;
+  parent_id?: string;
+  total: number;
+  count: number;
+  percentage: number;
+};
+
+export type MonthSummary = {
+  month: string; // "2026-02"
+  income: number;
+  expenses: number;
+  net: number;
+};
+
+export type FixedVarDetail = {
+  month: string;
+  fixed: number; // from contracts
+  variable: number; // non-contract spending
+};
+
+export type TrendPoint = {
+  month: string;
+  category_id: string;
+  category_name: string;
+  total: number;
+};
+
+export type MerchantSpending = {
+  payee_id: string;
+  payee_name: string;
+  total: number;
+  count: number;
+};
+
+export type MonthDelta = {
+  category_name: string;
+  current: number;
+  previous: number;
+  delta: number;
+  delta_pct: number;
+};
+
+// -- Budget --
+
+export type Budget = {
+  id: string;
+  category: string;
+  month: string; // "2026-02"
+  amount: number;
+  rollover: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type BudgetSummary = {
+  total_budgeted: number;
+  total_spent: number;
+  total_remaining: number;
+  envelope_count: number;
+};
+
+export type BudgetEnvelopeData = Budget & {
+  category_name: string;
+  spent: number;
+  remaining: number;
+  percentage: number;
+};
+
+// -- Intelligence --
+
+export type Anomaly = {
+  id: string;
+  transaction?: string;
+  type: 'unusual_amount' | 'new_payee' | 'frequency_change' | 'category_drift';
+  severity: 'low' | 'medium' | 'high';
+  description: string;
+  explanation?: string;
+  resolved: boolean;
+  created_at: string;
+};
+
+export type SpendingPattern = {
+  id: string;
+  type: 'recurring_untracked' | 'seasonal' | 'increasing' | 'decreasing';
+  description: string;
+  payee_name?: string;
+  amount?: number;
+  frequency?: string;
+  confidence: number;
+  dismissed: boolean;
+  created_at: string;
 };
