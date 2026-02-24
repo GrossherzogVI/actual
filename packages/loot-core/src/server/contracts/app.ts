@@ -29,6 +29,7 @@ export type ContractEntity = {
     | 'quarterly'
     | 'semi-annual'
     | 'annual'
+    | 'yearly' // alias for 'annual'
     | 'custom';
   custom_interval_days: number | null;
   payment_account_id: string | null;

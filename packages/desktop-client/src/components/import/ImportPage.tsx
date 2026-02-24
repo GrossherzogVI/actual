@@ -17,7 +17,13 @@ import { Page } from '@desktop-client/components/Page';
 import { useNavigate } from '@desktop-client/hooks/useNavigate';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 
 type SubRoute = 'finanzguru' | 'csv' | undefined;
 
@@ -74,7 +80,9 @@ function CategorySetupCard() {
       className={`flex min-w-[220px] max-w-[300px] flex-1 items-center text-center transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${done ? 'border-emerald-500/50 bg-emerald-500/5' : ''}`}
     >
       <CardHeader className="items-center pb-2">
-        <span className="text-4xl">{done ? '\u2705' : '\uD83C\uDFF7\uFE0F'}</span>
+        <span className="text-4xl">
+          {done ? '\u2705' : '\uD83C\uDFF7\uFE0F'}
+        </span>
         <CardTitle className="text-[15px]">
           <Trans>German Category Tree</Trans>
         </CardTitle>
@@ -89,7 +97,7 @@ function CategorySetupCard() {
         </CardDescription>
         {error && (
           <Alert variant="destructive" className="py-2 text-left">
-            <AlertTitle>{t('Error')}</AlertTitle>
+            <AlertTitle>{<Trans>Error</Trans>}</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
@@ -168,8 +176,8 @@ export function ImportPage() {
       <View style={{ gap: 24 }}>
         <Text style={{ fontSize: 13, color: theme.pageTextSubdued }}>
           <Trans>
-            Import your transaction history from external sources, or set up the German
-            category structure for better budgeting.
+            Import your transaction history from external sources, or set up the
+            German category structure for better budgeting.
           </Trans>
         </Text>
 
@@ -197,17 +205,21 @@ export function ImportPage() {
 
         {/* Tips section */}
         <Alert>
-          <AlertTitle>{t('Tips')}</AlertTitle>
+          <AlertTitle>{<Trans>Tips</Trans>}</AlertTitle>
           <AlertDescription>
             <ul className="mt-1 list-inside list-disc space-y-1 text-xs">
               <li>
-                {t('Install the German category tree first for best auto-categorization results.')}
+                {t(
+                  'Install the German category tree first for best auto-categorization results.',
+                )}
               </li>
               <li>
-                {t('After importing, visit the Review Queue to accept AI category suggestions.')}
+                {t(
+                  'After importing, visit the Review Queue to accept AI category suggestions.',
+                )}
               </li>
               <li>
-                {t('Duplicate transactions are automatically detected and skipped.')}
+                {<Trans>Duplicate transactions are automatically detected and skipped.</Trans>}
               </li>
             </ul>
           </AlertDescription>

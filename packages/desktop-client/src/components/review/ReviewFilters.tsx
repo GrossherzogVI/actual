@@ -6,8 +6,8 @@ import { Select } from '@actual-app/components/select';
 import { Text } from '@actual-app/components/text';
 import { View } from '@actual-app/components/view';
 
-import { TYPE_FILTER_OPTIONS, PRIORITY_FILTER_OPTIONS } from './types';
-import type { TypeFilter, PriorityFilter } from './types';
+import { PRIORITY_FILTER_OPTIONS, TYPE_FILTER_OPTIONS } from './types';
+import type { PriorityFilter, TypeFilter } from './types';
 
 type ReviewFiltersProps = {
   typeFilter: TypeFilter;

@@ -213,7 +213,7 @@ function DeadlineSettings() {
         >
           {BUNDESLAND_SELECT_OPTIONS.map(([value, label]) => (
             <option key={value} value={value}>
-              {label}
+              {value === '' ? t('Nur Bundesfeiertage') : label}
             </option>
           ))}
         </select>

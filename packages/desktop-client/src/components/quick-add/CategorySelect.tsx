@@ -1,5 +1,11 @@
 // @ts-strict-ignore
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Input } from '@actual-app/components/input';
@@ -94,19 +100,36 @@ export function CategorySelect({
   const { t } = useTranslation();
   const [query, setQuery] = useState(value);
   const [open, setOpen] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
+  const listboxRef = useRef<HTMLDivElement>(null);
+  const listboxId = 'category-select-listbox';
 
   const filtered = useMemo(() => {
     const matches = categories.filter(cat => fuzzyMatch(cat.name, query));
-    return matches.sort(
-      (a, b) => scoreCategory(b, frecency) - scoreCategory(a, frecency),
-    );
+    return matches
+      .sort((a, b) => scoreCategory(b, frecency) - scoreCategory(a, frecency))
+      .slice(0, 20);
   }, [categories, query, frecency]);
+
+  // Reset highlighted index when filtered list changes or dropdown opens/closes
+  useEffect(() => {
+    setHighlightedIndex(-1);
+  }, [filtered.length, open]);
+
+  // Scroll highlighted item into view
+  useEffect(() => {
+    if (highlightedIndex < 0 || !listboxRef.current) return;
+    const items = listboxRef.current.querySelectorAll('[role="option"]');
+    const el = items[highlightedIndex] as HTMLElement | undefined;
+    el?.scrollIntoView({ block: 'nearest' });
+  }, [highlightedIndex]);
 
   const handleSelect = useCallback(
     (cat: Category) => {
       setQuery(cat.name);
       setOpen(false);
+      setHighlightedIndex(-1);
       onChange(cat.id, cat.name);
     },
     [onChange],
@@ -123,9 +146,50 @@ export function CategorySelect({
   const handleFocus = useCallback(() => setOpen(true), []);
 
   const handleBlur = useCallback(() => {
-    // Slight delay to allow click on item to register first
+    // Slight delay to allow click/mousedown on item to register first
     setTimeout(() => setOpen(false), 150);
   }, []);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (!open) {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          setOpen(true);
+          e.preventDefault();
+        }
+        return;
+      }
+
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          setHighlightedIndex(prev =>
+            prev < filtered.length - 1 ? prev + 1 : 0,
+          );
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          setHighlightedIndex(prev =>
+            prev > 0 ? prev - 1 : filtered.length - 1,
+          );
+          break;
+        case 'Enter':
+          e.preventDefault();
+          if (highlightedIndex >= 0 && filtered[highlightedIndex]) {
+            handleSelect(filtered[highlightedIndex]);
+          }
+          break;
+        case 'Escape':
+          e.preventDefault();
+          setOpen(false);
+          setHighlightedIndex(-1);
+          break;
+        default:
+          break;
+      }
+    },
+    [open, filtered, highlightedIndex, handleSelect],
+  );
 
   // Find current category's color dot for the input
   const currentCat = categories.find(c => c.name === query || c.name === value);
@@ -156,7 +220,17 @@ export function CategorySelect({
           onChange={handleInputChange}
           onFocus={handleFocus}
           onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
           placeholder={t('Category…')}
+          aria-autocomplete="list"
+          aria-controls={open ? listboxId : undefined}
+          aria-activedescendant={
+            open && highlightedIndex >= 0 && filtered[highlightedIndex]
+              ? `category-option-${filtered[highlightedIndex].id}`
+              : undefined
+          }
+          aria-expanded={open}
+          role="combobox"
           style={{
             width: '100%',
             fontSize: 14,
@@ -170,6 +244,10 @@ export function CategorySelect({
       </View>
       {open && filtered.length > 0 && (
         <View
+          ref={listboxRef}
+          id={listboxId}
+          role="listbox"
+          aria-label={t('Categories')}
           style={{
             position: 'absolute',
             top: '100%',
@@ -184,19 +262,26 @@ export function CategorySelect({
             overflowY: 'auto',
           }}
         >
-          {filtered.slice(0, 20).map(cat => {
+          {filtered.map((cat, index) => {
             const color = getCategoryColor(cat.group_name);
+            const isHighlighted = index === highlightedIndex;
             return (
               <View
                 key={cat.id}
+                id={`category-option-${cat.id}`}
                 role="option"
+                aria-selected={isHighlighted}
                 onMouseDown={() => handleSelect(cat)}
+                onMouseEnter={() => setHighlightedIndex(index)}
                 style={{
                   padding: '8px 12px',
                   cursor: 'pointer',
                   borderBottom: `1px solid ${theme.menuBorderHover}`,
                   flexDirection: 'row',
                   alignItems: 'center',
+                  backgroundColor: isHighlighted
+                    ? theme.menuItemBackgroundHover
+                    : 'transparent',
                 }}
               >
                 <ColorDot color={color} />

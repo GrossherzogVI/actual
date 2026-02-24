@@ -7,6 +7,8 @@ import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
+import { formatEur } from '@desktop-client/utils/german-format';
+
 type AmountInputProps = {
   value: string;
   onChange: (value: string) => void;
@@ -17,13 +19,6 @@ type AmountInputProps = {
   suggestedPlaceholder?: string;
   'data-quick-add-amount'?: boolean;
 };
-
-function formatEur(cents: number): string {
-  return new Intl.NumberFormat('de-DE', {
-    style: 'currency',
-    currency: 'EUR',
-  }).format(cents / 100);
-}
 
 function isExpression(value: string): boolean {
   return /[+\-*/()]/.test(value) && !/^-?\d+(\.\d+)?$/.test(value.trim());

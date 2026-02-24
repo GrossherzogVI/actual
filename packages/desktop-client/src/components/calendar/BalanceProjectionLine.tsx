@@ -13,7 +13,7 @@ type Props = {
   /** User-configured minimum balance threshold in cents (from balanceThreshold pref).
    *  When provided: bar turns red below this value. Also renders a threshold marker. */
   threshold?: number | null;
-}
+};
 
 function getBarColor(
   balance: number,

@@ -23,30 +23,27 @@ import { RecentTemplates } from './RecentTemplates';
 import type { Category, RecentTemplate } from './types';
 
 import { accountQueries } from '@desktop-client/accounts';
+import { formatEur } from '@desktop-client/utils/german-format';
 
 import { useToast } from '@/components/common/Toast';
+import { useFeatureFlag } from '@/hooks/useFeatureFlag';
 
 type QuickAddOverlayProps = {
   isOpen: boolean;
   onClose: () => void;
 };
 
-function formatEur(cents: number): string {
-  return new Intl.NumberFormat('de-DE', {
-    style: 'currency',
-    currency: 'EUR',
-  }).format(Math.abs(cents) / 100);
-}
-
 export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
   const { t } = useTranslation();
   const toast = useToast();
+  const reviewQueueEnabled = useFeatureFlag('reviewQueue');
 
   // Default account: first on-budget account
   const { data: onBudgetAccounts = [] } = useQuery(
     accountQueries.listOnBudget(),
   );
   const defaultAccountId = onBudgetAccounts[0]?.id;
+  const noAccounts = onBudgetAccounts.length === 0;
 
   const {
     form,
@@ -163,12 +160,7 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
         }
 
         if (modeAmount > 0) {
-          setAmountPlaceholder(
-            new Intl.NumberFormat('de-DE', {
-              style: 'currency',
-              currency: 'EUR',
-            }).format(modeAmount / 100),
-          );
+          setAmountPlaceholder(formatEur(modeAmount));
         } else {
           setAmountPlaceholder('');
         }
@@ -212,11 +204,24 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
     [onClose],
   );
 
+  // Helper to handle SubmitResult — shows error toast and returns whether it succeeded
+  const handleSubmitResult = useCallback(
+    (result: Awaited<ReturnType<typeof submitTransaction>>): string | null => {
+      if ('error' in result) {
+        toast.show(result.error, { type: 'error' });
+        return null;
+      }
+      return result.id;
+    },
+    [toast],
+  );
+
   // Save and close (default submit)
   const handleSubmitAndClose = useCallback(async () => {
     if (submitting) return;
     setSubmitting(true);
-    const txId = await submitTransaction();
+    const result = await submitTransaction();
+    const txId = handleSubmitResult(result);
     if (txId) {
       const amount = form.evaluatedAmount ?? 0;
       if (trainMode) {
@@ -225,16 +230,19 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
         resetForm();
         focusAmount();
       } else {
-        toast.show(t('Saved: {{amount}}', { amount: formatEur(amount) }), {
-          type: 'success',
-          duration: 10000,
-          action: {
-            label: t('Undo'),
-            onPress: () => {
-              void send('transaction-delete', { id: txId });
+        toast.show(
+          t('Saved: {{amount}}', { amount: formatEur(Math.abs(amount)) }),
+          {
+            type: 'success',
+            duration: 10000,
+            action: {
+              label: t('Undo'),
+              onPress: () => {
+                void send('transaction-delete', { id: txId });
+              },
             },
           },
-        });
+        );
         resetForm();
         onClose();
       }
@@ -243,6 +251,7 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
   }, [
     submitting,
     submitTransaction,
+    handleSubmitResult,
     form.evaluatedAmount,
     trainMode,
     resetForm,
@@ -256,19 +265,23 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
   const handleSubmitAndNew = useCallback(async () => {
     if (submitting) return;
     setSubmitting(true);
-    const txId = await submitTransaction();
+    const result = await submitTransaction();
+    const txId = handleSubmitResult(result);
     if (txId) {
       const amount = form.evaluatedAmount ?? 0;
-      toast.show(t('Saved: {{amount}}', { amount: formatEur(amount) }), {
-        type: 'success',
-        duration: 10000,
-        action: {
-          label: t('Undo'),
-          onPress: () => {
-            void send('transaction-delete', { id: txId });
+      toast.show(
+        t('Saved: {{amount}}', { amount: formatEur(Math.abs(amount)) }),
+        {
+          type: 'success',
+          duration: 10000,
+          action: {
+            label: t('Undo'),
+            onPress: () => {
+              void send('transaction-delete', { id: txId });
+            },
           },
         },
-      });
+      );
       resetForm();
       focusAmount();
     }
@@ -276,6 +289,7 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
   }, [
     submitting,
     submitTransaction,
+    handleSubmitResult,
     form.evaluatedAmount,
     resetForm,
     toast,
@@ -287,19 +301,23 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
   const handleSubmitAndDuplicate = useCallback(async () => {
     if (submitting) return;
     setSubmitting(true);
-    const txId = await submitTransaction();
+    const result = await submitTransaction();
+    const txId = handleSubmitResult(result);
     if (txId) {
       const amount = form.evaluatedAmount ?? 0;
-      toast.show(t('Saved: {{amount}}', { amount: formatEur(amount) }), {
-        type: 'success',
-        duration: 10000,
-        action: {
-          label: t('Undo'),
-          onPress: () => {
-            void send('transaction-delete', { id: txId });
+      toast.show(
+        t('Saved: {{amount}}', { amount: formatEur(Math.abs(amount)) }),
+        {
+          type: 'success',
+          duration: 10000,
+          action: {
+            label: t('Undo'),
+            onPress: () => {
+              void send('transaction-delete', { id: txId });
+            },
           },
         },
-      });
+      );
       resetAmountOnly();
       focusAmount();
     }
@@ -307,6 +325,7 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
   }, [
     submitting,
     submitTransaction,
+    handleSubmitResult,
     form.evaluatedAmount,
     resetAmountOnly,
     toast,
@@ -324,14 +343,14 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
         priority: 'review',
         amount: form.evaluatedAmount,
         category_id: form.categoryId || undefined,
-        notes: 'Parked from Quick Add',
+        notes: t('Parked from Quick Add'),
       });
       setParkFeedback(true);
       setTimeout(() => setParkFeedback(false), 2000);
       resetForm();
       focusAmount();
     } catch {
-      // Park failed silently
+      toast.show(t('Park fehlgeschlagen'), { type: 'error' });
     }
     setSubmitting(false);
   }, [
@@ -340,14 +359,16 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
     form.categoryId,
     resetForm,
     focusAmount,
+    toast,
+    t,
   ]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       const meta = e.metaKey || e.ctrlKey;
 
-      // 6.3: Cmd+P — Park for later
-      if (meta && e.key === 'p') {
+      // 6.3: Cmd+P — Park for later (only when feature flag is on)
+      if (meta && e.key === 'p' && reviewQueueEnabled) {
         e.preventDefault();
         void handlePark();
         return;
@@ -364,12 +385,17 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
         }
       }
     },
-    [handlePark, handleSubmitAndNew, handleSubmitAndDuplicate],
+    [
+      handlePark,
+      handleSubmitAndNew,
+      handleSubmitAndDuplicate,
+      reviewQueueEnabled,
+    ],
   );
 
   if (!isOpen) return null;
 
-  const canSubmit = form.evaluatedAmount != null;
+  const canSubmit = form.evaluatedAmount != null && !noAccounts;
 
   return (
     <View
@@ -389,8 +415,11 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
         backgroundColor: 'rgba(0, 0, 0, 0.3)',
       }}
     >
-      {/* Dialog */}
+      {/* Dialog — B.2: ARIA dialog attributes */}
       <View
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('Quick Add Transaction')}
         onKeyDown={handleKeyDown}
         style={{
           width: 480,
@@ -424,6 +453,25 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
             ×
           </Button>
         </View>
+
+        {/* B.1: No accounts inline warning */}
+        {noAccounts && (
+          <View
+            style={{
+              margin: '8px 16px',
+              padding: '8px 12px',
+              backgroundColor: theme.warningBackground,
+              border: `1px solid ${theme.warningBorder}`,
+              borderRadius: 6,
+            }}
+          >
+            <Text style={{ fontSize: 13, color: theme.warningText }}>
+              <Trans>
+                Kein Konto vorhanden. Bitte zuerst ein Konto anlegen.
+              </Trans>
+            </Text>
+          </View>
+        )}
 
         {/* Preset bar */}
         <PresetBar presets={presets} onSelect={prefill} />
@@ -567,23 +615,29 @@ export function QuickAddOverlay({ isOpen, onClose }: QuickAddOverlayProps) {
           {/* Keyboard shortcut hints */}
           <View style={{ flex: 1, gap: 2 }}>
             <Text style={{ fontSize: 10, color: theme.pageTextSubdued }}>
-              <Trans>⌘↵ new · ⌘⇧↵ dup · ⌘P park</Trans>
+              {reviewQueueEnabled ? (
+                <Trans>⌘↵ new · ⌘⇧↵ dup · ⌘P park</Trans>
+              ) : (
+                <Trans>⌘↵ new · ⌘⇧↵ dup</Trans>
+              )}
             </Text>
           </View>
 
-          {/* 6.3: Park for later button */}
-          <Button
-            variant="bare"
-            onPress={handlePark}
-            isDisabled={!canSubmit || submitting}
-            style={{
-              fontSize: 12,
-              color: parkFeedback ? '#10b981' : theme.pageTextSubdued,
-              padding: '4px 8px',
-            }}
-          >
-            {parkFeedback ? <Trans>Parked!</Trans> : <Trans>Park</Trans>}
-          </Button>
+          {/* 6.3: Park for later — only shown when reviewQueue feature flag is on */}
+          {reviewQueueEnabled && (
+            <Button
+              variant="bare"
+              onPress={handlePark}
+              isDisabled={!canSubmit || submitting}
+              style={{
+                fontSize: 12,
+                color: parkFeedback ? '#10b981' : theme.pageTextSubdued,
+                padding: '4px 8px',
+              }}
+            >
+              {parkFeedback ? <Trans>Parked!</Trans> : <Trans>Park</Trans>}
+            </Button>
+          )}
 
           <Button variant="bare" onPress={onClose}>
             <Trans>Cancel</Trans>

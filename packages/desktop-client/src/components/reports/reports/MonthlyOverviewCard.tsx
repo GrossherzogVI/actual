@@ -48,7 +48,7 @@ export function MonthlyOverviewCard() {
       <View style={{ gap: 8 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           <Text style={{ fontSize: 12, color: theme.pageTextSubdued }}>
-            {<Trans>Income</Trans>}
+            <Trans>Income</Trans>
           </Text>
           <Text
             style={{
@@ -63,7 +63,7 @@ export function MonthlyOverviewCard() {
 
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           <Text style={{ fontSize: 12, color: theme.pageTextSubdued }}>
-            {<Trans>Expenses</Trans>}
+            <Trans>Expenses</Trans>
           </Text>
           <Text
             style={{
@@ -87,7 +87,7 @@ export function MonthlyOverviewCard() {
           <Text
             style={{ fontSize: 12, fontWeight: 600, color: theme.pageText }}
           >
-            {<Trans>Net</Trans>}
+            <Trans>Net</Trans>
           </Text>
           <Text
             style={{

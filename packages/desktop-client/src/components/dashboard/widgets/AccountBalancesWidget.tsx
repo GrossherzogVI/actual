@@ -47,6 +47,7 @@ function AccountRow({ account }: { account: { id: string; name: string } }) {
           fontSize: 13,
           fontWeight: 500,
           whiteSpace: 'nowrap',
+          fontVariantNumeric: 'tabular-nums',
           color:
             balance != null && balance < 0
               ? theme.errorText

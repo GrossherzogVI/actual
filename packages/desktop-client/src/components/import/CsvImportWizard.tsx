@@ -7,71 +7,19 @@ import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
-import { useCategories } from '@desktop-client/hooks/useCategories';
-
 import { CategoryMapper } from './CategoryMapper';
 import { useBankFormatDetection } from './hooks/useBankFormatDetection';
 import { useCategoryMapping } from './hooks/useCategoryMapping';
 import { useImport } from './hooks/useImport';
 import { ImportAdvisor } from './ImportAdvisor';
 import { ImportPreview } from './ImportPreview';
+import { fileToBase64, StepIndicator } from './shared';
 import type { BankFormat } from './types';
 
+import { useAccounts } from '@desktop-client/hooks/useAccounts';
+import { useCategories } from '@desktop-client/hooks/useCategories';
+
 type Step = 1 | 2 | 3 | 4 | 5;
-
-function StepIndicator({ step, total }: { step: Step; total: number }) {
-  return (
-    <View
-      style={{
-        flexDirection: 'row',
-        gap: 8,
-        alignItems: 'center',
-        marginBottom: 20,
-      }}
-    >
-      {Array.from({ length: total }, (_, i) => i + 1).map(n => (
-        <View
-          key={n}
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: 14,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor:
-              n < step
-                ? '#10b981'
-                : n === step
-                  ? theme.buttonPrimaryBackground
-                  : theme.tableBorder,
-          }}
-        >
-          <Text
-            style={{
-              fontSize: 12,
-              fontWeight: 600,
-              color: n <= step ? '#fff' : theme.pageTextSubdued,
-            }}
-          >
-            {n < step ? '✓' : String(n)}
-          </Text>
-        </View>
-      ))}
-    </View>
-  );
-}
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      resolve(result.split(',')[1] ?? result);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 
 function readFirstLine(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -95,6 +43,7 @@ export function CsvImportWizard() {
   const [accountId, setAccountId] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const { data: accounts = [] } = useAccounts();
   const { data: categoryData } = useCategories();
   const { formats, detectedFormat, detectFromHeader } =
     useBankFormatDetection();
@@ -110,6 +59,9 @@ export function CsvImportWizard() {
   } = useImport({
     format: 'csv',
   });
+
+  // Open (non-closed, non-tombstone) accounts for the account selector
+  const openAccounts = accounts.filter(a => !a.closed && !a.tombstone);
 
   const externalCats: string[] = preview
     ? [...new Set(preview.rows.map(r => r.notes ?? '').filter(Boolean))]
@@ -164,6 +116,7 @@ export function CsvImportWizard() {
     setStep(1);
     setFile(null);
     setSelectedFormat(null);
+    setAccountId('');
   }, [reset]);
 
   return (
@@ -289,6 +242,35 @@ export function CsvImportWizard() {
             </select>
           </View>
 
+          {/* Account selector */}
+          <View style={{ gap: 6 }}>
+            <Text
+              style={{ fontSize: 13, fontWeight: 500, color: theme.pageText }}
+            >
+              <Trans>Import into account</Trans>
+            </Text>
+            <select
+              value={accountId}
+              onChange={e => setAccountId(e.target.value)}
+              style={{
+                padding: '7px 10px',
+                fontSize: 13,
+                borderRadius: 4,
+                border: `1px solid ${theme.tableBorder}`,
+                backgroundColor: theme.tableBackground,
+                color: theme.pageText,
+                outline: 'none',
+              }}
+            >
+              <option value="">{t('— Select account —')}</option>
+              {openAccounts.map(a => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          </View>
+
           {/* Delimiter */}
           <View style={{ gap: 6 }}>
             <Text
@@ -337,7 +319,7 @@ export function CsvImportWizard() {
             <Button
               variant="primary"
               onPress={handlePreview}
-              isDisabled={loading}
+              isDisabled={loading || !accountId}
             >
               {loading ? (
                 <Trans>Analyzing…</Trans>

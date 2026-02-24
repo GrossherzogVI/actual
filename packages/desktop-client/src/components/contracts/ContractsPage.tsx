@@ -28,6 +28,7 @@ import { SkeletonList } from '@desktop-client/components/common/Skeleton';
 import { Page } from '@desktop-client/components/Page';
 import { useFeatureFlag } from '@desktop-client/hooks/useFeatureFlag';
 import { useNavigate } from '@desktop-client/hooks/useNavigate';
+import { formatDateDE } from '@desktop-client/utils/german-format';
 
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -58,16 +59,9 @@ const INTERVAL_LABELS: Record<string, string> = Object.fromEntries(
   CONTRACT_INTERVAL_OPTIONS,
 );
 
-const DE_DATE_FORMATTER = new Intl.DateTimeFormat('de-DE', {
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-});
-
-function formatDateDE(dateStr: string): string {
-  const [year, month, day] = dateStr.split('-').map(Number);
-  return DE_DATE_FORMATTER.format(new Date(year, month - 1, day));
-}
+const TYPE_LABELS: Record<string, string> = Object.fromEntries(
+  CONTRACT_TYPE_OPTIONS,
+);
 
 /** Compute the display amount for a contract given the chosen cost view. */
 function displayAmount(
@@ -528,13 +522,21 @@ export function ContractsPage() {
                 <TableHead className="min-w-[200px]">
                   <Trans>Name</Trans>
                 </TableHead>
-                <TableHead><Trans>Type</Trans></TableHead>
+                <TableHead>
+                  <Trans>Type</Trans>
+                </TableHead>
                 <TableHead className="text-right">
                   {costView === 'monthly' ? t('Monthly') : t('Annual')}
                 </TableHead>
-                <TableHead><Trans>Status</Trans></TableHead>
-                <TableHead><Trans>Health</Trans></TableHead>
-                <TableHead><Trans>Cancel deadline</Trans></TableHead>
+                <TableHead>
+                  <Trans>Status</Trans>
+                </TableHead>
+                <TableHead>
+                  <Trans>Health</Trans>
+                </TableHead>
+                <TableHead>
+                  <Trans>Cancel deadline</Trans>
+                </TableHead>
               </TableRow>
             </ShadcnTableHeader>
             <TableBody>
@@ -609,7 +611,7 @@ export function ContractsPage() {
                     <TableCell>
                       {contract.type && (
                         <Badge variant="outline" className="capitalize">
-                          {contract.type}
+                          {t(TYPE_LABELS[contract.type] ?? contract.type)}
                         </Badge>
                       )}
                     </TableCell>

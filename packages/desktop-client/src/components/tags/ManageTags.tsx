@@ -48,6 +48,15 @@ export function ManageTags() {
   const { mutate: deleteTags } = useDeleteTagsMutation();
 
   const onDeleteSelected = useCallback(async () => {
+    const count = selectedInst.items.size;
+    const confirmed = window.confirm(
+      t(
+        'Are you sure you want to delete {{count}} tag(s)? This cannot be undone.',
+        { count },
+      ),
+    );
+    if (!confirmed) return;
+
     deleteTags(
       { ids: [...selectedInst.items] },
       {
@@ -56,7 +65,7 @@ export function ManageTags() {
         },
       },
     );
-  }, [deleteTags, selectedInst]);
+  }, [deleteTags, selectedInst, t]);
 
   return (
     <SelectedProvider instance={selectedInst}>

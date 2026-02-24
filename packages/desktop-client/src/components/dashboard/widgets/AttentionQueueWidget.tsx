@@ -6,11 +6,11 @@ import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
-import type { ReviewCounts } from '@/components/dashboard/types';
-
 import { WidgetCard } from './WidgetCard';
 
 import { useNavigate } from '@desktop-client/hooks/useNavigate';
+
+import type { ReviewCounts } from '@/components/dashboard/types';
 
 type RowProps = {
   label: string;
@@ -21,9 +21,10 @@ type RowProps = {
 
 function CountRow({ label, count, color, onClick }: RowProps) {
   return (
-    <View
+    <button
       onClick={onClick}
       style={{
+        display: 'flex',
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -31,6 +32,10 @@ function CountRow({ label, count, color, onClick }: RowProps) {
         borderRadius: 4,
         cursor: 'pointer',
         marginBottom: 4,
+        width: '100%',
+        background: 'none',
+        border: 'none',
+        textAlign: 'left',
       }}
     >
       <Text style={{ color: theme.pageText, fontSize: 13 }}>{label}</Text>
@@ -48,7 +53,7 @@ function CountRow({ label, count, color, onClick }: RowProps) {
           {count}
         </Text>
       </View>
-    </View>
+    </button>
   );
 }
 
@@ -71,7 +76,7 @@ export function AttentionQueueWidget({ counts, loading }: Props) {
         </Text>
       ) : counts == null ? (
         <Text style={{ color: theme.pageTextSubdued, fontSize: 13 }}>
-          {<Trans>No review data available.</Trans>}
+          <Trans>No review data available.</Trans>
         </Text>
       ) : (
         <>

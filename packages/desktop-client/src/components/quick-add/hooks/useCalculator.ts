@@ -88,7 +88,10 @@ function normalizeDecimalInput(input: string): string {
       // Only commas: last comma is the decimal separator (12,50 -> 12.50; 1,000,00 -> 100000 then .00)
       // Strip all but the last comma (treat earlier ones as thousand seps), convert last to dot
       const lastCommaIdx = match.lastIndexOf(',');
-      const stripped = match.slice(0, lastCommaIdx).replace(/,/g, '') + '.' + match.slice(lastCommaIdx + 1);
+      const stripped =
+        match.slice(0, lastCommaIdx).replace(/,/g, '') +
+        '.' +
+        match.slice(lastCommaIdx + 1);
       return stripped;
     }
     // Only dots or neither: leave as-is (already valid)

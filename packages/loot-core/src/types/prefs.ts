@@ -67,7 +67,8 @@ export type SyncedPrefs = Partial<
     | 'paydayDate'
     | 'balanceThreshold'
     | 'deadlineShowHard'
-    | 'deadlineBundesland',
+    | 'deadlineBundesland'
+    | 'moneyPulseDismissedDate',
     string
   >
 >;

@@ -864,6 +864,15 @@ export function ContractDetailPage() {
           error={saveError}
           onSave={handleSave}
         />
+        <View style={{ padding: '12px 0' }}>
+          <Button
+            variant="bare"
+            onPress={() => navigate('/contracts')}
+            style={{ color: theme.pageTextSubdued }}
+          >
+            <Trans>Abbrechen</Trans>
+          </Button>
+        </View>
       </Page>
     );
   }
@@ -943,7 +952,10 @@ export function ContractDetailPage() {
         <Badge variant="outline" className="gap-1.5 capitalize">
           <span
             className="inline-block h-2 w-2 rounded-full"
-            style={{ backgroundColor: CONTRACT_STATUS_COLORS[contract.status] ?? '#6b7280' }}
+            style={{
+              backgroundColor:
+                CONTRACT_STATUS_COLORS[contract.status] ?? '#6b7280',
+            }}
           />
           {contract.status}
         </Badge>
@@ -975,29 +987,61 @@ export function ContractDetailPage() {
           <CardContent className="pt-4">
             <View style={{ flexDirection: 'row', gap: 32, flexWrap: 'wrap' }}>
               <View>
-                <Text style={{ fontSize: 11, color: theme.pageTextSubdued, marginBottom: 2 }}>
+                <Text
+                  style={{
+                    fontSize: 11,
+                    color: theme.pageTextSubdued,
+                    marginBottom: 2,
+                  }}
+                >
                   <Trans>Amount</Trans>
                 </Text>
-                <Text style={{ fontSize: 18, fontWeight: 700 }}>
+                <Text
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 700,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
                   €{formatAmountEur(contract.amount)}/{contract.interval ?? ''}
                 </Text>
               </View>
               {contract.annual_cost != null && (
                 <View>
-                  <Text style={{ fontSize: 11, color: theme.pageTextSubdued, marginBottom: 2 }}>
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      color: theme.pageTextSubdued,
+                      marginBottom: 2,
+                    }}
+                  >
                     <Trans>Annual cost</Trans>
                   </Text>
-                  <Text style={{ fontSize: 18, fontWeight: 700 }}>
+                  <Text
+                    style={{
+                      fontSize: 18,
+                      fontWeight: 700,
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
                     €{formatAmountEur(contract.annual_cost)}
                   </Text>
                 </View>
               )}
               {contract.provider && (
                 <View>
-                  <Text style={{ fontSize: 11, color: theme.pageTextSubdued, marginBottom: 2 }}>
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      color: theme.pageTextSubdued,
+                      marginBottom: 2,
+                    }}
+                  >
                     <Trans>Provider</Trans>
                   </Text>
-                  <Text style={{ fontSize: 15, fontWeight: 500 }}>{contract.provider}</Text>
+                  <Text style={{ fontSize: 15, fontWeight: 500 }}>
+                    {contract.provider}
+                  </Text>
                 </View>
               )}
             </View>
@@ -1008,9 +1052,9 @@ export function ContractDetailPage() {
       {/* Tabs */}
       <Tabs defaultValue="overview">
         <TabsList>
-          <TabsTrigger value="overview">{t('Overview')}</TabsTrigger>
+          <TabsTrigger value="overview">{<Trans>Overview</Trans>}</TabsTrigger>
           <TabsTrigger value="price-history">{t('Price History')}</TabsTrigger>
-          <TabsTrigger value="notes">{t('Notes')}</TabsTrigger>
+          <TabsTrigger value="notes">{<Trans>Notes</Trans>}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -1018,7 +1062,9 @@ export function ContractDetailPage() {
             <CancellationInfo contract={contract} />
             <PaymentDeadlineSection contractId={contract.id} />
 
-            {(contract.counterparty || contract.iban || contract.payment_account_id) && (
+            {(contract.counterparty ||
+              contract.iban ||
+              contract.payment_account_id) && (
               <Card className="mt-4">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground">
@@ -1027,19 +1073,39 @@ export function ContractDetailPage() {
                 </CardHeader>
                 <CardContent>
                   {contract.counterparty && (
-                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 4 }}>
-                      <Text style={{ fontSize: 12, color: theme.pageTextSubdued, minWidth: 120 }}>
+                    <View
+                      style={{ flexDirection: 'row', gap: 8, marginBottom: 4 }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          color: theme.pageTextSubdued,
+                          minWidth: 120,
+                        }}
+                      >
                         <Trans>Counterparty</Trans>
                       </Text>
-                      <Text style={{ fontSize: 13 }}>{contract.counterparty}</Text>
+                      <Text style={{ fontSize: 13 }}>
+                        {contract.counterparty}
+                      </Text>
                     </View>
                   )}
                   {contract.iban && (
-                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 4 }}>
-                      <Text style={{ fontSize: 12, color: theme.pageTextSubdued, minWidth: 120 }}>
+                    <View
+                      style={{ flexDirection: 'row', gap: 8, marginBottom: 4 }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          color: theme.pageTextSubdued,
+                          minWidth: 120,
+                        }}
+                      >
                         IBAN
                       </Text>
-                      <Text style={{ fontSize: 13, fontFamily: 'monospace' }}>{contract.iban}</Text>
+                      <Text style={{ fontSize: 13, fontFamily: 'monospace' }}>
+                        {contract.iban}
+                      </Text>
                     </View>
                   )}
                 </CardContent>
@@ -1048,7 +1114,13 @@ export function ContractDetailPage() {
 
             {contract.tags && contract.tags.length > 0 && (
               <View style={{ marginTop: 12 }}>
-                <Text style={{ fontSize: 11, color: theme.pageTextSubdued, marginBottom: 4 }}>
+                <Text
+                  style={{
+                    fontSize: 11,
+                    color: theme.pageTextSubdued,
+                    marginBottom: 4,
+                  }}
+                >
                   <Trans>Tags</Trans>
                 </Text>
                 <div className="flex flex-wrap gap-1.5">

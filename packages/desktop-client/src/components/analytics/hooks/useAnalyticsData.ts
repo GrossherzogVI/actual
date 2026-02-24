@@ -1,5 +1,5 @@
 // @ts-strict-ignore
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { send } from 'loot-core/platform/client/connection';
 import * as monthUtils from 'loot-core/shared/months';
@@ -50,6 +50,8 @@ type BudgetAlert = {
 
 export type AnalyticsData = {
   loading: boolean;
+  error: string | null;
+  reload: () => void;
   spendingByCategory: CategorySpending[];
   monthlyTotals: MonthlyTotals[];
   fixedVsVariable: FixedVsVariable;
@@ -106,6 +108,8 @@ function formatMonthLabel(month: string): string {
 
 export function useAnalyticsData(): AnalyticsData {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadTrigger, setReloadTrigger] = useState(0);
   const [categories, setCategories] = useState<CategoryEntity[]>([]);
   const [spendingByCategory, setSpendingByCategory] = useState<
     CategorySpending[]
@@ -137,97 +141,189 @@ export function useAnalyticsData(): AnalyticsData {
 
     async function fetchAll() {
       setLoading(true);
+      setError(null);
 
       try {
-      // 1) Categories
-      const { list: cats, grouped } = await send('get-categories');
-      if (cancelled) return;
+        // 1) Categories
+        const { list: cats, grouped } = await send('get-categories');
+        if (cancelled) return;
 
-      const expenseCats: CategoryEntity[] = cats.filter(
-        (c: CategoryEntity) => !c.is_income && !c.hidden,
-      );
-      setCategories(expenseCats);
+        const expenseCats: CategoryEntity[] = cats.filter(
+          (c: CategoryEntity) => !c.is_income && !c.hidden,
+        );
+        setCategories(expenseCats);
 
-      // Build group name map
-      const groupMap = new Map<string, string>();
-      for (const g of grouped) {
-        for (const c of g.categories) {
-          groupMap.set(c.id, g.name);
+        // Build group name map
+        const groupMap = new Map<string, string>();
+        for (const g of grouped) {
+          for (const c of g.categories) {
+            groupMap.set(c.id, g.name);
+          }
         }
-      }
 
-      // 2) Spending by category for current month — single aggregated query
-      const startOfMonth = monthUtils.firstDayOfMonth(currentMonth);
-      const today = monthUtils.currentDay();
+        // 2) Spending by category for current month — single aggregated query
+        const startOfMonth = monthUtils.firstDayOfMonth(currentMonth);
+        const today = monthUtils.currentDay();
 
-      const { data: catSums } = await aqlQuery(
-        q('transactions')
-          .filter({
-            $and: [
-              { date: { $gte: startOfMonth } },
-              { date: { $lte: today } },
-            ],
-            'account.offbudget': false,
-            'payee.transfer_acct': null,
-          })
-          .filter({ amount: { $lt: 0 } })
-          .groupBy([{ $id: '$category' }])
-          .select([{ category: { $id: '$category' } }, { amount: { $sum: '$amount' } }]),
-      );
-
-      const expenseCatIds = new Set(expenseCats.map(c => c.id));
-      const catById = new Map(expenseCats.map(c => [c.id, c]));
-
-      const catSpending: CategorySpending[] = [];
-      for (const row of catSums || []) {
-        if (!row.category || !expenseCatIds.has(row.category)) continue;
-        const absAmount = Math.abs(row.amount || 0);
-        if (absAmount > 0) {
-          const cat = catById.get(row.category)!;
-          catSpending.push({
-            id: cat.id,
-            name: cat.name,
-            groupName: groupMap.get(cat.id) || '',
-            amount: absAmount,
-            color: '', // assigned below
-          });
-        }
-      }
-
-      // Sort descending, assign colors
-      catSpending.sort((a, b) => b.amount - a.amount);
-      catSpending.forEach((cs, i) => {
-        cs.color = colorForIndex(i);
-      });
-      if (!cancelled) setSpendingByCategory(catSpending);
-
-      // Total spent this month
-      const totalSpent = catSpending.reduce((s, c) => s + c.amount, 0);
-      if (!cancelled) setTotalSpentThisMonth(totalSpent);
-
-      // 3) Monthly income vs expenses for last 6 months — two aggregated queries
-      const rangeStart = monthUtils.firstDayOfMonth(months[0]);
-      const rangeEnd =
-        months[months.length - 1] === currentMonth
-          ? today
-          : monthUtils.lastDayOfMonth(months[months.length - 1]);
-
-      const [incomeByMonth, expenseByMonth] = await Promise.all([
-        aqlQuery(
+        const { data: catSums } = await aqlQuery(
           q('transactions')
             .filter({
               $and: [
-                { date: { $gte: rangeStart } },
-                { date: { $lte: rangeEnd } },
+                { date: { $gte: startOfMonth } },
+                { date: { $lte: today } },
               ],
               'account.offbudget': false,
               'payee.transfer_acct': null,
             })
-            .filter({ amount: { $gt: 0 } })
-            .groupBy({ $month: '$date' })
-            .select([{ month: { $month: '$date' } }, { amount: { $sum: '$amount' } }]),
-        ),
-        aqlQuery(
+            .filter({ amount: { $lt: 0 } })
+            .groupBy([{ $id: '$category' }])
+            .select([
+              { category: { $id: '$category' } },
+              { amount: { $sum: '$amount' } },
+            ]),
+        );
+
+        const expenseCatIds = new Set(expenseCats.map(c => c.id));
+        const catById = new Map(expenseCats.map(c => [c.id, c]));
+
+        const catSpending: CategorySpending[] = [];
+        for (const row of catSums || []) {
+          if (!row.category || !expenseCatIds.has(row.category)) continue;
+          const absAmount = Math.abs(row.amount || 0);
+          if (absAmount > 0) {
+            const cat = catById.get(row.category)!;
+            catSpending.push({
+              id: cat.id,
+              name: cat.name,
+              groupName: groupMap.get(cat.id) || '',
+              amount: absAmount,
+              color: '', // assigned below
+            });
+          }
+        }
+
+        // Sort descending, assign colors
+        catSpending.sort((a, b) => b.amount - a.amount);
+        catSpending.forEach((cs, i) => {
+          cs.color = colorForIndex(i);
+        });
+        if (!cancelled) setSpendingByCategory(catSpending);
+
+        // Total spent this month
+        const totalSpent = catSpending.reduce((s, c) => s + c.amount, 0);
+        if (!cancelled) setTotalSpentThisMonth(totalSpent);
+
+        // 3) Monthly income vs expenses for last 6 months — two aggregated queries
+        const rangeStart = monthUtils.firstDayOfMonth(months[0]);
+        const rangeEnd =
+          months[months.length - 1] === currentMonth
+            ? today
+            : monthUtils.lastDayOfMonth(months[months.length - 1]);
+
+        const [incomeByMonth, expenseByMonth] = await Promise.all([
+          aqlQuery(
+            q('transactions')
+              .filter({
+                $and: [
+                  { date: { $gte: rangeStart } },
+                  { date: { $lte: rangeEnd } },
+                ],
+                'account.offbudget': false,
+                'payee.transfer_acct': null,
+              })
+              .filter({ amount: { $gt: 0 } })
+              .groupBy({ $month: '$date' })
+              .select([
+                { month: { $month: '$date' } },
+                { amount: { $sum: '$amount' } },
+              ]),
+          ),
+          aqlQuery(
+            q('transactions')
+              .filter({
+                $and: [
+                  { date: { $gte: rangeStart } },
+                  { date: { $lte: rangeEnd } },
+                ],
+                'account.offbudget': false,
+                'payee.transfer_acct': null,
+              })
+              .filter({ amount: { $lt: 0 } })
+              .groupBy({ $month: '$date' })
+              .select([
+                { month: { $month: '$date' } },
+                { amount: { $sum: '$amount' } },
+              ]),
+          ),
+        ]);
+
+        const incomeMap = new Map<string, number>();
+        for (const row of incomeByMonth.data || []) {
+          incomeMap.set(row.month, row.amount || 0);
+        }
+        const expenseMap = new Map<string, number>();
+        for (const row of expenseByMonth.data || []) {
+          expenseMap.set(row.month, Math.abs(row.amount || 0));
+        }
+
+        const monthlyData: MonthlyTotals[] = months.map(month => {
+          const income = incomeMap.get(month) || 0;
+          const expenses = expenseMap.get(month) || 0;
+          return {
+            month,
+            label: formatMonthLabel(month),
+            income,
+            expenses,
+            net: income - expenses,
+          };
+        });
+        if (!cancelled) setMonthlyTotals(monthlyData);
+
+        // 4) Fixed vs Variable (contracts)
+        let fixedAmount = 0;
+        try {
+          const contracts = await send('contract-list', {});
+          if (Array.isArray(contracts)) {
+            for (const c of contracts) {
+              if (c.status === 'active' && c.amount != null) {
+                // Normalize to monthly amount
+                let monthly = Math.abs(c.amount);
+                switch (c.interval) {
+                  case 'weekly':
+                    monthly = monthly * 4.33;
+                    break;
+                  case 'quarterly':
+                    monthly = monthly / 3;
+                    break;
+                  case 'semi-annual':
+                    monthly = monthly / 6;
+                    break;
+                  case 'annual':
+                  case 'yearly':
+                    monthly = monthly / 12;
+                    break;
+                }
+                fixedAmount += Math.round(monthly);
+              }
+            }
+          }
+        } catch {
+          // contracts module might not be available
+        }
+        const variableAmount = Math.max(0, totalSpent - fixedAmount);
+        if (!cancelled) {
+          setFixedVsVariable({
+            fixed: fixedAmount,
+            variable: variableAmount,
+            total: totalSpent,
+          });
+        }
+
+        // 5) Spending trends: top 5 categories over 6 months — single aggregated query
+        const top5 = catSpending.slice(0, 5);
+        const top5Ids = new Set(top5.map(c => c.id));
+
+        const { data: trendRows } = await aqlQuery(
           q('transactions')
             .filter({
               $and: [
@@ -238,162 +334,80 @@ export function useAnalyticsData(): AnalyticsData {
               'payee.transfer_acct': null,
             })
             .filter({ amount: { $lt: 0 } })
-            .groupBy({ $month: '$date' })
-            .select([{ month: { $month: '$date' } }, { amount: { $sum: '$amount' } }]),
-        ),
-      ]);
+            .groupBy([{ $id: '$category' }, { $month: '$date' }])
+            .select([
+              { category: { $id: '$category' } },
+              { month: { $month: '$date' } },
+              { amount: { $sum: '$amount' } },
+            ]),
+        );
 
-      const incomeMap = new Map<string, number>();
-      for (const row of incomeByMonth.data || []) {
-        incomeMap.set(row.month, row.amount || 0);
-      }
-      const expenseMap = new Map<string, number>();
-      for (const row of expenseByMonth.data || []) {
-        expenseMap.set(row.month, Math.abs(row.amount || 0));
-      }
+        // Build lookup: categoryId -> month -> amount
+        const trendLookup = new Map<string, Map<string, number>>();
+        for (const row of trendRows || []) {
+          if (!row.category || !top5Ids.has(row.category)) continue;
+          let monthMap = trendLookup.get(row.category);
+          if (!monthMap) {
+            monthMap = new Map();
+            trendLookup.set(row.category, monthMap);
+          }
+          monthMap.set(row.month, Math.abs(row.amount || 0));
+        }
 
-      const monthlyData: MonthlyTotals[] = months.map(month => {
-        const income = incomeMap.get(month) || 0;
-        const expenses = expenseMap.get(month) || 0;
-        return {
-          month,
-          label: formatMonthLabel(month),
-          income,
-          expenses,
-          net: income - expenses,
-        };
-      });
-      if (!cancelled) setMonthlyTotals(monthlyData);
+        const trendLines: TrendLine[] = top5.map(cat => ({
+          id: cat.id,
+          name: cat.name,
+          color: cat.color,
+          data: months.map(month => ({
+            month,
+            label: formatMonthLabel(month),
+            amount: trendLookup.get(cat.id)?.get(month) || 0,
+          })),
+        }));
+        if (!cancelled) setSpendingTrends(trendLines);
 
-      // 4) Fixed vs Variable (contracts)
-      let fixedAmount = 0;
-      try {
-        const contracts = await send('contract-list', {});
-        if (Array.isArray(contracts)) {
-          for (const c of contracts) {
-            if (c.status === 'active' && c.amount != null) {
-              // Normalize to monthly amount
-              let monthly = Math.abs(c.amount);
-              switch (c.interval) {
-                case 'weekly':
-                  monthly = monthly * 4.33;
-                  break;
-                case 'quarterly':
-                  monthly = monthly / 3;
-                  break;
-                case 'semi-annual':
-                  monthly = monthly / 6;
-                  break;
-                case 'annual':
-                  monthly = monthly / 12;
-                  break;
-              }
-              fixedAmount += Math.round(monthly);
+        // 6) Budget alerts — categories where spending > budgeted
+        try {
+          const monthData = await send('envelope-budget-month', {
+            month: currentMonth,
+          });
+          const alerts: BudgetAlert[] = [];
+          let totalBudgeted = 0;
+
+          for (const cat of expenseCats) {
+            const budgetCell = monthData.find((cell: { name: string }) =>
+              cell.name.endsWith(`budget-${cat.id}`),
+            );
+            const spentCell = monthData.find((cell: { name: string }) =>
+              cell.name.endsWith(`sum-amount-${cat.id}`),
+            );
+
+            const budgeted = (budgetCell?.value as number) || 0;
+            const spent = Math.abs((spentCell?.value as number) || 0);
+            totalBudgeted += budgeted;
+
+            if (budgeted > 0 && spent > budgeted) {
+              const overage = spent - budgeted;
+              alerts.push({
+                categoryId: cat.id,
+                categoryName: cat.name,
+                budgeted,
+                spent,
+                overage,
+                overagePercent: Math.round((overage / budgeted) * 100),
+              });
             }
           }
-        }
-      } catch {
-        // contracts module might not be available
-      }
-      const variableAmount = Math.max(0, totalSpent - fixedAmount);
-      if (!cancelled) {
-        setFixedVsVariable({
-          fixed: fixedAmount,
-          variable: variableAmount,
-          total: totalSpent,
-        });
-      }
-
-      // 5) Spending trends: top 5 categories over 6 months — single aggregated query
-      const top5 = catSpending.slice(0, 5);
-      const top5Ids = new Set(top5.map(c => c.id));
-
-      const { data: trendRows } = await aqlQuery(
-        q('transactions')
-          .filter({
-            $and: [
-              { date: { $gte: rangeStart } },
-              { date: { $lte: rangeEnd } },
-            ],
-            'account.offbudget': false,
-            'payee.transfer_acct': null,
-          })
-          .filter({ amount: { $lt: 0 } })
-          .groupBy([{ $id: '$category' }, { $month: '$date' }])
-          .select([
-            { category: { $id: '$category' } },
-            { month: { $month: '$date' } },
-            { amount: { $sum: '$amount' } },
-          ]),
-      );
-
-      // Build lookup: categoryId -> month -> amount
-      const trendLookup = new Map<string, Map<string, number>>();
-      for (const row of trendRows || []) {
-        if (!row.category || !top5Ids.has(row.category)) continue;
-        let monthMap = trendLookup.get(row.category);
-        if (!monthMap) {
-          monthMap = new Map();
-          trendLookup.set(row.category, monthMap);
-        }
-        monthMap.set(row.month, Math.abs(row.amount || 0));
-      }
-
-      const trendLines: TrendLine[] = top5.map(cat => ({
-        id: cat.id,
-        name: cat.name,
-        color: cat.color,
-        data: months.map(month => ({
-          month,
-          label: formatMonthLabel(month),
-          amount: trendLookup.get(cat.id)?.get(month) || 0,
-        })),
-      }));
-      if (!cancelled) setSpendingTrends(trendLines);
-
-      // 6) Budget alerts — categories where spending > budgeted
-      try {
-        const monthData = await send('envelope-budget-month', {
-          month: currentMonth,
-        });
-        const alerts: BudgetAlert[] = [];
-        let totalBudgeted = 0;
-
-        for (const cat of expenseCats) {
-          const budgetCell = monthData.find((cell: { name: string }) =>
-            cell.name.endsWith(`budget-${cat.id}`),
-          );
-          const spentCell = monthData.find((cell: { name: string }) =>
-            cell.name.endsWith(`sum-amount-${cat.id}`),
-          );
-
-          const budgeted = (budgetCell?.value as number) || 0;
-          const spent = Math.abs((spentCell?.value as number) || 0);
-          totalBudgeted += budgeted;
-
-          if (budgeted > 0 && spent > budgeted) {
-            const overage = spent - budgeted;
-            alerts.push({
-              categoryId: cat.id,
-              categoryName: cat.name,
-              budgeted,
-              spent,
-              overage,
-              overagePercent: Math.round((overage / budgeted) * 100),
-            });
+          alerts.sort((a, b) => b.overagePercent - a.overagePercent);
+          if (!cancelled) {
+            setBudgetAlerts(alerts);
+            setTotalBudgetedThisMonth(totalBudgeted);
           }
-        }
-        alerts.sort((a, b) => b.overagePercent - a.overagePercent);
-        if (!cancelled) {
-          setBudgetAlerts(alerts);
-          setTotalBudgetedThisMonth(totalBudgeted);
+        } catch {
+          // Budget data might not be available
         }
       } catch {
-        // Budget data might not be available
-      }
-
-      } catch {
-        // Analytics data loading failed — degrade gracefully
+        if (!cancelled) setError('Failed to load analytics data');
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -404,12 +418,18 @@ export function useAnalyticsData(): AnalyticsData {
     return () => {
       cancelled = true;
     };
-  }, [currentMonth, months]);
+  }, [currentMonth, months, reloadTrigger]);
 
   const leftToSpend = totalBudgetedThisMonth - totalSpentThisMonth;
 
+  const reload = useCallback(() => {
+    setReloadTrigger(n => n + 1);
+  }, []);
+
   return {
     loading,
+    error,
+    reload,
     spendingByCategory,
     monthlyTotals,
     fixedVsVariable,

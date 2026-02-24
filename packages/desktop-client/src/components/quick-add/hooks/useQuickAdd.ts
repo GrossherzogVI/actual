@@ -23,6 +23,8 @@ const EMPTY_FORM: QuickAddFormData = {
   notes: '',
 };
 
+export type SubmitResult = { id: string } | { error: string };
+
 type UseQuickAddReturn = {
   form: QuickAddFormData;
   isIncome: boolean;
@@ -34,7 +36,7 @@ type UseQuickAddReturn = {
   resetForm: () => void;
   resetAmountOnly: () => void;
   prefill: (preset: Preset) => void;
-  submitTransaction: () => Promise<string | null>; // returns transaction ID or null on failure
+  submitTransaction: () => Promise<SubmitResult>;
 };
 
 export function useQuickAdd(defaultAccountId?: string): UseQuickAddReturn {
@@ -77,12 +79,15 @@ export function useQuickAdd(defaultAccountId?: string): UseQuickAddReturn {
     }));
   }, []);
 
-  const submitTransaction = useCallback(async (): Promise<string | null> => {
+  const submitTransaction = useCallback(async (): Promise<SubmitResult> => {
     const amount = form.evaluatedAmount;
-    if (amount == null) return null;
+    if (amount == null) return { error: 'Betrag fehlt' };
 
     const accountId = form.accountId || defaultAccountId;
-    if (!accountId) return null;
+    if (!accountId)
+      {return {
+        error: 'Kein Konto verfügbar — bitte zuerst ein Konto anlegen',
+      };}
 
     // Resolve payee name to ID (find existing or create new)
     let payeeId: string | undefined;
@@ -118,8 +123,12 @@ export function useQuickAdd(defaultAccountId?: string): UseQuickAddReturn {
       notes: form.notes || undefined,
     };
 
-    await send('transaction-add', transaction);
-    return id;
+    try {
+      await send('transaction-add', transaction);
+      return { id };
+    } catch {
+      return { error: 'Transaktion konnte nicht gespeichert werden' };
+    }
   }, [form, defaultAccountId, isIncome]);
 
   return {

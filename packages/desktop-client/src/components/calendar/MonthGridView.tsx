@@ -85,6 +85,20 @@ function DayCell({
 
   return (
     <View
+      role={hasEntries ? 'button' : undefined}
+      tabIndex={hasEntries ? 0 : undefined}
+      onClick={hasEntries ? onToggle : undefined}
+      aria-expanded={hasEntries ? isExpanded : undefined}
+      onKeyDown={
+        hasEntries
+          ? e => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onToggle();
+              }
+            }
+          : undefined
+      }
       style={{
         borderRight: `1px solid ${theme.tableBorder}`,
         borderBottom: `1px solid ${theme.tableBorder}`,
@@ -98,7 +112,6 @@ function DayCell({
         cursor: hasEntries ? 'pointer' : 'default',
         position: 'relative',
       }}
-      onClick={hasEntries ? onToggle : undefined}
     >
       {/* Day number */}
       <View
@@ -278,7 +291,7 @@ function DayCell({
             <Text
               style={{ fontSize: 11, color: '#10b981', textAlign: 'right' }}
             >
-              {<Trans>Total income</Trans>}: +{formatEurCents(incomeTotal)}
+              <Trans>Total income</Trans>: +{formatEurCents(incomeTotal)}
             </Text>
           )}
         </View>
@@ -420,7 +433,7 @@ export function MonthGridView({
           }}
           style={{ fontSize: 11, marginLeft: 8 }}
         >
-          {<Trans>Today</Trans>}
+          <Trans>Today</Trans>
         </Button>
       </View>
 
@@ -468,7 +481,9 @@ export function MonthGridView({
             padding: 40,
           }}
         >
-          <Text style={{ color: theme.pageTextSubdued }}>{<Trans>Loading…</Trans>}</Text>
+          <Text style={{ color: theme.pageTextSubdued }}>
+            <Trans>Loading…</Trans>
+          </Text>
         </View>
       ) : (
         grid.map((week, rowIdx) => (

@@ -121,7 +121,7 @@ export function AIRuleSuggestions() {
             <Trans>Hits</Trans>
           </View>
           <View style={{ width: 120, textAlign: 'center' }}>
-            {<Trans>Actions</Trans>}
+            <Trans>Actions</Trans>
           </View>
         </View>
 
@@ -173,7 +173,7 @@ export function AIRuleSuggestions() {
                   onPress={() => handleAccept(suggestion.id)}
                   style={{ fontSize: 12, padding: '3px 10px' }}
                 >
-                  {<Trans>Accept</Trans>}
+                  <Trans>Accept</Trans>
                 </Button>
                 <Button
                   variant="bare"
@@ -185,7 +185,7 @@ export function AIRuleSuggestions() {
                     color: theme.pageTextSubdued,
                   }}
                 >
-                  {<Trans>Dismiss</Trans>}
+                  <Trans>Dismiss</Trans>
                 </Button>
               </View>
             </View>

@@ -6,13 +6,13 @@ import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
-import type { ContractSummary } from '@/components/dashboard/types';
-import { formatEur } from '@/components/dashboard/utils';
-
 import { WidgetCard } from './WidgetCard';
 
 import { useSheetValue } from '@desktop-client/hooks/useSheetValue';
 import { envelopeBudget } from '@desktop-client/spreadsheet/bindings';
+
+import type { ContractSummary } from '@/components/dashboard/types';
+import { formatEur } from '@/components/dashboard/utils';
 
 type RowProps = {
   label: string;
@@ -33,7 +33,14 @@ function Row({ label, value, valueStyle }: RowProps) {
       <Text style={{ color: theme.pageTextSubdued, fontSize: 13 }}>
         {label}
       </Text>
-      <Text style={{ fontSize: 13, fontWeight: 500, ...valueStyle }}>
+      <Text
+        style={{
+          fontSize: 13,
+          fontWeight: 500,
+          fontVariantNumeric: 'tabular-nums',
+          ...valueStyle,
+        }}
+      >
         {value}
       </Text>
     </View>

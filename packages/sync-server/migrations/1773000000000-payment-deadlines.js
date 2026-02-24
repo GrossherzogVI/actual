@@ -9,7 +9,8 @@ export const up = async function () {
       db.exec(sql);
     } catch (e) {
       // SQLite error for an already-existing column; message is stable across versions
-      const msg = e && typeof e.message === 'string' ? e.message.toLowerCase() : '';
+      const msg =
+        e && typeof e.message === 'string' ? e.message.toLowerCase() : '';
       if (!msg.includes('duplicate column name')) {
         throw e;
       }

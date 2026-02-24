@@ -156,17 +156,13 @@ export function ReviewQueuePage() {
                     {t('Loading more...')}
                   </Text>
                 ) : (
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      color: theme.pageTextLight,
-                      cursor: 'pointer',
-                      textDecoration: 'underline',
-                    }}
+                  <button
                     onClick={loadMore}
+                    className="cursor-pointer border-none bg-transparent text-[13px] underline"
+                    style={{ color: theme.pageTextLight }}
                   >
                     <Trans>Load more</Trans>
-                  </Text>
+                  </button>
                 )}
               </View>
             )}
