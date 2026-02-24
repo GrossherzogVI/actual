@@ -15,9 +15,14 @@ export async function connect(): Promise<Surreal> {
     const ns = import.meta.env.VITE_SURREALDB_NS || 'finance';
     const dbName = import.meta.env.VITE_SURREALDB_DB || 'main';
 
+    // Build connect options — authentication baked in so reconnects re-auth automatically
+    const user = import.meta.env.VITE_SURREALDB_USER;
+    const pass = import.meta.env.VITE_SURREALDB_PASS;
+
     await db.connect(url, {
       namespace: ns,
       database: dbName,
+      auth: user && pass ? { username: user, password: pass } : undefined,
       reconnect: {
         enabled: true,
         attempts: -1,
@@ -26,13 +31,6 @@ export async function connect(): Promise<Surreal> {
         retryDelayMultiplier: 2,
       },
     });
-
-    // Authenticate — required by SurrealDB 3.0 (no anonymous access)
-    const user = import.meta.env.VITE_SURREALDB_USER;
-    const pass = import.meta.env.VITE_SURREALDB_PASS;
-    if (user && pass) {
-      await db.signin({ username: user, password: pass });
-    }
 
     isConnected = true;
     return db;
