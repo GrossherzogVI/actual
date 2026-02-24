@@ -16,9 +16,11 @@ import { CsvUploadZone } from './CsvUploadZone';
 import { DuplicateResolver } from './DuplicateResolver';
 import { ImportProgressBar } from './ImportProgressBar';
 import { ImportSummaryCard } from './ImportSummaryCard';
+import { parseCamt053 } from './parsers/camt053';
 import { parseDkb } from './parsers/dkb';
 import { parseGeneric, detectColumns } from './parsers/generic';
 import { parseIng } from './parsers/ing';
+import { parseMt940 } from './parsers/mt940';
 import { parseSparkasse } from './parsers/sparkasse';
 import { findPotentialDuplicates } from './parsers/dedup';
 import type { BankFormat, ColumnMapping, ParsedRow } from './parsers/types';
@@ -47,9 +49,15 @@ function parseFile(content: string, format: BankFormat, mapping?: ColumnMapping)
     case 'n26':
       // N26 uses a similar format to generic with comma delimiter
       return parseGeneric(content, mapping ?? { date: 0, amount: 4, payee: 2, notes: 3 }, ',');
+    case 'mt940':
+      return parseMt940(content);
+    case 'camt053':
+      return parseCamt053(content);
     case 'generic':
       if (!mapping) throw new Error('Generic format requires a column mapping');
       return parseGeneric(content, mapping);
+    default:
+      throw new Error(`Unbekanntes Format: ${format satisfies never}`);
   }
 }
 

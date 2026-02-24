@@ -13,6 +13,7 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "surrealdb": "^1.3.2"
+    "surrealdb": "^1.3.2",
+    "tesseract.js": "^7.0.0"
   }
 }

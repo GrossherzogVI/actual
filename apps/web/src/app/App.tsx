@@ -81,6 +81,9 @@ export function App() {
       if (entryId === 'open-finance-analytics') { handleRoute('/finance'); window.dispatchEvent(new CustomEvent('finance-tab', { detail: 'analytics' })); return; }
       if (entryId === 'open-finance-import') { handleRoute('/finance'); window.dispatchEvent(new CustomEvent('finance-tab', { detail: 'import' })); return; }
       if (entryId === 'open-finance-budget') { handleRoute('/finance'); window.dispatchEvent(new CustomEvent('finance-tab', { detail: 'budget' })); return; }
+      if (entryId === 'open-finance-tax') { handleRoute('/finance'); window.dispatchEvent(new CustomEvent('finance-tab', { detail: 'tax' })); return; }
+      if (entryId === 'open-finance-receipts') { handleRoute('/finance'); window.dispatchEvent(new CustomEvent('finance-tab', { detail: 'receipts' })); return; }
+      if (entryId === 'open-finance-sepa') { handleRoute('/finance'); window.dispatchEvent(new CustomEvent('finance-tab', { detail: 'sepa' })); return; }
 
       if (entryId === 'open-runtime-incidents') {
         handleRoute('/ops#runtime-incidents');

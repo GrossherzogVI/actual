@@ -4,7 +4,10 @@ import { motion } from 'motion/react';
 import {
   BarChart3,
   CalendarDays,
+  Camera,
+  CreditCard,
   FileSearch,
+  FileSpreadsheet,
   FileText,
   LayoutDashboard,
   List,
@@ -42,8 +45,17 @@ const ImportPage = lazy(() =>
 const BudgetPage = lazy(() =>
   import('../budget/BudgetPage').then(m => ({ default: m.BudgetPage })),
 );
+const TaxExportPage = lazy(() =>
+  import('../tax/TaxExportPage').then(m => ({ default: m.TaxExportPage })),
+);
+const ReceiptInbox = lazy(() =>
+  import('../ocr/ReceiptInbox').then(m => ({ default: m.ReceiptInbox })),
+);
+const SepaExportPage = lazy(() =>
+  import('../sepa/SepaExportPage').then(m => ({ default: m.SepaExportPage })),
+);
 
-type FinanceTab = 'dashboard' | 'transactions' | 'contracts' | 'calendar' | 'categories' | 'review' | 'analytics' | 'import' | 'budget';
+type FinanceTab = 'dashboard' | 'transactions' | 'contracts' | 'calendar' | 'categories' | 'review' | 'analytics' | 'import' | 'budget' | 'tax' | 'receipts' | 'sepa';
 
 const TABS: { id: FinanceTab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -55,6 +67,9 @@ const TABS: { id: FinanceTab; label: string; icon: typeof LayoutDashboard }[] = 
   { id: 'analytics', label: 'Analysen', icon: BarChart3 },
   { id: 'import', label: 'Import', icon: Upload },
   { id: 'budget', label: 'Budget', icon: PiggyBank },
+  { id: 'tax', label: 'Steuer', icon: FileSpreadsheet },
+  { id: 'receipts', label: 'Belege', icon: Camera },
+  { id: 'sepa', label: 'SEPA', icon: CreditCard },
 ];
 
 function TabFallback() {
@@ -185,6 +200,24 @@ export function FinancePage() {
         {activeTab === 'budget' && (
           <Suspense fallback={<TabFallback />}>
             <BudgetPage />
+          </Suspense>
+        )}
+
+        {activeTab === 'tax' && (
+          <Suspense fallback={<TabFallback />}>
+            <TaxExportPage />
+          </Suspense>
+        )}
+
+        {activeTab === 'receipts' && (
+          <Suspense fallback={<TabFallback />}>
+            <ReceiptInbox />
+          </Suspense>
+        )}
+
+        {activeTab === 'sepa' && (
+          <Suspense fallback={<TabFallback />}>
+            <SepaExportPage />
           </Suspense>
         )}
       </div>

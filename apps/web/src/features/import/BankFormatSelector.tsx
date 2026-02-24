@@ -41,6 +41,18 @@ const BANK_OPTIONS: BankOption[] = [
     logo: 'N26',
   },
   {
+    format: 'mt940',
+    name: 'MT940 / SWIFT',
+    description: 'SWIFT-Kontoauszug (STA-Datei)',
+    logo: 'MT9',
+  },
+  {
+    format: 'camt053',
+    name: 'CAMT.053',
+    description: 'ISO 20022 XML Kontoauszug',
+    logo: 'XML',
+  },
+  {
     format: 'generic',
     name: 'Andere Bank',
     description: 'CSV mit manueller Spaltenzuordnung',

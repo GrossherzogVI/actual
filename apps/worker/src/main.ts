@@ -1,5 +1,8 @@
 import Surreal from 'surrealdb';
 
+import { handlers as externalHandlers } from './handlers';
+import { handleOcrReceipt, terminateOcrWorker } from './handlers/ocr-receipt';
+
 type WorkerConfig = {
   workerId: string;
   surrealUrl: string;
@@ -8,6 +11,7 @@ type WorkerConfig = {
   surrealUser: string;
   surrealPass: string;
   ollamaUrl: string;
+  ollamaTimeoutMs: number;
   projectionIntervalMs: number;
   anomalyIntervalMs: number;
   closeRoutineIntervalMs: number;
@@ -23,9 +27,10 @@ const config: WorkerConfig = {
   surrealUrl: process.env.SURREALDB_URL || 'ws://localhost:8000',
   surrealNs: process.env.SURREALDB_NS || 'finance',
   surrealDb: process.env.SURREALDB_DB || 'main',
-  surrealUser: process.env.SURREALDB_USER || 'root',
-  surrealPass: process.env.SURREALDB_PASS || 'root',
+  surrealUser: process.env.SURREALDB_USER ?? (() => { throw new Error('SURREALDB_USER env var is required'); })(),
+  surrealPass: process.env.SURREALDB_PASS ?? (() => { throw new Error('SURREALDB_PASS env var is required'); })(),
   ollamaUrl: process.env.OLLAMA_URL || 'http://localhost:11434',
+  ollamaTimeoutMs: Number(process.env.OLLAMA_TIMEOUT_MS || 30_000),
   projectionIntervalMs: Number(process.env.PROJECTION_INTERVAL_MS || 30_000),
   anomalyIntervalMs: Number(process.env.ANOMALY_INTERVAL_MS || 60_000),
   closeRoutineIntervalMs: Number(
@@ -36,12 +41,36 @@ const config: WorkerConfig = {
   queueMaxAttempts: Number(process.env.QUEUE_MAX_ATTEMPTS || 6),
 };
 
+// Validate Ollama URL at startup — only http/https allowed (no file://, ftp://, etc.)
+function validateOllamaUrl(url: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error(`OLLAMA_URL is not a valid URL: "${url}"`);
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error(
+      `OLLAMA_URL must use http or https protocol, got "${parsed.protocol}" in "${url}"`,
+    );
+  }
+}
+
+validateOllamaUrl(config.ollamaUrl);
+
 const db = new Surreal();
 
 async function connectDb() {
   await db.connect(config.surrealUrl, {
     namespace: config.surrealNs,
     database: config.surrealDb,
+    reconnect: {
+      enabled: true,
+      attempts: -1, // unlimited
+      retryDelay: 1000,
+      retryDelayMax: 30_000,
+      retryDelayMultiplier: 2,
+    },
   });
   await db.signin({
     username: config.surrealUser,
@@ -197,6 +226,8 @@ ${categoryList}
 Antworte NUR mit der Kategorie-ID (z.B. "category:lebensmittel") und einem Konfidenzwert zwischen 0.0 und 1.0, getrennt durch ein Komma.
 Beispiel: category:lebensmittel,0.92`;
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), config.ollamaTimeoutMs);
   try {
     const response = await fetch(`${config.ollamaUrl}/api/generate`, {
       method: 'POST',
@@ -207,6 +238,7 @@ Beispiel: category:lebensmittel,0.92`;
         stream: false,
         options: { temperature: 0.1, num_predict: 50 },
       }),
+      signal: controller.signal,
     });
 
     if (!response.ok) {
@@ -244,9 +276,15 @@ Beispiel: category:lebensmittel,0.92`;
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[worker:classify] Ollama error for ${txnId}: ${message}`);
+    if (err instanceof Error && err.name === 'AbortError') {
+      console.error(`[worker:classify] Ollama timed out after ${config.ollamaTimeoutMs}ms for ${txnId}`);
+    } else {
+      console.error(`[worker:classify] Ollama error for ${txnId}: ${message}`);
+    }
     // Create review item for manual classification
     await createReviewItem(txnId, 'uncategorized', 'medium', { error: message });
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -277,7 +315,12 @@ async function processQueueJob(job: {
       await classifyTransaction(job.payload);
       break;
     case 'import-csv':
-      // TODO: Parse CSV and insert transactions
+      if (externalHandlers['import-csv']) {
+        await externalHandlers['import-csv'](db, config, job.payload);
+      }
+      break;
+    case 'ocr-receipt':
+      await handleOcrReceipt(db, config, job.payload);
       break;
     case 'check-deadlines': {
       const [expiring] = await db.query<
@@ -372,6 +415,8 @@ Transaktion:
 
 Erklaere in 1-2 Saetzen, warum diese Kategorie vorgeschlagen wurde.`;
 
+      const explainController = new AbortController();
+      const explainTimeout = setTimeout(() => explainController.abort(), config.ollamaTimeoutMs);
       try {
         const response = await fetch(`${config.ollamaUrl}/api/generate`, {
           method: 'POST',
@@ -382,6 +427,7 @@ Erklaere in 1-2 Saetzen, warum diese Kategorie vorgeschlagen wurde.`;
             stream: false,
             options: { temperature: 0.3, num_predict: 150 },
           }),
+          signal: explainController.signal,
         });
         if (!response.ok) throw new Error(`Ollama returned ${response.status}`);
         const result = await response.json() as { response: string };
@@ -392,7 +438,13 @@ Erklaere in 1-2 Saetzen, warum diese Kategorie vorgeschlagen wurde.`;
         console.log(`[${nowIso()}][worker:explain] explained ${reviewItemId}`);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.error(`[${nowIso()}][worker:explain] failed for ${reviewItemId}: ${msg}`);
+        if (err instanceof Error && err.name === 'AbortError') {
+          console.error(`[${nowIso()}][worker:explain] Ollama timed out after ${config.ollamaTimeoutMs}ms for ${reviewItemId}`);
+        } else {
+          console.error(`[${nowIso()}][worker:explain] failed for ${reviewItemId}: ${msg}`);
+        }
+      } finally {
+        clearTimeout(explainTimeout);
       }
       break;
     }
@@ -455,6 +507,7 @@ async function main() {
 
   const shutdown = async () => {
     for (const interval of intervals) clearInterval(interval);
+    await terminateOcrWorker();
     await db.close();
     process.exit(0);
   };

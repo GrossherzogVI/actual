@@ -188,6 +188,9 @@ export function useAppState() {
       { id: 'open-finance-analytics', label: 'Analysen öffnen', hint: 'F A' },
       { id: 'open-finance-import', label: 'Import öffnen', hint: 'F I' },
       { id: 'open-finance-budget', label: 'Budget öffnen', hint: 'F B' },
+      { id: 'open-finance-tax', label: 'Steuer / EÜR öffnen', hint: 'F S' },
+      { id: 'open-finance-receipts', label: 'Belege / OCR öffnen', hint: 'F E' },
+      { id: 'open-finance-sepa', label: 'SEPA-Zahlungen öffnen', hint: 'F P' },
     ],
     [],
   );
