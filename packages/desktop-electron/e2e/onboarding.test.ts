@@ -1,19 +1,7 @@
-// oxlint-disable-next-line eslint/no-restricted-imports -- fix me
-import { ConfigurationPage } from '@actual-app/web/e2e/page-models/configuration-page';
-import { expect } from '@playwright/test';
-
+// Desktop-client removed — this test referenced page models from @actual-app/web.
+// TODO: Re-implement onboarding e2e tests against Level-5 web (apps/web) when electron is wired to it.
 import { test } from './fixtures';
 
 test.describe('Onboarding', () => {
-  let configurationPage: ConfigurationPage;
-
-  test.beforeEach(async ({ electronPage }) => {
-    configurationPage = new ConfigurationPage(electronPage);
-  });
-
-  test('checks the page visuals', async ({ electronPage }) => {
-    await expect(electronPage).toHaveScreenshot();
-    await configurationPage.clickOnNoServer();
-    await expect(electronPage).toHaveScreenshot();
-  });
+  test.skip('desktop-client removed — needs Level-5 web integration', () => {});
 });

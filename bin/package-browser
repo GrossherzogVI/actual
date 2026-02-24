@@ -1,23 +1,13 @@
 #!/bin/bash -e
 
+# Desktop-client removed — Level-5 web (apps/web) is the primary frontend.
+# This script now builds the Level-5 web app.
+
 ROOT=`dirname $0`
-
 cd "$ROOT/.."
-
-echo "Updating translations..."
-if ! [ -d packages/desktop-client/locale ]; then
-    git clone https://github.com/actualbudget/translations packages/desktop-client/locale
-fi
-pushd packages/desktop-client/locale > /dev/null
-git checkout .
-git pull
-popd > /dev/null
-packages/desktop-client/bin/remove-untranslated-languages
 
 export NODE_OPTIONS="--max-old-space-size=4096"
 
-yarn workspace plugins-service build
-yarn workspace loot-core build:browser
-yarn workspace @actual-app/web build:browser
+yarn workspace @finance-os/web build
 
-echo "packages/desktop-client/build"
+echo "apps/web/dist"

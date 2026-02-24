@@ -16,35 +16,34 @@ Personal fork of [Actual Budget](https://github.com/actualbudget/actual) transfo
 ## Quick Start
 
 ```bash
-# Desktop-client (legacy, Emotion CSS)
-yarn start              # Dev server (browser) at localhost:5006
-yarn start:server-dev   # Dev with sync server
-yarn typecheck          # TypeScript check (run before committing)
-yarn lint:fix           # oxfmt + oxlint auto-fix
-yarn test               # All tests via lage (parallel, cached)
-
-# Level-5 web (primary, Tailwind v4 + SurrealDB 3.0)
-yarn docker:level5      # Start SurrealDB (docker-compose.level5.yml)
-yarn workspace @actual-app/web dev  # Vite dev server
+# Level-5 web (primary platform, Tailwind v4 + SurrealDB 3.0)
+yarn start:surrealdb                    # Start SurrealDB via Docker
+yarn schema:apply                       # Apply SurrealDB schema
+yarn workspace @finance-os/web dev      # Vite dev server
+yarn workspace @finance-os/worker dev   # Worker (AI + background jobs)
+yarn typecheck                          # TypeScript check (run before committing)
+yarn lint:fix                           # oxfmt + oxlint auto-fix
+yarn test                               # All tests via lage (parallel, cached)
 ```
 
 ## Monorepo Structure
 
-Two platforms coexist:
+> **Note**: `packages/desktop-client/` was removed and archived to the `desktop-client-archive` branch.
+> The Level-5 web app (`apps/web/`) is now the sole frontend platform.
 
-### Legacy Platform: Desktop-Client (Phases 1-8 substantially complete)
+### Supporting Packages (legacy, still in use)
 
 ```
 packages/
-  desktop-client/   React 19 + Vite 7 frontend (Emotion CSS, react-grid-layout)
   sync-server/      Express 5 backend (API + static frontend serving, SQLite)
   loot-core/        Core engine (shared types, handler bridge, DB access)
   api/              Public API package
   crdt/             CRDT sync protocol
   component-library/ @actual-app/components (Button, Input, View, Text, theme)
+  desktop-electron/ Electron shell (not actively developed)
 ```
 
-### Level-5 Platform: SurrealDB + Tailwind v4 (Phase 0+1 complete)
+### Level-5 Platform: SurrealDB + Tailwind v4 (Primary)
 
 ```
 apps/
@@ -122,53 +121,9 @@ db=main
 - **Connection Guard:** `surreal-client.ts` uses shared promise to prevent concurrent `connect()` calls
 - **CustomEvent Bridge:** `window.dispatchEvent(new CustomEvent('finance-tab', { detail: 'review' }))` for cross-component tab switching
 
-### Handler Bridge Pattern (Legacy Desktop-Client)
+### Handler Bridge Pattern (Legacy — sync-server still uses this)
 
-All client-server communication flows through loot-core's handler bridge:
-
-```
-Client: send('handler-name', args)
-  -> loot-core handler (packages/loot-core/src/server/{module}/app.ts)
-    -> HTTP to sync-server (packages/sync-server/src/{module}/app-{module}.ts)
-      -> SQLite (account.sqlite)
-```
-
-Each module bridge follows this pattern:
-
-```typescript
-import { createApp } from '../app';
-import * as asyncStorage from '../../platform/server/asyncStorage';
-import { get, post } from '../post';
-import { getServer } from '../server-config';
-
-const app = createApp<ModuleHandlers>();
-app.method('handler-name', async args => {
-  const userToken = await asyncStorage.getItem('user-token');
-  const res = await post(getServer().BASE_SERVER + '/route', args, {
-    'X-ACTUAL-TOKEN': userToken,
-  });
-  return res; // post() unwraps { status: 'ok', data: ... } envelope
-});
-```
-
-**Important:** `post()` auto-unwraps the `{ status: 'ok', data }` envelope. `get()` returns raw string (parse with `JSON.parse(res)`).
-
-### Tech Stack
-
-| Layer              | Technology                  | Notes                                                  |
-| ------------------ | --------------------------- | ------------------------------------------------------ |
-| Frontend           | React 19 + Vite 7           | `packages/desktop-client/`                             |
-| Styling            | `@emotion/css` (CSS-in-JS)  | NOT Tailwind. Use theme tokens.                        |
-| UI Primitives      | `react-aria-components`     | `isDisabled` not `disabled`, `onPress` not `onClick`   |
-| Component Library  | `@actual-app/components`    | View, Text, Button, Input, Card, Select, Menu, Popover |
-| Command Palette    | `cmdk` v1.1.1               | Existing `CommandBar.tsx`                              |
-| Keyboard Shortcuts | `react-hotkeys-hook` v5.2.4 | GlobalKeys component                                   |
-| Dashboard Layout   | `react-grid-layout` v2.2.2  | Widget drag/resize/persist                             |
-| Charts             | `recharts`                  | Analytics + dashboard visualizations                   |
-| Backend            | Express 5                   | `packages/sync-server/`                                |
-| Database           | SQLite (account.sqlite)     | Custom tables via sync-server migrations               |
-| AI                 | Ollama (self-hosted)        | `mistral-small` default, `llama3.2-vision` for OCR     |
-| Infrastructure     | Docker, GHCR CI/CD          | VPS 212.69.84.228, full self-hosted                    |
+loot-core's handler bridge connects client ↔ sync-server ↔ SQLite. Still used by remaining legacy packages (loot-core, sync-server, desktop-electron). The Level-5 web platform bypasses this entirely via SurrealDB WebSocket.
 
 ## What's Built
 
@@ -225,26 +180,11 @@ app.method('handler-name', async args => {
 - `finance-api.ts` — 15+ typed SurrealQL functions: transactions, accounts, categories, contracts, reviews, dashboard, schedules, live subscriptions
 - Types in `core/types/finance.ts` — Account, Transaction, Category, Contract, ReviewItem, Schedule, DashboardPulse, ThisMonthSummary
 
-### Desktop-Client Platform (Legacy — Phases 1-8 Complete)
+### Desktop-Client Platform (Archived)
 
-**Location:** `packages/desktop-client/src/`
+> **Removed** — archived to `desktop-client-archive` branch. See that branch for the full legacy implementation (Phases 1-8, Emotion CSS, react-grid-layout, feature flags, etc.).
 
-#### Custom Frontend Pages
-
-All custom routes are **lazy-loaded** via `React.lazy()` + `Suspense` in `FinancesApp.tsx`:
-
-| Route            | Component            | What It Does                                                                                                                               |
-| ---------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `/dashboard`     | `DashboardPage`      | Operations cockpit — 9 widgets in 12-column grid (react-grid-layout), edit mode, layout persistence via `useSyncedPref('dashboardLayout')` |
-| `/contracts`     | `ContractsPage`      | Contract list with filtering, multi-select (Shift+click), batch actions, health badges                                                     |
-| `/contracts/:id` | `ContractDetailPage` | Full contract detail with price history, cancellation letter generator                                                                     |
-| `/calendar`      | `CalendarPage`       | Payment calendar — 30-day grouped view, month grid, running balance, payday cycle, .ics export                                             |
-| `/analytics`     | `AnalyticsPage`      | Tabbed analytics — Spending by Category, Monthly Overview, Fixed vs Variable, Trends, Budget Alerts                                        |
-| `/review`        | `ReviewQueuePage`    | AI review queue — filters by type/priority, batch accept, dismiss, snooze                                                                  |
-| `/import`        | `ImportPage`         | Getting Started wizard + Finanzguru XLSX + German bank CSV import                                                                          |
-| `/tags`          | `ManageTagsPage`     | Tag CRUD for contract/transaction tagging                                                                                                  |
-
-### Custom Backend Modules (sync-server)
+### Supporting Backend Modules (sync-server)
 
 | Directory     | Router Mount        | Purpose                                                   |
 | ------------- | ------------------- | --------------------------------------------------------- |
@@ -252,103 +192,24 @@ All custom routes are **lazy-loaded** via `React.lazy()` + `Suspense` in `Financ
 | `contracts/`  | `/contracts`        | Contract CRUD, price history, health computation          |
 | `categories/` | `/categories-setup` | German category tree, Finanzguru category mapping         |
 
-### Custom loot-core Handlers
-
-Handler bridges at `packages/loot-core/src/server/{module}/app.ts`:
-
-- `contracts/app.ts` — contract CRUD, scheduling, price history
-- `categories-setup/app.ts` — German tree install, category mapping
-- `review/app.ts` — review queue queries, actions (accept/reject/snooze/dismiss)
-
-### Dashboard Widgets
-
-Located in `packages/desktop-client/src/components/dashboard/widgets/`:
-
-- `AccountBalancesWidget` — real balances via `useSheetValue`
-- `ThisMonthWidget` — income/expenses/available summary
-- `BalanceProjectionWidget` — threshold warnings, red zone
-- `QuickAddWidget` — inline Quick Add
-- `CashRunwayWidget` — days until money runs out
-- `MoneyPulseWidget` — dismissible daily brief
-- `AttentionQueueWidget` — urgent/review/suggestion counts
-- `AvailableToSpendWidget` — balance minus committed payments
-- `UpcomingPaymentsWidget` — next 7 days of payments
-
-### Quick Add (Cmd+N)
-
-Overlay at `packages/desktop-client/src/components/quick-add/`:
-
-- Amount with calculator ("12.50+8.30" works)
-- Category fuzzy search + frecency scoring
-- Preset bar (German: Einkauf, Kaffee, OEPNV, Restaurant, Tanken) with runtime category resolution
-- Save + New (Cmd+Enter), Save + Duplicate (Cmd+Shift+Enter), Park for Later (Cmd+P)
-- Expense Train mode for rapid sequential entry
-- Recent templates from transaction history
-- +/- toggle for expense/income
-
-### Feature Flags
-
-Managed via `useSyncedPref('flags.{name}')`. Three files per flag:
-
-| File                                                      | Purpose                     |
-| --------------------------------------------------------- | --------------------------- |
-| `loot-core/src/types/prefs.ts`                            | Type in `FeatureFlag` union |
-| `desktop-client/src/hooks/useFeatureFlag.ts`              | Default value               |
-| `desktop-client/src/components/settings/Experimental.tsx` | Toggle UI                   |
-
-Current flags and defaults:
-
-```
-financeOS            = true   # Main gate: custom dashboard, nav, features
-contractManagement   = true   # Contracts module
-quickAdd             = true   # Quick Add overlay + Cmd+N
-paymentCalendar      = true   # Calendar page
-extendedCommandBar   = true   # Enhanced command palette
-aiSmartMatching      = false  # AI classifier (built, not enabled)
-reviewQueue          = false  # Review queue (built, not enabled)
-germanCategories     = false  # German category tree auto-install
-```
-
-### DB Migrations
-
-Located at `packages/sync-server/migrations/`:
-
-| Migration                            | Tables Created                                                                                                                                                 |
-| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `1772000000000-phase1-tables.js`     | contracts (enriched), price_history, contract_events, contract_tags, contract_documents, review_queue, smart_match_rules, category_frecency, quick_add_presets |
-| `1773000000000-payment-deadlines.js` | payment_deadlines                                                                                                                                              |
-
 ## Key Files Map
 
 | Purpose                   | Path                                                       |
 | ------------------------- | ---------------------------------------------------------- |
-| Express app mount         | `sync-server/src/app.ts`                                   |
-| Handler type union        | `loot-core/src/types/handlers.ts`                          |
-| Handler registration      | `loot-core/src/server/main.ts`                             |
-| Feature flag types        | `loot-core/src/types/prefs.ts`                             |
-| Feature flag defaults     | `desktop-client/src/hooks/useFeatureFlag.ts`               |
-| Route definitions         | `desktop-client/src/components/FinancesApp.tsx`            |
-| Sidebar nav               | `desktop-client/src/components/sidebar/PrimaryButtons.tsx` |
-| Settings toggles          | `desktop-client/src/components/settings/Experimental.tsx`  |
-| Global keyboard shortcuts | `desktop-client/src/components/GlobalKeys.tsx`             |
-| Toast system              | `desktop-client/src/components/common/Toast.tsx`           |
 | German holiday engine     | `loot-core/src/shared/german-holidays.ts`                  |
 | Payment deadlines         | `loot-core/src/shared/deadlines.ts`                        |
 | AI classifier             | `sync-server/src/ai/classifier.ts`                         |
 | German category tree data | `sync-server/src/categories/german-tree.ts`                |
 
-## Adding a New Module (Checklist)
+## Adding a New Feature Module (Level-5)
 
-Every new module touches these files:
-
-1. `sync-server/src/app.ts` — mount Express router
-2. `loot-core/src/types/handlers.ts` — import + add to `Handlers` union
-3. `loot-core/src/server/main.ts` — import + `app.combine()`
-4. `loot-core/src/types/prefs.ts` — add to `FeatureFlag` union
-5. `desktop-client/src/hooks/useFeatureFlag.ts` — add default (`false`)
-6. `desktop-client/src/components/FinancesApp.tsx` — lazy import + `<Route element={}>`
-7. `desktop-client/src/components/sidebar/PrimaryButtons.tsx` — nav item
-8. `desktop-client/src/components/settings/Experimental.tsx` — `FeatureToggle`
+1. Create feature directory in `apps/web/src/features/{name}/`
+2. Create barrel export in `index.ts`
+3. Add API functions to `apps/web/src/core/api/finance-api.ts`
+4. Add types to `apps/web/src/core/types/finance.ts`
+5. Add lazy import + tab in `apps/web/src/features/finance/FinancePage.tsx`
+6. Add command palette entry in `apps/web/src/app/useAppState.ts`
+7. Add command handler in `apps/web/src/app/App.tsx`
 
 ## Code Style & Conventions
 
@@ -394,14 +255,13 @@ Every new module touches these files:
 
 - Never import from `uuid` without destructuring — use `import { v4 as uuidv4 } from 'uuid'`
 - Never import colors directly — use theme
-- Never import `@actual-app/web/*` in `loot-core`
 - Don't directly reference platform-specific imports (`.api`, `.web`, `.electron`)
 
 **Testing (Vitest + Playwright):**
 
 - Minimize mocked dependencies — prefer real implementations
 - Unit tests: alongside source or in `__tests__/`, extensions `.test.ts`, `.test.tsx`
-- E2E tests: `packages/desktop-client/e2e/`, Playwright
+- E2E tests: `packages/desktop-electron/e2e/`, Playwright
 - Run all: `yarn test` (lage, parallel + cached)
 - Run without cache: `yarn test:debug`
 - Clear stale cache: `rm -rf .lage`
@@ -482,32 +342,11 @@ React Component
 - Design tokens in `packages/design-system/` — import from there, not from CSS variables
 - `motion/react` for animations (Framer Motion wrapped)
 
-**Desktop-Client Gotchas (Legacy):**
-
-**Routing:**
-
-- All custom routes use `React.lazy()` + `Suspense`. Define lazy const at top of FinancesApp.tsx, use `element={}` on `<Route>`.
-- Import `useParams` from `'react-router'`, not `'react-router-dom'`. React Router v7 merged them.
-
-**Components:**
-
-- Button uses `isDisabled`, not `disabled` (react-aria).
-- Button `onPress` receives `PressEvent`, not `MouseEvent`. Don't type the event param.
-- Use `@actual-app/components` primitives (View, Text, Button, Input) — not raw HTML.
-- Modal pattern: `dispatch(replaceModal({ modal: { name: 'modal-name', options: {} } }))`.
-
-**Data:**
+**Legacy Packages (sync-server, loot-core):**
 
 - sync-server cannot import from loot-core. Duplicate types locally if needed.
-- DB migrations: use named import `{ getAccountDb }`, not default import.
 - Express router pattern: `const app = express(); export { app as handlers };`
 - `post()` unwraps `{ status: 'ok', data }` envelope automatically.
-- `db.insertCategoryGroup()` and `db.insertCategory()` throw on duplicate — always wrap in try/catch.
-
-**Hooks:**
-
-- Hooks that call `send()` (loot-core handlers) are async. State updates from async calls trigger re-renders — design components to handle loading states.
-- `useSyncedPref(key)` returns `[value, setValue]`. Value may be `undefined` before sync.
 
 ## Infrastructure
 
@@ -547,15 +386,11 @@ yarn workspace @actual-app/sync-server vitest run src/ai/app-ai.test.ts  # Singl
 
 ## Roadmap
 
-### Mega-Phase 2: Intelligence Layer (Next)
+### Mega-Phase 2: "Daily Delight" (Implemented)
 
-**Focus**: Anomaly detection, spending patterns, NLP analysis
+**Status**: Core UI complete, needs SurrealDB data wiring + real-world testing.
 
-- Anomaly detection engine (outlier spending detection)
-- Spending pattern recognition (seasonal trends, category drift)
-- NLP-based description summarization
-- Rule suggestions based on patterns
-- Predictive anomaly alerts
+Built: Analytics (6 ECharts visualizations), enhanced dashboard (12-col grid, 9 widgets, intelligence), bank import (DKB/ING/Sparkasse/generic CSV parsers), budget (envelope system), intelligence (anomaly cards, spending patterns, AI explain button). Added 22 API functions, 11 types, 4 SurrealDB schema files (007-010).
 
 ### Mega-Phase 3: German Financial Ecosystem
 
@@ -589,24 +424,26 @@ yarn workspace @actual-app/sync-server vitest run src/ai/app-ai.test.ts  # Singl
 - Wire playbook runner
 - Real-time sync across panels
 
-## What's Not Built Yet (Desktop-Client Legacy)
+## What's Not Built Yet
 
-**High priority (features exist but need wiring):**
+**High priority:**
 
-- Enable `aiSmartMatching` and `reviewQueue` flags (features are built, just disabled)
-- Contract auto-detection after import (backend `detectRecurringPatterns()` exists, modal flow not connected)
-- Breadcrumbs component exists but not integrated into page layout
+- Wire Mega-Phase 2 modules to real SurrealDB data (currently UI-only)
+- Worker intelligence jobs (detect-anomalies, analyze-spending-patterns, explain-classification)
+- Authentication on SurrealDB frontend connection
+- Input validation on all API parameters
 
 **Medium priority:**
 
 - Category icons + colors per L1 group
-- Import advisor with real statistics
 - MT940/CAMT.053 bank statement formats
+- Contract auto-detection after CSV import
+- IBAN-based auto-categorization rules
 
 **Low priority / future:**
 
 - Inline editing in transaction lists
 - Year overview in calendar
 - Contract timeline visualization
-- IBAN-based auto-categorization rules
 - Full AI-during-import pipeline
+- Net worth tracking, savings goals

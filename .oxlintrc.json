@@ -342,10 +342,6 @@
             "group": ["**/style/themes/*"],
             "message": "Please do not import theme files directly"
           },
-          {
-            "group": ["@actual-app/web/**/*"],
-            "message": "Please do not import `@actual-app/web` in `loot-core`"
-          }
         ]
       }
     ],
@@ -384,33 +380,5 @@
         "actual/no-anchor-tag": "off"
       }
     },
-    {
-      "files": ["packages/desktop-client/**/*.{js,ts,jsx,tsx}"],
-      "rules": {
-        "typescript-paths/absolute-parent-import": [
-          "error",
-          { "preferPathOverBaseUrl": true }
-        ],
-        "typescript-paths/absolute-import": ["error", { "enableAlias": false }]
-      }
-    },
-    {
-      "files": ["packages/desktop-client/src/style/themes/*"],
-      "rules": {
-        "eslint/no-restricted-imports": "off"
-      }
-    },
-    // TODO: enable these
-    {
-      "files": [
-        "packages/desktop-client/src/components/ManageRules.tsx",
-        "packages/desktop-client/src/components/mobile/budget/ExpenseGroupList.tsx",
-        "packages/desktop-client/src/components/reports/reports/Calendar.tsx",
-        "packages/desktop-client/src/components/table.tsx"
-      ],
-      "rules": {
-        "eslint/no-empty-function": "off"
-      }
-    }
   ]
 }

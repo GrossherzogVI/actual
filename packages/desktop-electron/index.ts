@@ -247,10 +247,14 @@ async function startSyncServer() {
       'app.js',
     );
 
+    // Desktop-client removed — point webRoot to Level-5 web dist or fallback
     const webRoot = path.join(
-      // require.resolve will recursively search up the workspace for the module
-      path.dirname(require.resolve('@actual-app/web/package.json')),
-      'build',
+      path.dirname(require.resolve('@actual-app/sync-server/package.json')),
+      '..',
+      '..',
+      'apps',
+      'web',
+      'dist',
     );
 
     // Use env variables to configure the server

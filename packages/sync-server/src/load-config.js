@@ -23,11 +23,10 @@ debug(`Project root: '${projectRoot}'`);
 
 export const sqlDir = path.join(__dirname, 'sql');
 
-const actualAppWebBuildPath = path.join(
-  path.dirname(require.resolve('@actual-app/web/package.json')),
-  'build',
-);
-debug(`Actual web build path: '${actualAppWebBuildPath}'`);
+// Desktop-client removed — Level-5 web (apps/web) is the primary frontend.
+// Sync-server can still serve a static webRoot if configured via ACTUAL_WEB_ROOT env.
+const actualAppWebBuildPath = path.join(projectRoot, 'apps', 'web', 'dist');
+debug(`Actual web build path: '${actualAppWebBuildPath}' (Level-5)`);
 
 // Custom formats
 convict.addFormat({

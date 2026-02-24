@@ -1,9 +1,8 @@
-// This is temporary until we move all loot-core/client over to desktop-client.
-// oxlint-disable-next-line eslint/no-restricted-imports
-import type { Modal } from '@actual-app/web/src/modals/modalsSlice';
 import { v4 as uuidv4 } from 'uuid';
 
 import type { UndoState as ServerUndoState } from '../../../server/undo';
+
+type Modal = { name: string; options?: Record<string, unknown> };
 
 type UndoState = {
   url: string | null;
