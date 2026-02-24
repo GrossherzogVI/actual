@@ -16,28 +16,113 @@ Personal fork of [Actual Budget](https://github.com/actualbudget/actual) transfo
 ## Quick Start
 
 ```bash
+# Desktop-client (legacy, Emotion CSS)
 yarn start              # Dev server (browser) at localhost:5006
 yarn start:server-dev   # Dev with sync server
 yarn typecheck          # TypeScript check (run before committing)
 yarn lint:fix           # oxfmt + oxlint auto-fix
 yarn test               # All tests via lage (parallel, cached)
+
+# Level-5 web (primary, Tailwind v4 + SurrealDB 3.0)
+yarn docker:level5      # Start SurrealDB (docker-compose.level5.yml)
+yarn workspace @actual-app/web dev  # Vite dev server
 ```
 
 ## Monorepo Structure
 
+Two platforms coexist:
+
+### Legacy Platform: Desktop-Client (Phases 1-8 substantially complete)
+
 ```
 packages/
-  desktop-client/   React 19 + Vite 7 frontend (main UI)
-  sync-server/      Express 5 backend (API + static frontend serving)
+  desktop-client/   React 19 + Vite 7 frontend (Emotion CSS, react-grid-layout)
+  sync-server/      Express 5 backend (API + static frontend serving, SQLite)
   loot-core/        Core engine (shared types, handler bridge, DB access)
   api/              Public API package
   crdt/             CRDT sync protocol
   component-library/ @actual-app/components (Button, Input, View, Text, theme)
 ```
 
+### Level-5 Platform: SurrealDB + Tailwind v4 (Phase 0+1 complete)
+
+```
+apps/
+  web/              React 19 + Vite + Tailwind v4 frontend (primary platform)
+  gateway/          (Gateway service for ops panels — being phased out)
+  ai-policy/        (Policy service — being phased out)
+  sync/             (Sync service — legacy)
+
+packages/
+  design-system/    Tailwind v4 + Radix UI component library
+
+schema/
+  *.surql           SurrealDB schema definitions (tables, computed fields, API)
+  apply.sh          Script to load all .surql files into SurrealDB
+
+scripts/
+  migrate-sqlite-to-surreal.ts  SQLite → SurrealDB migration tool
+```
+
 ## Architecture
 
-### Handler Bridge Pattern
+### Level-5 Platform: SurrealDB + Web (New Primary)
+
+**Status**: Phase 0+1 complete (Commit 10f605461)
+
+All client-server communication flows through SurrealDB JS SDK (WebSocket):
+
+```
+App (React + Tailwind v4)
+  ↓ SurrealDB JS SDK + TypeScript SDK
+SurrealDB 3.0 (DEFINE API for CRUD)
+  ↓
+Worker (Node.js — background jobs, Ollama AI)
+```
+
+**Tech Stack:**
+
+| Layer              | Technology                      | Notes                                                      |
+| ------------------ | ------------------------------- | ---------------------------------------------------------- |
+| Frontend           | React 19 + Vite 7               | `apps/web/`                                                |
+| Styling            | Tailwind CSS v4 + Radix UI      | Design tokens in `packages/design-system/`                 |
+| UI Components      | @tanstack/react-query           | Data fetching + caching                                    |
+| Animations         | motion/react (Framer Motion)    | Smooth transitions + AnimatePresence                        |
+| Icons              | lucide-react                    | Consistent icon set                                         |
+| Command Palette    | cmdk                            | 8 finance entries with tab switching                        |
+| Dialog/Modals      | Radix Dialog + Popover          | Accessible overlay components                              |
+| Database           | SurrealDB 3.0                   | WebSocket connection, DEFINE API                           |
+| Backend            | Worker (Node.js)                | Ollama AI, background jobs, job queue                      |
+| AI                 | Ollama (self-hosted)            | `mistral-small` default, `llama3.2-vision` for OCR         |
+
+**Database Connection:**
+
+```bash
+# Local development
+ws://localhost:8000
+ns=finance
+db=main
+```
+
+**SurrealDB Schema (`schema/*.surql`):**
+
+| File                         | Purpose                                                           |
+| ---------------------------- | ----------------------------------------------------------------- |
+| `000-auth.surql`             | DEFINE ACCESS TYPE RECORD for user authentication                 |
+| `001-financial-core.surql`   | `account`, `transaction`, `payee`, `category` tables              |
+| `002-contracts.surql`        | `contract` with computed `health` and `annual_cost` fields        |
+| `003-command-platform.surql` | `command_run`, `playbook`, `playbook_run`, `delegate_lane`        |
+| `004-intelligence.surql`     | `review_item`, `classification`, `anomaly` tables                 |
+| `005-api-endpoints.surql`    | DEFINE API endpoints for CRUD operations                          |
+| `006-seed-german-categories.surql` | 2-level German category tree (L1 groups → L2 categories)    |
+
+**Patterns:**
+
+- **Record Links:** `SELECT *, payee.name AS payee_name FROM transaction` — resolves refs inline
+- **Connection Guard:** `surreal-client.ts` uses shared promise to prevent concurrent `connect()` calls
+- **CustomEvent Bridge:** `window.dispatchEvent(new CustomEvent('finance-tab', { detail: 'review' }))` for cross-component tab switching
+
+### Handler Bridge Pattern (Legacy Desktop-Client)
 
 All client-server communication flows through loot-core's handler bridge:
 
