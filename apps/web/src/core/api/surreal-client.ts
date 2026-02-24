@@ -27,6 +27,13 @@ export async function connect(): Promise<Surreal> {
       },
     });
 
+    // Authenticate — required by SurrealDB 3.0 (no anonymous access)
+    const user = import.meta.env.VITE_SURREALDB_USER;
+    const pass = import.meta.env.VITE_SURREALDB_PASS;
+    if (user && pass) {
+      await db.signin({ username: user, password: pass });
+    }
+
     isConnected = true;
     return db;
   })();

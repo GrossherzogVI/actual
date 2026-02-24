@@ -30,6 +30,8 @@ jobs:
         run: yarn workspace @finance-os/web build
         env:
           VITE_SURREALDB_URL: ${{ secrets.VITE_SURREALDB_URL }}
+          VITE_SURREALDB_USER: ${{ secrets.SURREALDB_USER }}
+          VITE_SURREALDB_PASS: ${{ secrets.SURREALDB_PASS }}
 
       - name: Log in to GHCR
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
