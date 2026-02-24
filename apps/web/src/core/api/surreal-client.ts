@@ -23,6 +23,7 @@ export async function connect(): Promise<Surreal> {
       namespace: ns,
       database: dbName,
       auth: user && pass ? { username: user, password: pass } : undefined,
+      versionCheck: false, // SDK 1.x loops on SurrealDB 3.0 version string
       reconnect: {
         enabled: true,
         attempts: -1,
