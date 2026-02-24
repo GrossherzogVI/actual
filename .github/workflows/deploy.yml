@@ -21,7 +21,7 @@ jobs:
       - name: Set up environment
         uses: ./.github/actions/setup
         with:
-          download-translations: 'true'
+          download-translations: 'false'
 
       - name: Build server
         run: yarn build:server
