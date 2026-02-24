@@ -6,7 +6,7 @@
 services:
   surrealdb:
     image: surrealdb/surrealdb:v3.0.0
-    command: start --log info --user root --pass root --bind 0.0.0.0:8000 surrealkv://data/finance.db
+    command: start --log info --user ${SURREALDB_USER:?Set SURREALDB_USER} --pass ${SURREALDB_PASS:?Set SURREALDB_PASS} --bind 0.0.0.0:8000 surrealkv://data/finance.db
     ports:
       - '8000:8000'
     volumes:

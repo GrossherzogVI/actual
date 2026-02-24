@@ -80,6 +80,14 @@ build/
 *storybook.log
 storybook-static
 
+# Environment files — keep .env.example, ignore real secrets
+.env
+.env.local
+.env.*.local
+
+# SurrealDB backups
+backups/
+
 # Auto Claude data directory
 .auto-claude/
 

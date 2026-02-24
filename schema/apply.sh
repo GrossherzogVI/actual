@@ -5,8 +5,17 @@ set -euo pipefail
 SURREAL_URL="${SURREAL_URL:-http://localhost:8000}"
 SURREAL_NS="${SURREAL_NS:-finance}"
 SURREAL_DB="${SURREAL_DB:-main}"
-SURREAL_USER="${SURREAL_USER:-root}"
-SURREAL_PASS="${SURREAL_PASS:-root}"
+if [ -z "${SURREAL_USER:-}" ]; then
+  echo "Error: SURREAL_USER is not set. Export it before running this script." >&2
+  exit 1
+fi
+if [ -z "${SURREAL_PASS:-}" ]; then
+  echo "Error: SURREAL_PASS is not set. Export it before running this script." >&2
+  exit 1
+fi
+if [ "$SURREAL_USER" = "root" ] || [ "$SURREAL_PASS" = "root" ]; then
+  echo "Warning: You are using 'root' as the SurrealDB username or password. Change this before deploying to production." >&2
+fi
 
 SCHEMA_DIR="$(cd "$(dirname "$0")" && pwd)"
 
