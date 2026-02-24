@@ -8,6 +8,7 @@ import {
   SvgCheveronRight,
   SvgCog,
   SvgCreditCard,
+  SvgDashboard,
   SvgQueue,
   SvgReports,
   SvgStoreFront,
@@ -34,6 +35,7 @@ export function PrimaryButtons() {
   const isTestEnv = useIsTestEnv();
   const isUsingServer = syncServerStatus !== 'no-server' || isTestEnv;
   const financeOS = useFeatureFlag('financeOS');
+  const reviewQueueEnabled = useFeatureFlag('reviewQueue');
 
   // Routes that trigger the More menu to auto-open in default mode
   const defaultMoreRoutes = [
@@ -54,7 +56,7 @@ export function PrimaryButtons() {
     '/settings',
     '/tools',
     '/import',
-    '/review',
+    ...(reviewQueueEnabled ? ['/review'] : []),
     '/schedules',
     '/tags',
   ];
@@ -74,7 +76,7 @@ export function PrimaryButtons() {
   if (financeOS) {
     return (
       <>
-        <Item title={t('Dashboard')} Icon={SvgWallet} to="/dashboard" />
+        <Item title={t('Dashboard')} Icon={SvgDashboard} to="/dashboard" />
         <Item title={t('Accounts')} Icon={SvgCreditCard} to="/accounts" />
         <Item title={t('Budget')} Icon={SvgWallet} to="/budget" />
         <Item title={t('Reports')} Icon={SvgReports} to="/reports" />
@@ -96,12 +98,14 @@ export function PrimaryButtons() {
               to="/import"
               indent={15}
             />
-            <SecondaryItem
-              title={t('Review')}
-              Icon={SvgCheckmark}
-              to="/review"
-              indent={15}
-            />
+            {reviewQueueEnabled && (
+              <SecondaryItem
+                title={t('Review')}
+                Icon={SvgCheckmark}
+                to="/review"
+                indent={15}
+              />
+            )}
             <SecondaryItem
               title={t('Settings')}
               Icon={SvgCog}

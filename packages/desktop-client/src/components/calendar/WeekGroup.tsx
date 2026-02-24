@@ -18,7 +18,7 @@ import type { WeekData } from './types';
 type Props = {
   week: WeekData;
   balanceThreshold?: number | null;
-}
+};
 
 function formatWeekHeader(weekStart: string): string {
   const d = new Date(weekStart + 'T00:00:00');
@@ -94,18 +94,20 @@ export function WeekGroup({ week, balanceThreshold }: Props) {
       }}
     >
       {/* Week header row */}
-      <View
+      <button
         onClick={toggle}
+        aria-expanded={expanded}
         style={{
+          display: 'flex',
           flexDirection: 'row',
           alignItems: 'center',
           padding: '8px 12px',
-          backgroundColor: theme.tableHeaderBackground,
+          background: theme.tableHeaderBackground,
           cursor: 'pointer',
           gap: 8,
-          ':hover': {
-            backgroundColor: theme.tableRowBackgroundHover,
-          },
+          width: '100%',
+          border: 'none',
+          textAlign: 'left',
         }}
       >
         {/* Chevron */}
@@ -161,7 +163,7 @@ export function WeekGroup({ week, balanceThreshold }: Props) {
         >
           {formatCurrency(week.totalAmount)}
         </Text>
-      </View>
+      </button>
 
       {/* Entries */}
       {expanded && (

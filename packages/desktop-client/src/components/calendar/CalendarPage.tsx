@@ -4,6 +4,10 @@ import { Trans, useTranslation } from 'react-i18next';
 
 import { Button } from '@actual-app/components/button';
 import {
+  SvgCheveronLeft,
+  SvgCheveronRight,
+} from '@actual-app/components/icons/v1';
+import {
   SvgCalendar,
   SvgDownloadThickBottom,
 } from '@actual-app/components/icons/v2';
@@ -32,6 +36,7 @@ export function CalendarPage() {
   const navigate = useNavigate();
   const [view, setView] = useState<CalendarView>('list');
   const [showIncome, setShowIncome] = useState(true);
+  const [monthOffset, setMonthOffset] = useState(0);
 
   // Payday cycle preference: stored as string (the day number 1-28) or '' (disabled)
   const [paydayDateRaw, setPaydayDateRaw] = useSyncedPref('paydayDate');
@@ -89,7 +94,10 @@ export function CalendarPage() {
     startingBalance,
     windowStart,
     windowEnd,
-  } = useCalendarData({ paydayDate: paydayEnabled ? paydayDate : null });
+  } = useCalendarData({
+    paydayDate: paydayEnabled ? paydayDate : null,
+    monthOffset,
+  });
 
   const handleToggleView = useCallback((v: CalendarView) => {
     setView(v);
@@ -134,13 +142,61 @@ export function CalendarPage() {
           gap: 10,
         }}
       >
-        {/* View toggle */}
-        <Tabs value={view} onValueChange={v => handleToggleView(v as CalendarView)}>
-          <TabsList>
-            <TabsTrigger value="list">{t('List')}</TabsTrigger>
-            <TabsTrigger value="month">{t('Month')}</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        {/* View toggle + month navigation */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Tabs
+            value={view}
+            onValueChange={v => handleToggleView(v as CalendarView)}
+          >
+            <TabsList>
+              <TabsTrigger value="list">{<Trans>List</Trans>}</TabsTrigger>
+              <TabsTrigger value="month">{<Trans>Month</Trans>}</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          <Button
+            variant="bare"
+            onPress={() => setMonthOffset(prev => prev - 1)}
+            aria-label={t('Previous month')}
+            style={{ padding: '4px 6px' }}
+          >
+            <SvgCheveronLeft style={{ width: 14, height: 14 }} />
+          </Button>
+          <Text
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              minWidth: 100,
+              textAlign: 'center',
+            }}
+          >
+            {(() => {
+              const d = new Date();
+              d.setMonth(d.getMonth() + monthOffset);
+              return d.toLocaleDateString('de-DE', {
+                month: 'long',
+                year: 'numeric',
+              });
+            })()}
+          </Text>
+          <Button
+            variant="bare"
+            onPress={() => setMonthOffset(prev => prev + 1)}
+            aria-label={t('Next month')}
+            style={{ padding: '4px 6px' }}
+          >
+            <SvgCheveronRight style={{ width: 14, height: 14 }} />
+          </Button>
+          {monthOffset !== 0 && (
+            <Button
+              variant="bare"
+              onPress={() => setMonthOffset(0)}
+              style={{ fontSize: 11, color: theme.pageTextSubdued }}
+            >
+              <Trans>Today</Trans>
+            </Button>
+          )}
+        </View>
 
         {/* Right-side controls */}
         <View

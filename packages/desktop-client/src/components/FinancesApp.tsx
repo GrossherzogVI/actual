@@ -34,7 +34,6 @@ import { useMultiuserEnabled } from './ServerContext';
 import { FloatableSidebar } from './sidebar';
 import { Titlebar } from './Titlebar';
 import { SidebarProvider } from './ui/sidebar';
-import { Toaster } from './ui/sonner';
 import { TooltipProvider } from './ui/tooltip';
 
 // Lazy-loaded routes (code-split for smaller initial bundle)
@@ -270,7 +269,6 @@ export function FinancesApp() {
     <SidebarProvider>
       <TooltipProvider>
         <ToastProvider>
-          <Toaster />
           <View style={{ height: '100%', width: '100%' }}>
             <RouterBehaviors />
             <GlobalKeys />

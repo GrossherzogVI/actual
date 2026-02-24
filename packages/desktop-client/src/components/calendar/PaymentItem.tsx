@@ -65,18 +65,23 @@ export function PaymentItem({ entry, isLast = false }: Props) {
     : '#6b7280';
 
   return (
-    <View
+    <button
       onClick={handleClick}
+      aria-label={entry.name}
       style={{
+        display: 'flex',
         flexDirection: 'row',
         alignItems: 'center',
         padding: '7px 12px',
+        borderTop: 'none',
+        borderLeft: 'none',
+        borderRight: 'none',
         borderBottom: isLast ? 'none' : `1px solid ${theme.tableBorder}`,
         cursor: 'pointer',
         gap: 10,
-        ':hover': {
-          backgroundColor: theme.tableRowBackgroundHover,
-        },
+        width: '100%',
+        background: 'none',
+        textAlign: 'left',
       }}
     >
       {/* Date tag */}
@@ -192,6 +197,6 @@ export function PaymentItem({ entry, isLast = false }: Props) {
       >
         {formatAmount(entry.amount)}
       </Text>
-    </View>
+    </button>
   );
 }

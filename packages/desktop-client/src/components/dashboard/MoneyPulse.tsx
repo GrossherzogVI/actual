@@ -1,28 +1,29 @@
 // @ts-strict-ignore
-import React, { useState } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { UpcomingPayment } from './types';
 
-import { Card, CardContent } from '@/components/ui/card';
+import { useSyncedPref } from '@desktop-client/hooks/useSyncedPref';
+import { formatEur } from '@desktop-client/utils/german-format';
 
-function formatEur(cents: number | null): string {
-  if (cents == null) return '\u2014';
-  return new Intl.NumberFormat('de-DE', {
-    style: 'currency',
-    currency: 'EUR',
-  }).format(cents / 100);
-}
+import { Card, CardContent } from '@/components/ui/card';
 
 type Props = {
   upcomingPayments: UpcomingPayment[];
 };
 
+function getTodayISO(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export function MoneyPulse({ upcomingPayments }: Props) {
   const { t } = useTranslation();
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissedDate, setDismissedDate] = useSyncedPref(
+    'moneyPulseDismissedDate',
+  );
 
-  if (dismissed) return null;
+  if (dismissedDate === getTodayISO()) return null;
 
   // Compute bills due in next 7 days
   const today = new Date();
@@ -51,7 +52,7 @@ export function MoneyPulse({ upcomingPayments }: Props) {
       <CardContent className="flex flex-row items-center justify-between px-4 py-2.5">
         <span className="text-[13px] text-foreground">{message}</span>
         <button
-          onClick={() => setDismissed(true)}
+          onClick={() => setDismissedDate(getTodayISO())}
           className="cursor-pointer border-none bg-transparent pl-3 text-lg leading-none text-muted-foreground hover:text-foreground"
           aria-label={t('Dismiss')}
         >

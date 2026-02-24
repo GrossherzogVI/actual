@@ -80,7 +80,6 @@ function computeHealth(
   endDate: string | null,
 ): 'green' | 'yellow' | 'red' {
   const now = new Date();
-  const today = now.toISOString().split('T')[0];
 
   if (cancellationDeadline) {
     const deadlineDate = new Date(cancellationDeadline + 'T00:00:00Z');
@@ -211,7 +210,11 @@ app.get('/summary', (_req, res) => {
 
 /** GET /contracts/expiring — contracts with cancellation deadline within N days */
 app.get('/expiring', (req, res) => {
-  const days = parseInt(String(req.query.days ?? '60'), 10);
+  const rawDays = parseInt(String(req.query.days ?? '60'), 10);
+  // Clamp to a sane range to prevent unbounded queries
+  const days = Number.isFinite(rawDays)
+    ? Math.max(1, Math.min(rawDays, 365))
+    : 60;
   const db = getAccountDb();
 
   const rows = db.all(
@@ -448,13 +451,15 @@ app.post('/', (req, res) => {
     ],
   );
 
-  // Set tags if provided
+  // Set tags if provided — only accept non-empty strings
   if (Array.isArray(tags)) {
     for (const tag of tags) {
-      db.mutate(
-        'INSERT OR IGNORE INTO contract_tags (contract_id, tag) VALUES (?, ?)',
-        [id, tag],
-      );
+      if (typeof tag === 'string' && tag.trim().length > 0) {
+        db.mutate(
+          'INSERT OR IGNORE INTO contract_tags (contract_id, tag) VALUES (?, ?)',
+          [id, tag],
+        );
+      }
     }
   }
 
@@ -556,16 +561,18 @@ app.patch('/:id', (req, res) => {
     );
   }
 
-  // Update tags if provided
+  // Update tags if provided — only accept non-empty strings
   if (Array.isArray(body.tags)) {
     db.mutate('DELETE FROM contract_tags WHERE contract_id = ?', [
       req.params.id,
     ]);
     for (const tag of body.tags) {
-      db.mutate(
-        'INSERT OR IGNORE INTO contract_tags (contract_id, tag) VALUES (?, ?)',
-        [req.params.id, tag],
-      );
+      if (typeof tag === 'string' && tag.trim().length > 0) {
+        db.mutate(
+          'INSERT OR IGNORE INTO contract_tags (contract_id, tag) VALUES (?, ?)',
+          [req.params.id, tag],
+        );
+      }
     }
   }
 
@@ -757,6 +764,17 @@ app.post('/:id/tags', (req, res) => {
 
   if (!Array.isArray(tags)) {
     res.status(400).json({ status: 'error', reason: 'tags-must-be-array' });
+    return;
+  }
+
+  // Reject any tag that is not a non-empty string
+  const invalidTag = tags.find(
+    t => typeof t !== 'string' || t.trim().length === 0,
+  );
+  if (invalidTag !== undefined) {
+    res
+      .status(400)
+      .json({ status: 'error', reason: 'tags-must-be-non-empty-strings' });
     return;
   }
 

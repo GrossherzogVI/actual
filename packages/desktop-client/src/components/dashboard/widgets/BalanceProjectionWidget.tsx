@@ -7,15 +7,14 @@ import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
-import type { UpcomingPayment } from '@/components/dashboard/types';
-import { formatEur } from '@/components/dashboard/utils';
-
 import { WidgetCard } from './WidgetCard';
 
 import { useSheetValue } from '@desktop-client/hooks/useSheetValue';
 import { useSyncedPref } from '@desktop-client/hooks/useSyncedPref';
 import { allAccountBalance } from '@desktop-client/spreadsheet/bindings';
 
+import type { UpcomingPayment } from '@/components/dashboard/types';
+import { formatEur } from '@/components/dashboard/utils';
 import { Badge } from '@/components/ui/badge';
 
 type Props = {
@@ -85,6 +84,7 @@ function ProjectionRow({
         style={{
           fontSize: 13,
           fontWeight: 500,
+          fontVariantNumeric: 'tabular-nums',
           color: textColor,
         }}
       >

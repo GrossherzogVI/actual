@@ -170,12 +170,4 @@ export function isDeadlineSoon(
   return days !== null && days >= 0 && days <= thresholdDays;
 }
 
-const _EUR_FORMATTER = new Intl.NumberFormat('de-DE', {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-
-export function formatAmountEur(cents: number | null): string {
-  if (cents == null) return '-';
-  return _EUR_FORMATTER.format(cents / 100);
-}
+export { formatAmountPlain as formatAmountEur } from '@desktop-client/utils/german-format';

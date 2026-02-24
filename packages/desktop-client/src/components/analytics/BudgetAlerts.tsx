@@ -72,7 +72,7 @@ export function BudgetAlerts({
           </View>
           <View style={{ alignItems: 'center', minWidth: 100 }}>
             <Text style={{ fontSize: 11, color: theme.pageTextSubdued }}>
-              {<Trans>Spent</Trans>}
+              <Trans>Spent</Trans>
             </Text>
             <Text
               style={{ fontSize: 18, fontWeight: 700, color: theme.errorText }}
@@ -200,10 +200,10 @@ export function BudgetAlerts({
                   }}
                 >
                   <Text style={{ fontSize: 11, color: theme.pageTextSubdued }}>
-                    {<Trans>Budget</Trans>}: {formatCents(alert.budgeted)}
+                    <Trans>Budget</Trans>: {formatCents(alert.budgeted)}
                   </Text>
                   <Text style={{ fontSize: 11, color: theme.pageTextSubdued }}>
-                    {<Trans>Spent</Trans>}: {formatCents(alert.spent)}
+                    <Trans>Spent</Trans>: {formatCents(alert.spent)}
                   </Text>
                   <Text
                     style={{
@@ -212,7 +212,7 @@ export function BudgetAlerts({
                       color: alertColor(alert.overagePercent),
                     }}
                   >
-                    {<Trans>Over</Trans>}: {formatCents(alert.overage)}
+                    <Trans>Over</Trans>: {formatCents(alert.overage)}
                   </Text>
                 </View>
               </View>

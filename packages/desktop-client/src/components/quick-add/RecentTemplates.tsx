@@ -45,20 +45,25 @@ export function RecentTemplates({ templates, onSelect }: RecentTemplatesProps) {
         </Text>
       ) : (
         templates.slice(0, 5).map((tpl, i) => (
-          <View
-            key={i}
-            role="button"
+          <button
+            key={`${tpl.payee}|${tpl.date}|${tpl.amount}`}
             onMouseDown={() => onSelect(tpl)}
+            onClick={() => onSelect(tpl)}
             style={{
+              display: 'flex',
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'space-between',
               padding: '5px 0',
               cursor: 'pointer',
+              width: '100%',
+              background: 'none',
+              border: 'none',
               borderBottom:
                 i < templates.length - 1
                   ? `1px solid ${theme.tableBorder}`
                   : 'none',
+              textAlign: 'left',
             }}
           >
             <View style={{ flexDirection: 'column', flex: 1 }}>
@@ -77,7 +82,7 @@ export function RecentTemplates({ templates, onSelect }: RecentTemplatesProps) {
                 currency: 'EUR',
               })}
             </Text>
-          </View>
+          </button>
         ))
       )}
     </View>

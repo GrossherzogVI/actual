@@ -83,7 +83,9 @@ export function CancellationInfo({ contract }: CancellationInfoProps) {
       )}
     </Text>
   ) : (
-    <Text style={{ color: theme.pageTextSubdued }}><Trans>None</Trans></Text>
+    <Text style={{ color: theme.pageTextSubdued }}>
+      <Trans>None</Trans>
+    </Text>
   );
 
   return (

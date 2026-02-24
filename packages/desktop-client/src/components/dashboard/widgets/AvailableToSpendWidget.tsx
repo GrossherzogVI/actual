@@ -6,14 +6,13 @@ import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
-import type { UpcomingPayment } from '@/components/dashboard/types';
-import { formatEur } from '@/components/dashboard/utils';
-
 import { WidgetCard } from './WidgetCard';
 
 import { useSheetValue } from '@desktop-client/hooks/useSheetValue';
 import { allAccountBalance } from '@desktop-client/spreadsheet/bindings';
 
+import type { UpcomingPayment } from '@/components/dashboard/types';
+import { formatEur } from '@/components/dashboard/utils';
 import { Badge } from '@/components/ui/badge';
 
 type Props = {
@@ -59,6 +58,7 @@ export function AvailableToSpendWidget({ upcomingPayments, loading }: Props) {
               style={{
                 fontSize: 28,
                 fontWeight: 700,
+                fontVariantNumeric: 'tabular-nums',
                 color: isPositive
                   ? theme.noticeText
                   : (theme.errorText ?? '#ef4444'),
@@ -92,9 +92,15 @@ export function AvailableToSpendWidget({ upcomingPayments, loading }: Props) {
               style={{ flexDirection: 'row', justifyContent: 'space-between' }}
             >
               <Text style={{ fontSize: 12, color: theme.pageTextSubdued }}>
-                {<Trans>Balance</Trans>}
+                <Trans>Balance</Trans>
               </Text>
-              <Text style={{ fontSize: 12, fontWeight: 500 }}>
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
                 {formatEur(totalBalance)}
               </Text>
             </View>
@@ -102,12 +108,13 @@ export function AvailableToSpendWidget({ upcomingPayments, loading }: Props) {
               style={{ flexDirection: 'row', justifyContent: 'space-between' }}
             >
               <Text style={{ fontSize: 12, color: theme.pageTextSubdued }}>
-                {<Trans>Committed this month</Trans>}
+                <Trans>Committed this month</Trans>
               </Text>
               <Text
                 style={{
                   fontSize: 12,
                   fontWeight: 500,
+                  fontVariantNumeric: 'tabular-nums',
                   color: theme.errorText ?? '#ef4444',
                 }}
               >
