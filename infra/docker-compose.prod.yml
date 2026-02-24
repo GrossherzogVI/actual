@@ -21,6 +21,7 @@ services:
 
   surrealdb:
     image: surrealdb/surrealdb:v3.0.0
+    user: root
     command: >-
       start
       --log info
