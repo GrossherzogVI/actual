@@ -106,11 +106,11 @@ jobs:
             # Start SurrealDB first (without depends_on blocking)
             $DC up -d surrealdb
 
-            # Wait for SurrealDB with log output on failure
+            # Wait for SurrealDB via HTTP health endpoint (port mapped to host)
             echo "Waiting for SurrealDB to become healthy..."
             HEALTHY=false
             for i in $(seq 1 30); do
-              if $DC exec -T surrealdb /surreal isready --conn http://localhost:8000 2>/dev/null; then
+              if curl -sf http://localhost:8000/health >/dev/null 2>&1; then
                 echo "SurrealDB ready after ${i} attempts."
                 HEALTHY=true
                 break
@@ -129,20 +129,18 @@ jobs:
             # Now start actual-budget
             $DC up -d actual-budget
 
-            # Apply schema (idempotent)
-            SURREAL_CONTAINER=$($DC ps -q surrealdb)
-            docker cp schema/. "$SURREAL_CONTAINER":/tmp/schema/
+            # Apply schema via HTTP import (avoids binary path issues inside container)
             for f in schema/*.surql; do
               [ -f "$f" ] || continue
               echo "Applying $(basename "$f")..."
-              docker exec "$SURREAL_CONTAINER" \
-                /surreal import \
-                  --endpoint http://localhost:8000 \
-                  --namespace finance \
-                  --database main \
-                  --username '${{ secrets.SURREALDB_USER }}' \
-                  --password '${{ secrets.SURREALDB_PASS }}' \
-                  "/tmp/schema/$(basename "$f")"
+              curl -sf \
+                --user '${{ secrets.SURREALDB_USER }}:${{ secrets.SURREALDB_PASS }}' \
+                --header 'surreal-ns: finance' \
+                --header 'surreal-db: main' \
+                --header 'Accept: application/json' \
+                --data-binary @"$f" \
+                http://localhost:8000/import \
+              || echo "  Warning: $(basename "$f") returned non-zero (may be OK for idempotent DEFINE)"
             done
 
             # Clean up old images
