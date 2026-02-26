@@ -1,0 +1,90 @@
+{
+  "repository_type": "monorepo",
+  "parts": [
+    {
+      "part_id": "web",
+      "display_name": "Frontend (React 19 SPA)",
+      "root_path": "apps/web/",
+      "package_name": "@finance-os/web",
+      "project_type_id": "web",
+      "entry_point": "apps/web/index.html → src/main.tsx → src/app/App.tsx",
+      "primary_language": "TypeScript",
+      "framework": "React 19 + Vite 7 + Tailwind CSS v4",
+      "database_client": "SurrealDB JS SDK 1.3.2",
+      "dev_command": "yarn workspace @finance-os/web dev",
+      "build_command": "yarn workspace @finance-os/web build",
+      "test_command": "yarn workspace @finance-os/web test"
+    },
+    {
+      "part_id": "worker",
+      "display_name": "Background Worker (Node.js)",
+      "root_path": "apps/worker/",
+      "package_name": "@finance-os/worker",
+      "project_type_id": "backend",
+      "entry_point": "apps/worker/src/main.ts",
+      "primary_language": "TypeScript",
+      "framework": "Node.js ESM + tsx",
+      "database_client": "SurrealDB JS SDK 1.3.2",
+      "ai_client": "Ollama HTTP API",
+      "dev_command": "yarn workspace @finance-os/worker dev",
+      "start_command": "yarn workspace @finance-os/worker start"
+    },
+    {
+      "part_id": "schema",
+      "display_name": "SurrealDB Schema",
+      "root_path": "schema/",
+      "project_type_id": "database",
+      "entry_point": "schema/apply.sh",
+      "language": "SurrealQL",
+      "table_count": 15,
+      "apply_command": "cd schema && ./apply.sh"
+    }
+  ],
+  "integration_points": [
+    {
+      "from": "web",
+      "to": "schema",
+      "type": "WebSocket",
+      "protocol": "SurrealDB JS SDK 1.3.2",
+      "details": "All CRUD operations via SurrealQL. Connection: ws://localhost:8000, ns=finance, db=main. Auth via RECORD ACCESS (Argon2). versionCheck: false workaround for SDK 1.x / SurrealDB 3.0."
+    },
+    {
+      "from": "worker",
+      "to": "schema",
+      "type": "WebSocket",
+      "protocol": "SurrealDB JS SDK 1.3.2",
+      "details": "All read/write operations. Auth via root credentials (SURREALDB_USER/SURREALDB_PASS). Unlimited reconnect with exponential backoff."
+    },
+    {
+      "from": "web",
+      "to": "worker",
+      "type": "async_queue",
+      "protocol": "SurrealDB job_queue table",
+      "details": "Web creates job_queue records; worker polls every 1.5s and atomically claims them. No direct HTTP calls between web and worker. Current jobs: classify-transaction, import-csv, ocr-receipt, explain-classification."
+    },
+    {
+      "from": "worker",
+      "to": "web",
+      "type": "shared_tables",
+      "protocol": "SurrealDB tables",
+      "details": "Worker writes results to review_item, anomaly, spending_pattern, transaction (category updates). Web reads via TanStack Query (30s stale time) or LIVE subscriptions."
+    }
+  ],
+  "excluded_parts": [
+    {
+      "part_id": "sync-server",
+      "reason": "Legacy backend, not used by Level-5 platform",
+      "path": "packages/sync-server/"
+    },
+    {
+      "part_id": "loot-core",
+      "reason": "Legacy SQLite core engine, bypassed by SurrealDB in Level-5",
+      "path": "packages/loot-core/"
+    },
+    {
+      "part_id": "desktop-client",
+      "reason": "Archived to desktop-client-archive branch, not in main",
+      "path": "branch: desktop-client-archive"
+    }
+  ]
+}

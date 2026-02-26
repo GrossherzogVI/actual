@@ -1,0 +1,34 @@
+project: Finance OS
+level: 4
+last_updated: "2026-02-26"
+
+phases:
+  analysis:
+    product-brief: complete         # Captured in CLAUDE.md + REQUIREMENTS.md
+    research: complete              # Architecture validated (SurrealDB 3.0 live)
+  planning:
+    prd: required                   # Level 4 — REQUIREMENTS.md partially serves this
+    tech-spec: complete             # ARCHITECTURE.md + CLAUDE.md cover this
+    ux-design: in-progress          # Dashboard + key flows designed; gaps remain
+  solutioning:
+    architecture: complete          # Level-5: SurrealDB + apps/web primary platform
+    epics-stories: not-started
+  implementation:
+    sprint-planning: not-started
+    current-sprint: null
+
+# Completed mega-phases (pre-BMAD)
+completed_work:
+  - "Phase 0+1: SurrealDB schema + all core tables + DEFINE API (commit 10f605461)"
+  - "Phase 2 UI: Dashboard, Contracts, Calendar, Quick-Add, Categories, Review Queue, Command Palette"
+  - "Worker: Ollama AI classification (mistral-small), job queue, reconnect config"
+  - "CI/CD: GitHub Actions → GHCR → VPS, health checks, credential hardening"
+  - "German financial: SEPA validation, tax categories, German holidays, payment deadlines"
+
+# Next recommended work
+next_steps:
+  - Wire Phase 2 UI modules to real SurrealDB data (currently UI-only)
+  - Worker intelligence jobs (anomaly detection, spending patterns)
+  - Mega-Phase 3: German Financial Ecosystem (MT940/CAMT, receipt OCR, tax export)
+  - Mega-Phase 4: Budgeting + savings goals + net worth
+  - Mega-Phase 5: Wire ops panels to SurrealDB

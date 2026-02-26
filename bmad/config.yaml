@@ -1,0 +1,27 @@
+project_name: Finance OS
+project_type: web-app
+project_level: 4
+user_name: Frederik
+user_skill_level: expert
+communication_language: German
+document_output_language: English
+
+# Directory layout
+planning_artifacts: ./planning-artifacts
+implementation_artifacts: ./implementation-artifacts
+project_knowledge: ./docs
+
+# Platform context (CRITICAL for agents)
+# The ONLY active platform is Level-5: apps/web (React 19 + Tailwind v4 + SurrealDB 3.0)
+# The old desktop-client is archived on branch `desktop-client-archive` — do NOT reference it.
+# When porting logic from the old version, individual stories must cite it explicitly.
+primary_platform: apps/web
+primary_database: SurrealDB 3.0
+worker: apps/worker
+tech_stack:
+  frontend: React 19 + Vite 7 + Tailwind CSS v4 + Radix UI
+  database: SurrealDB 3.0 (WebSocket SDK)
+  state: TanStack Query (React Query)
+  worker: Node.js (Ollama AI + background jobs)
+  testing: Vitest + Playwright
+  ci_cd: GitHub Actions → GHCR → VPS (212.69.84.228)
