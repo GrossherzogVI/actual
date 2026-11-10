@@ -106,3 +106,6 @@ logs/security/
 # Level-5 build output
 apps/web/dist/
 apps/worker/dist/
+
+# MCP config holds local API keys; never commit it
+.mcp.json
